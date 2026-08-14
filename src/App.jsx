@@ -5,10 +5,10 @@ export default function App() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isAdmissionModalOpen, setIsAdmissionModalOpen] = useState(false);
   
-  // সুপার এডমিন কন্ট্রোল স্টেট
+  // সুপার এডমিন কন্ট্রোল স্টেট (ডিফল্টভাবে হাইড করা থাকবে)
   const [isAdmissionOpen, setIsAdmissionOpen] = useState(true);
   const [closedMessage, setClosedMessage] = useState("পর্যাপ্ত পরিমাণ ছাত্র-ছাত্রী বুকিং হওয়ায় আর কোনো সিট খালি নাই।");
-  const [isAdminMode, setIsAdminMode] = useState(false); // এডমিন কন্ট্রোল প্যানেল দেখার জন্য
+  const [isAdminMode, setIsAdminMode] = useState(false); // ৩-লাইন মেনু থেকে কন্ট্রোল প্যানেল ওপেন করার জন্য
 
   // ফরম ও ভেরিফিকেশন স্টেট
   const [formStep, setFormStep] = useState(1); // 1: Form Inputs, 2: OTP Verification, 3: Success
@@ -42,7 +42,6 @@ export default function App() {
       alert("দয়া করে সঠিক ১১ ডিজিটের মোবাইল নম্বর দিন।");
       return;
     }
-    // ওটিপি স্টেপে চলে যাবে
     setFormStep(2);
   };
 
@@ -52,7 +51,6 @@ export default function App() {
       alert("দয়া করে ৫ সংখ্যার সঠিক কোডটি দিন।");
       return;
     }
-    // সফলভাবে জমা হয়ে সুপার এডমিন, এডমিন ও টিচারের কাছে যাবে
     setFormStep(3);
   };
 
@@ -110,50 +108,15 @@ export default function App() {
         }
       `}</style>
 
-      {/* টপ কন্টাক্ট বার */}
+      {/* টপ কন্টাক্ট বার (স্বচ্ছ ও পরিচ্ছন্ন) */}
       <div style={{ backgroundColor: '#14532d', color: '#f0fdf4', padding: '8px 20px', fontSize: '13px' }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
           <div>📍 চিলমারী, কুড়িগ্রাম, বাংলাদেশ</div>
           <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
             <span>📞 যোগাযোগ: <a href="tel:+8801521553003" style={{ color: '#ffffff', fontWeight: 'bold', textDecoration: 'none' }}>+880 1521-553003</a></span>
-            <button 
-              onClick={() => setIsAdminMode(!isAdminMode)} 
-              style={{ background: '#16a34a', color: 'white', border: 'none', padding: '2px 8px', borderRadius: '4px', fontSize: '11px', cursor: 'pointer' }}
-            >
-              {isAdminMode ? 'ক্লোজ এডমিন প্যানেল' : '⚙️ সুপার এডমিন কন্ট্রোল'}
-            </button>
           </div>
         </div>
       </div>
-
-      {/* সুপার এডমিন ডেমো কন্ট্রোল প্যানেল (সুইচ ও মেসেজ এডিট করার জন্য) */}
-      {isAdminMode && (
-        <div style={{ background: '#fef3c7', borderBottom: '2px solid #f59e0b', padding: '12px 20px', textAlign: 'center', fontSize: '14px', zIndex: 100, position: 'relative' }}>
-          <div style={{ maxWidth: '800px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <strong>🛠️ সুপার এডমিন প্যানেল সিমুলেটর:</strong>
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '15px', flexWrap: 'wrap' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 'bold', cursor: 'pointer' }}>
-                <input 
-                  type="checkbox" 
-                  checked={isAdmissionOpen} 
-                  onChange={(e) => setIsAdmissionOpen(e.target.checked)}
-                  style={{ width: '18px', height: '18px' }}
-                />
-                ভর্তি ফরম অন রাখুন (Form Open/Close Switch)
-              </label>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', textAlign: 'left' }}>
-              <span style={{ fontSize: '12px', fontWeight: '600' }}>বন্ধকালীন নোটিশ মেসেজ এডিট করুন:</span>
-              <input 
-                type="text" 
-                value={closedMessage} 
-                onChange={(e) => setClosedMessage(e.target.value)}
-                style={{ padding: '6px', borderRadius: '6px', border: '1px solid #d97706', width: '100%' }}
-              />
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* নেভিগেশন বার */}
       <nav style={{ backgroundColor: '#ffffff', position: 'sticky', top: 0, zIndex: 50, boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
@@ -176,6 +139,7 @@ export default function App() {
           </button>
         </div>
 
+        {/* ৩-লাইন মেনুবার ড্রপডাউন (যেখানে সুপার এডমিন প্যানেল সিক্রেটলি রাখা হয়েছে) */}
         {mobileMenuOpen && (
           <div style={{ backgroundColor: '#ffffff', borderTop: '1px solid #f1f5f9', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '14px', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}>
             <a href="#home" className="nav-link" onClick={() => setMobileMenuOpen(false)}>হোম</a>
@@ -183,9 +147,48 @@ export default function App() {
             <a href="#notice" className="nav-link" onClick={() => setMobileMenuOpen(false)}>নোটিশ বোর্ড</a>
             <a href="#contact" className="nav-link" onClick={() => setMobileMenuOpen(false)}>যোগাযোগ</a>
             <button onClick={() => { setMobileMenuOpen(false); setIsAdmissionModalOpen(true); }} className="btn-primary" style={{ width: '100%', textAlign: 'center' }}>অনলাইন ভর্তি</button>
+            
+            {/* সাধারণ ইউজারদের আড়ালে থাকা সুপার এডমিন কন্ট্রোল বাটন */}
+            <div style={{ borderTop: '1px dashed #cbd5e1', paddingTop: '10px', marginTop: '4px' }}>
+              <button 
+                onClick={() => setIsAdminMode(!isAdminMode)} 
+                style={{ background: '#0f172a', color: '#f8fafc', border: 'none', padding: '8px 12px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', width: '100%', fontWeight: '600' }}
+              >
+                {isAdminMode ? '🔒 সুপার এডমিন প্যানেল বন্ধ করুন' : '⚙️ সুপার এডমিন কন্ট্রোল (লগইন)'}
+              </button>
+            </div>
           </div>
         )}
       </nav>
+
+      {/* ৩-লাইন মেনুর ভেতরে থাকা সুপার এডমিন কন্ট্রোল প্যানেল ইন্টারফেস */}
+      {isAdminMode && (
+        <div style={{ background: '#fef3c7', borderBottom: '2px solid #f59e0b', padding: '16px 20px', textAlign: 'center', fontSize: '14px', zIndex: 100, position: 'relative' }}>
+          <div style={{ maxWidth: '800px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <strong>🛠️ সুপার এডমিন কন্ট্রোল প্যানেল (গোপন মেনু):</strong>
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '15px', flexWrap: 'wrap' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 'bold', cursor: 'pointer' }}>
+                <input 
+                  type="checkbox" 
+                  checked={isAdmissionOpen} 
+                  onChange={(e) => setIsAdmissionOpen(e.target.checked)}
+                  style={{ width: '18px', height: '18px' }}
+                />
+                ভর্তি ফরম অন রাখুন (Form Open/Close Switch)
+              </label>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', textAlign: 'left' }}>
+              <span style={{ fontSize: '12px', fontWeight: '600' }}>বন্ধকালীন নোটিশ মেসেজ এডিট করুন:</span>
+              <input 
+                type="text" 
+                value={closedMessage} 
+                onChange={(e) => setClosedMessage(e.target.value)}
+                style={{ padding: '8px', borderRadius: '6px', border: '1px solid #d97706', width: '100%' }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* হিরো সেকশন */}
       <header id="home" style={{ background: 'linear-gradient(135deg, #064e3b 0%, #14532d 50%, #166534 100%)', color: 'white', padding: '50px 20px 70px 20px', textAlign: 'center', position: 'relative' }}>
@@ -402,6 +405,9 @@ export default function App() {
                         <option value="nursery">নার্সারি</option>
                         <option value="one">প্রথম শ্রেণী</option>
                         <option value="two">দ্বিতীয় শ্রেণী</option>
+                        <option value="three">তৃতীয় শ্রেণি</option>
+                        <option value="four">চতুর্থ শ্রেণি</option>
+                        <option value="five">পঞ্চম শ্রেণি</option>
                         <option value="hifz">হিফজ বিভাগ</option>
                       </select>
                     </div>
@@ -503,7 +509,7 @@ export default function App() {
                       <span className="badge">ওটিপি ভেরিফিকেশন</span>
                       <h3 style={{ fontSize: '18px', color: '#166534', margin: '8px 0 4px 0' }}>কোড ইনপুট করুন</h3>
                       <p style={{ color: '#64748b', fontSize: '13px', margin: 0 }}>
-                        আপনার <strong style={{ color: '#0f172a' }}>{formData.phone}</strong> নম্বরে পাঠানো ৫ সংখ্যার কোডটি নিচে লিখুন (ডেমো কোড: ১ থেকে ৫ বা যেকোনো ৫ অঙ্ক যেমন 12345):
+                        আপনার <strong style={{ color: '#0f172a' }}>{formData.phone}</strong> নম্বরে পাঠানো ৫ সংখ্যার কোডটি নিচে লিখুন (ডেমো কোড: যেকোনো ৫ অঙ্ক যেমন 12345):
                       </p>
                     </div>
 
