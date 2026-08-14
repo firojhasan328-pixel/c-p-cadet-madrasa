@@ -5,6 +5,7 @@ export default function App() {
   const [formData, setFormData] = useState({ studentName: '', phone: '', class: '' });
   const [submitted, setSubmitted] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isAdmissionModalOpen, setIsAdmissionModalOpen] = useState(false);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -90,7 +91,7 @@ export default function App() {
             <a href="#about" className="nav-link" onClick={() => setMobileMenuOpen(false)}>প্রধান শিক্ষকের বাণী</a>
             <a href="#notice" className="nav-link" onClick={() => setMobileMenuOpen(false)}>নোটিশ বোর্ড</a>
             <a href="#contact" className="nav-link" onClick={() => setMobileMenuOpen(false)}>যোগাযোগ</a>
-            <a href="#admission" className="btn-primary" style={{ textAlign: 'center' }} onClick={() => setMobileMenuOpen(false)}>অনলাইন ভর্তি</a>
+            <button onClick={() => { setMobileMenuOpen(false); setIsAdmissionModalOpen(true); }} className="btn-primary" style={{ width: '100%', textAlign: 'center' }}>অনলাইন ভর্তি</button>
           </div>
         )}
       </nav>
@@ -108,9 +109,9 @@ export default function App() {
             আমরা দিচ্ছি আধুনিক ক্বওমী ও জেনারেল শিক্ষা ব্যবস্থার এক অনন্য সমন্বয়। অভিজ্ঞ শিক্ষক মণ্ডলীর তত্ত্বাবধানে আপনার সন্তানের দ্বীনি শিক্ষার পথ সুগম করুন।
           </p>
           <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
-            <a href="#admission" className="btn-primary" style={{ backgroundColor: '#ffffff', color: '#14532d', fontWeight: 'bold' }}>
+            <button onClick={() => setIsAdmissionModalOpen(true)} className="btn-primary" style={{ backgroundColor: '#ffffff', color: '#14532d', fontWeight: 'bold' }}>
               ভর্তি আবেদন করুন
-            </a>
+            </button>
             <a href="tel:+8801521553003" className="btn-primary" style={{ backgroundColor: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)' }}>
               📞 সরাসরি কল দিন
             </a>
@@ -186,71 +187,142 @@ export default function App() {
 
         </div>
 
-        {/* অনলাইন ভর্তি ফর্ম */}
-        <section id="admission" className="card" style={{ maxWidth: '600px', margin: '0 auto' }}>
-          <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-            <span className="badge">সহজ নিয়ম</span>
-            <h3 style={{ fontSize: '20px', color: '#166534', margin: '8px 0 4px 0' }}>অনলাইন ভর্তি আবেদন</h3>
-            <p style={{ color: '#64748b', fontSize: '13px', margin: 0 }}>আপনার তথ্য জমা দিন, আমরা অতি শীঘ্রই আপনার সাথে যোগাযোগ করবো</p>
-          </div>
-
-          {submitted ? (
-            <div style={{ backgroundColor: '#dcfce7', border: '1px solid #86efac', color: '#14532d', padding: '20px', borderRadius: '12px', textAlign: 'center' }}>
-              <div style={{ fontSize: '30px', marginBottom: '8px' }}>🎉</div>
-              <h4 style={{ margin: '0 0 4px 0', fontSize: '18px' }}>আবেদন সফলভাবে গৃহীত হয়েছে!</h4>
-              <p style={{ margin: 0, fontSize: '14px' }}>ধন্যবাদ, আমরা দ্রুতই আপনার সাথে যোগাযোগ করবো।</p>
-            </div>
-          ) : (
-            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '4px', color: '#334155' }}>শিক্ষার্থীর নাম</label>
-                <input 
-                  type="text" 
-                  required 
-                  placeholder="শিক্ষার্থীর নাম লিখুন" 
-                  value={formData.studentName}
-                  onChange={(e) => setFormData({...formData, studentName: e.target.value})}
-                  style={{ width: '100%', padding: '12px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '14px', outline: 'none' }}
-                />
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '4px', color: '#334155' }}>অভিভাবকের মোবাইল নম্বর</label>
-                <input 
-                  type="tel" 
-                  required 
-                  placeholder="০১৫২১-৫৫৩০০৩" 
-                  value={formData.phone}
-                  onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                  style={{ width: '100%', padding: '12px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '14px', outline: 'none' }}
-                />
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '4px', color: '#334155' }}>কাঙ্ক্ষিত শ্রেণী</label>
-                <select 
-                  required 
-                  value={formData.class}
-                  onChange={(e) => setFormData({...formData, class: e.target.value})}
-                  style={{ width: '100%', padding: '12px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '14px', outline: 'none', backgroundColor: 'white' }}
-                >
-                  <option value="">শ্রেণী নির্বাচন করুন...</option>
-                  <option value="play">প্লে শ্রেণী</option>
-                  <option value="nursery">নার্সারি</option>
-                  <option value="one">প্রথম শ্রেণী</option>
-                  <option value="two">দ্বিতীয় শ্রেণী</option>
-                  <option value="hifz">হিফজ বিভাগ</option>
-                </select>
-              </div>
-
-              <button type="submit" className="btn-primary" style={{ marginTop: '8px', width: '100%', fontSize: '16px' }}>
-                আবেদন ফর্ম জমা দিন
-              </button>
-            </form>
-          )}
+        {/* অনলাইন ভর্তি আবেদন বাটন কার্ড (পরিবর্তিত অংশ) */}
+        <section id="admission" className="card" style={{ maxWidth: '600px', margin: '0 auto', textAlign: 'center', padding: '35px 24px' }}>
+          <span className="badge">সহজ নিয়ম</span>
+          <h3 style={{ fontSize: '22px', color: '#166534', margin: '10px 0 6px 0' }}>অনলাইন ভর্তি আবেদন</h3>
+          <p style={{ color: '#64748b', fontSize: '14px', margin: '0 0 20px 0' }}>আপনার সন্তানের ভর্তি নিশ্চিত করতে নিচের বাটনে ক্লিক করে ফরম পূরণ করুন</p>
+          <button 
+            onClick={() => { setSubmitted(false); setIsAdmissionModalOpen(true); }} 
+            className="btn-primary" 
+            style={{ fontSize: '16px', padding: '14px 28px', width: '100%', maxWidth: '300px', justifyContent: 'center' }}
+          >
+            🎓 ভর্তি আবেদন করুন
+          </button>
         </section>
 
       </main>
+
+      {/* ভর্তি ফর্ম পপআপ মোডাল */}
+      {isAdmissionModalOpen && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          backgroundColor: 'rgba(0, 0, 0, 0.6)',
+          zIndex: 2000,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '16px'
+        }}>
+          <div style={{
+            backgroundColor: '#ffffff',
+            borderRadius: '20px',
+            padding: '24px',
+            width: '100%',
+            maxWidth: '500px',
+            maxHeight: '90vh',
+            overflowY: 'auto',
+            position: 'relative',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2)'
+          }}>
+            {/* ক্লোজ বাটন */}
+            <button 
+              onClick={() => setIsAdmissionModalOpen(false)}
+              style={{
+                position: 'absolute',
+                top: '16px',
+                right: '16px',
+                background: '#f1f5f9',
+                border: 'none',
+                width: '36px',
+                height: '36px',
+                borderRadius: '50%',
+                fontSize: '18px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#334155',
+                fontWeight: 'bold'
+              }}
+            >
+              ✕
+            </button>
+
+            <div style={{ textAlign: 'center', marginBottom: '20px', paddingRight: '30px' }}>
+              <span className="badge">অনলাইন ফরম</span>
+              <h3 style={{ fontSize: '20px', color: '#166534', margin: '8px 0 4px 0' }}>ভর্তি আবেদন ফরম</h3>
+              <p style={{ color: '#64748b', fontSize: '13px', margin: 0 }}>আপনার সঠিক তথ্য দিয়ে ফরমটি পূরণ করুন</p>
+            </div>
+
+            {submitted ? (
+              <div style={{ backgroundColor: '#dcfce7', border: '1px solid #86efac', color: '#14532d', padding: '20px', borderRadius: '12px', textAlign: 'center' }}>
+                <div style={{ fontSize: '30px', marginBottom: '8px' }}>🎉</div>
+                <h4 style={{ margin: '0 0 4px 0', fontSize: '18px' }}>আবেদন সফলভাবে গৃহীত হয়েছে!</h4>
+                <p style={{ margin: '0 0 16px 0', fontSize: '14px' }}>ধন্যবাদ, আমরা দ্রুতই আপনার সাথে যোগাযোগ করবো।</p>
+                <button 
+                  onClick={() => setIsAdmissionModalOpen(false)}
+                  className="btn-primary"
+                  style={{ fontSize: '14px', padding: '8px 16px' }}
+                >
+                  বন্ধ করুন
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '4px', color: '#334155' }}>শিক্ষার্থীর নাম</label>
+                  <input 
+                    type="text" 
+                    required 
+                    placeholder="শিক্ষার্থীর নাম লিখুন" 
+                    value={formData.studentName}
+                    onChange={(e) => setFormData({...formData, studentName: e.target.value})}
+                    style={{ width: '100%', padding: '12px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '14px', outline: 'none' }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '4px', color: '#334155' }}>অভিভাবকের মোবাইল নম্বর</label>
+                  <input 
+                    type="tel" 
+                    required 
+                    placeholder="০১৫২১-৫৫৩০০৩" 
+                    value={formData.phone}
+                    onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                    style={{ width: '100%', padding: '12px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '14px', outline: 'none' }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '4px', color: '#334155' }}>কাঙ্ক্ষিত শ্রেণী</label>
+                  <select 
+                    required 
+                    value={formData.class}
+                    onChange={(e) => setFormData({...formData, class: e.target.value})}
+                    style={{ width: '100%', padding: '12px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '14px', outline: 'none', backgroundColor: 'white' }}
+                  >
+                    <option value="">শ্রেণী নির্বাচন করুন...</option>
+                    <option value="play">প্লে শ্রেণী</option>
+                    <option value="nursery">নার্সারি</option>
+                    <option value="one">প্রথম শ্রেণী</option>
+                    <option value="two">দ্বিতীয় শ্রেণী</option>
+                    <option value="hifz">হিফজ বিভাগ</option>
+                  </select>
+                </div>
+
+                <button type="submit" className="btn-primary" style={{ marginTop: '8px', width: '100%', fontSize: '16px' }}>
+                  আবেদন ফর্ম জমা দিন
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ভাসমান লাইভ চ্যাট বাটন */}
       <a 
