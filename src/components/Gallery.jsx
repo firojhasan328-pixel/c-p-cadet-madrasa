@@ -32,7 +32,6 @@ export default function Gallery() {
       .order('created_at', { ascending: false });
     
     if (data) {
-      // পাবলিক ইউআরএল তৈরি (সবার জন্য খোলা)
       const imagesWithUrls = data.map((img) => {
         const { data: publicUrlData } = supabase.storage
           .from('gallery-images')
