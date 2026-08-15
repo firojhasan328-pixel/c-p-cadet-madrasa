@@ -143,13 +143,6 @@ export default function App() {
     setFormData({ ...formData, [name]: value });
   };
 
-  const handleFileChange = (e) => {
-    const { name, files } = e.target;
-    if (files && files[0]) {
-      setFormData({ ...formData, [name]: files[0].name });
-    }
-  };
-
   const handleVerifyPhone = (e) => {
     e.preventDefault();
     if (!formData.phone || formData.phone.length < 11) {
@@ -188,7 +181,6 @@ export default function App() {
     e.preventDefault();
     if (!newUserEmail || !newUserPassword || !newUserName) return;
 
-    // Supabase Auth-এ ইউজার সাইন আপ (সুপার এডমিন প্যানেল থেকে)
     const { data, error } = await supabase.auth.signUp({
       email: newUserEmail,
       password: newUserPassword,
@@ -200,7 +192,6 @@ export default function App() {
     }
 
     if (data.user) {
-      // Profiles টেবিলে রোল ও পারমিশন সেভ করা
       const { error: profileError } = await supabase.from('profiles').insert([
         {
           id: data.user.id,
@@ -223,7 +214,6 @@ export default function App() {
     }
   };
 
-  // পারমিশন আপডেট (চেক বক্স টগল)
   const handleUpdateUserPermission = async (id, field, value) => {
     const updateField = field === 'canEdit' ? 'can_edit' : 'can_manage_admission';
     const { error } = await supabase.from('profiles').update({ [updateField]: value }).eq('id', id);
@@ -241,18 +231,6 @@ export default function App() {
     { name: "শিক্ষিকা ফাতেমা খাতুন", phone: "+8801900-000003", designation: "সহকারী শিক্ষক", edu: "বি.এস.সি (গণিত)", subject: "গণিত ও ইংরেজি", photo: "https://i.postimg.cc/gjktXPpH/1786523361131.jpg" }
   ];
 
-  const classesList = [
-    "প্লে শ্রেণি", "নার্সারি", "প্রথম শ্রেণি", "দ্বিতীয় শ্রেণি", "তৃতীয় শ্রেণি", 
-    "চতুর্থ শ্রেণি", "পঞ্চম শ্রেণি", "ষষ্ঠ শ্রেণি", "সপ্তম শ্রেণি", "অষ্টম শ্রেণি", "নবম শ্রেণি", "দশম শ্রেণি"
-  ];
-
-  const galleryFolders = [
-    { title: "ক্লাসরুমের ছবি", count: "১২টি ছবি", cover: "https://i.postimg.cc/xd8py0DW/1786523361131.jpg" },
-    { title: "বার্ষিক পিকনিক", count: "২৫টি ছবি", cover: "https://i.postimg.cc/xd8py0DW/1786523361131.jpg" },
-    { title: "ওয়াজ-মাহফিল", count: "১৮টি ছবি", cover: "https://i.postimg.cc/xd8py0DW/1786523361131.jpg" },
-    { title: "সাংস্কৃতিক অনুষ্ঠান", count: "৩০টি ছবি", cover: "https://i.postimg.cc/xd8py0DW/1786523361131.jpg" }
-  ];
-
   return (
     <div style={{ fontFamily: "'Hind Siliguri', 'Segoe UI', sans-serif", backgroundColor: '#f8fafc', color: '#0f172a', minHeight: '100vh', margin: 0, padding: 0, position: 'relative' }}>
       <style>{`
@@ -264,48 +242,8 @@ export default function App() {
         .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(22, 163, 74, 0.35); }
         .card { background: #ffffff; border-radius: 18px; padding: 24px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01); border: 1px solid #e2e8f0; }
         .badge { background: #dcfce7; color: #15803d; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; display: inline-block; }
-        
-        .live-chat-btn {
-          position: fixed;
-          bottom: 25px;
-          right: 25px;
-          background-color: #25D366;
-          color: white;
-          border-radius: 50px;
-          padding: 12px 20px;
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          box-shadow: 0 10px 20px rgba(37, 211, 102, 0.4);
-          text-decoration: none;
-          font-weight: bold;
-          font-size: 14px;
-          z-index: 1000;
-          transition: all 0.3s ease;
-        }
-        .live-chat-btn:hover {
-          transform: scale(1.05);
-          box-shadow: 0 12px 25px rgba(37, 211, 102, 0.6);
-        }
-        .premium-badge {
-          background: linear-gradient(135deg, #f59e0b, #d97706);
-          color: white;
-          width: 30px;
-          height: 30px;
-          border-radius: 50%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-weight: bold;
-          font-size: 14px;
-          box-shadow: 0 4px 10px rgba(245, 158, 11, 0.5);
-          position: absolute;
-          top: -12px;
-          left: 50%;
-          transform: translateX(-50%);
-          border: 2px solid white;
-          z-index: 10;
-        }
+        .live-chat-btn { position: fixed; bottom: 25px; right: 25px; background-color: #25D366; color: white; border-radius: 50px; padding: 12px 20px; display: flex; align-items: center; gap: 10px; box-shadow: 0 10px 20px rgba(37, 211, 102, 0.4); text-decoration: none; font-weight: bold; font-size: 14px; z-index: 1000; transition: all 0.3s ease; }
+        .live-chat-btn:hover { transform: scale(1.05); box-shadow: 0 12px 25px rgba(37, 211, 102, 0.6); }
       `}</style>
 
       {/* টপ কন্টাক্ট বার */}
@@ -339,7 +277,6 @@ export default function App() {
           </button>
         </div>
 
-        {/* ড্রপডাউন মেনু */}
         {mobileMenuOpen && (
           <div style={{ backgroundColor: '#ffffff', borderTop: '1px solid #f1f5f9', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '12px', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}>
             <span className="nav-link" onClick={() => { setCurrentView('home'); setMobileMenuOpen(false); }}>হোম</span>
@@ -350,7 +287,6 @@ export default function App() {
             <span className="nav-link" onClick={() => { setCurrentView('gallery'); setMobileMenuOpen(false); }}>গ্যালারি</span>
             <span className="nav-link" onClick={() => { setCurrentView('contact'); setMobileMenuOpen(false); }}>যোগাযোগ</span>
             
-            {/* রোল ভিত্তিক প্যানেল নেভিগেশন */}
             {(userRole === 'teacher' || userRole === 'admin' || userRole === 'superAdmin') && (
               <span className="nav-link" style={{ color: '#16a34a', fontWeight: 'bold' }} onClick={() => { setCurrentView('teacherPanel'); setMobileMenuOpen(false); }}>👨‍🏫 টিচার প্যানেল</span>
             )}
@@ -363,7 +299,6 @@ export default function App() {
 
             <button onClick={() => { setMobileMenuOpen(false); setIsAdmissionModalOpen(true); }} className="btn-primary" style={{ width: '100%', textAlign: 'center', marginTop: '6px' }}>অনলাইন ভর্তি</button>
             
-            {/* লগইন / সিকিউরিটি সেকশন */}
             <div style={{ borderTop: '1px dashed #cbd5e1', paddingTop: '10px', marginTop: '4px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {currentUser ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -372,7 +307,7 @@ export default function App() {
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#64748b' }}>প্যানেল লগইন (ইমেল ও পাসওয়ার্ড):</span>
+                  <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#64748b' }}>প্যানেল লগইন:</span>
                   <input type="email" placeholder="ইমেল" value={authEmail} onChange={(e) => setAuthEmail(e.target.value)} style={{ padding: '6px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '12px' }} />
                   <input type="password" placeholder="পাসওয়ার্ড" value={authPassword} onChange={(e) => setAuthPassword(e.target.value)} style={{ padding: '6px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '12px' }} />
                   <button onClick={handleLogin} className="btn-primary" style={{ padding: '6px', fontSize: '12px', justifyContent: 'center' }}>লগইন করুন</button>
@@ -392,11 +327,11 @@ export default function App() {
         )}
       </nav>
 
-      {/* সুপার এডমিন কন্ট্রোল প্যানেল (লাইভ এডিটিং) */}
+      {/* সুপার এডমিন লাইভ কন্ট্রোল প্যানেল */}
       {isAdminMode && userRole === 'superAdmin' && (
         <div style={{ background: '#fef3c7', borderBottom: '2px solid #f59e0b', padding: '16px 20px', fontSize: '14px', zIndex: 100, position: 'relative' }}>
           <div style={{ maxWidth: '800px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <strong>🛠️ সুপার এডমিন লাইভ কন্ট্রোল প্যানেল (A to Z Content Editing):</strong>
+            <strong>🛠️ সুপার এডমিন লাইভ কন্ট্রোল প্যানেল:</strong>
             <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap', alignItems: 'center' }}>
               <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 'bold', cursor: 'pointer' }}>
                 <input 
@@ -470,13 +405,11 @@ export default function App() {
             <section id="about" style={{ marginBottom: '32px' }}>
               <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '20px', alignItems: 'center' }}>
                 <div style={{ textAlign: 'center', flexShrink: 0 }}>
-                  <div style={{ position: 'relative', display: 'inline-block' }}>
-                    <img 
-                      src="https://i.postimg.cc/xd8py0DW/1786523361131.jpg" 
-                      alt={siteData.headmasterName} 
-                      style={{ width: '130px', height: '130px', borderRadius: '50%', objectFit: 'cover', border: '4px solid #16a34a', boxShadow: '0 6px 16px rgba(0,0,0,0.15)' }}
-                    />
-                  </div>
+                  <img 
+                    src="https://i.postimg.cc/xd8py0DW/1786523361131.jpg" 
+                    alt={siteData.headmasterName} 
+                    style={{ width: '130px', height: '130px', borderRadius: '50%', objectFit: 'cover', border: '4px solid #16a34a', boxShadow: '0 6px 16px rgba(0,0,0,0.15)' }}
+                  />
                   <h3 style={{ margin: '12px 0 2px 0', fontSize: '20px', color: '#0f172a', fontWeight: '700' }}>{siteData.headmasterName}</h3>
                   <span className="badge">প্রধান শিক্ষক ও পরিচালক</span>
                 </div>
@@ -538,7 +471,7 @@ export default function App() {
         </>
       )}
 
-      {/* অন্যান্য সাব-পেজ ভিউসমূহ (About, Teachers, Students, Notice, Gallery, Contact) */}
+      {/* অন্যান্য সাব-পেজ ভিউসমূহ */}
       {currentView === 'about' && (
         <div style={{ maxWidth: '800px', margin: '40px auto', padding: '0 16px' }}>
           <div className="card">
@@ -600,7 +533,6 @@ export default function App() {
         </div>
       )}
 
-      {/* টিচার প্যানেল */}
       {currentView === 'teacherPanel' && (
         <div style={{ maxWidth: '800px', margin: '40px auto', padding: '0 16px' }}>
           <div className="card">
@@ -613,7 +545,6 @@ export default function App() {
         </div>
       )}
 
-      {/* এডমিন প্যানেল */}
       {currentView === 'adminPanel' && (
         <div style={{ maxWidth: '900px', margin: '40px auto', padding: '0 16px' }}>
           <div className="card">
@@ -626,7 +557,6 @@ export default function App() {
         </div>
       )}
 
-      {/* সুপার এডমিন প্যানেল (Full Control & Delegation with Settings Icon & Checkboxes) */}
       {currentView === 'superAdminPanel' && (
         <div style={{ maxWidth: '900px', margin: '40px auto', padding: '0 16px' }}>
           <div className="card" style={{ border: '2px solid #f59e0b' }}>
@@ -652,7 +582,7 @@ export default function App() {
                 <button type="submit" className="btn-primary" style={{ background: '#d97706' }}>ইউজার তৈরি করুন</button>
               </form>
 
-              <h4 style={{ margin: '16px 0 8px 0', color: '#b45309' }}>বিদ্যমান ইউজারদের পারমিশন বক্স (⚙️ Settings Icon & Power Boxes):</h4>
+              <h4 style={{ margin: '16px 0 8px 0', color: '#b45309' }}>বিদ্যমান ইউজারদের পারমিশন বক্স:</h4>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {managedUsers.map((u) => (
                   <div key={u.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'white', padding: '10px 14px', borderRadius: '8px', border: '1px solid #fcd34d', flexWrap: 'wrap', gap: '8px' }}>
