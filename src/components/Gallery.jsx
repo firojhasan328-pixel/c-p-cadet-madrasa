@@ -32,23 +32,17 @@ export default function Gallery() {
       .order('created_at', { ascending: false });
     
     if (data) {
-      const imagesWithUrls = await Promise.all(data.map(async (img) => {
-        const url = await getSignedUrl(img.image_path);
-        return { ...img, url };
-      }));
+      // পাবলিক ইউআরএল তৈরি (সবার জন্য খোলা)
+      const imagesWithUrls = data.map((img) => {
+        const { data: publicUrlData } = supabase.storage
+          .from('gallery-images')
+          .getPublicUrl(img.image_path);
+        
+        return { ...img, url: publicUrlData.publicUrl };
+      });
       setImages(imagesWithUrls);
     }
     setLoading(false);
-  };
-
-  const getSignedUrl = async (filePath) => {
-    if (!filePath) return null;
-    const { data, error } = await supabase.storage
-      .from('gallery-images')
-      .createSignedUrl(filePath, 60);
-    
-    if (error) return null;
-    return data.signedUrl;
   };
 
   const handleCategoryClick = (category) => {
