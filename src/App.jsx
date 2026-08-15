@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from './supabaseClient';
 import Footer from './components/Footer';
-import AdmissionForm from './components/AdmissionForm';   // নতুন যোগ
-import AdminAdmissions from './components/AdminAdmissions'; // নতুন যোগ
+import AdmissionForm from './components/AdmissionForm';
+import AdminAdmissions from './components/AdminAdmissions';
+import ContentManager from './components/ContentManager';
+import TeacherManager from './components/TeacherManager';
+import Gallery from './components/Gallery'; // নতুন যোগ
 
 export default function App() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -95,6 +98,7 @@ export default function App() {
       setCurrentUser(data);
       setUserRole(data.role);
       setUserPermissions({ canEdit: data.can_edit, canManageAdmission: data.can_manage_admission });
+      window.userRole = data.role; // গ্যালারির জন্য গ্লোবাল ভেরিয়েবল
     }
   };
 
@@ -120,6 +124,7 @@ export default function App() {
     await supabase.auth.signOut();
     setCurrentUser(null);
     setUserRole(null);
+    window.userRole = null;
     setCurrentView('home');
     alert("লগআউট সফল হয়েছে।");
   };
@@ -276,7 +281,7 @@ export default function App() {
             <span className="nav-link" onClick={() => { setCurrentView('teachers'); setMobileMenuOpen(false); }}>শিক্ষকবৃন্দ</span>
             <span className="nav-link" onClick={() => { setCurrentView('students'); setMobileMenuOpen(false); }}>ছাত্র-ছাত্রী</span>
             <span className="nav-link" onClick={() => { setCurrentView('notice'); setMobileMenuOpen(false); }}>নোটিশ বোর্ড</span>
-            <span className="nav-link" onClick={() => { setCurrentView('gallery'); setMobileMenuOpen(false); }}>গ্যালারি</span>
+            <span className="nav-link" onClick={() => { setCurrentView('gallery'); setMobileMenuOpen(false); }}>গ্যালারি</span> {/* গ্যালারি যোগ করা হয়েছে */}
             <span className="nav-link" onClick={() => { setCurrentView('contact'); setMobileMenuOpen(false); }}>যোগাযোগ</span>
             
             {(userRole === 'teacher' || userRole === 'admin' || userRole === 'superAdmin') && (
@@ -525,6 +530,9 @@ export default function App() {
         </div>
       )}
 
+      {/* গ্যালারি ভিউ */}
+      {currentView === 'gallery' && <Gallery />}
+
       {currentView === 'teacherPanel' && (
         <div style={{ maxWidth: '800px', margin: '40px auto', padding: '0 16px' }}>
           <div className="card">
@@ -596,9 +604,16 @@ export default function App() {
                 ))}
               </div>
 
-              {/* 👇 এখানে নতুন অংশ যোগ করা হয়েছে (সুপার এডমিনের জন্য আবেদন দেখার প্যানেল) */}
               <div style={{ marginTop: '24px', borderTop: '2px solid #f59e0b', paddingTop: '16px' }}>
                 <AdminAdmissions />
+              </div>
+              
+              <div style={{ marginTop: '24px', borderTop: '2px solid #f59e0b', paddingTop: '16px' }}>
+                <ContentManager />
+              </div>
+              
+              <div style={{ marginTop: '24px', borderTop: '2px solid #f59e0b', paddingTop: '16px' }}>
+                <TeacherManager />
               </div>
             </div>
 
@@ -609,7 +624,6 @@ export default function App() {
         </div>
       )}
 
-      {/* 👇 মোডাল অংশটি রিপ্লেস করা হয়েছে (নতুন AdmissionForm ব্যবহার) */}
       {isAdmissionModalOpen && (
         <AdmissionForm 
           isOpen={isAdmissionModalOpen} 
@@ -617,7 +631,6 @@ export default function App() {
         />
       )}
 
-      {/* ভাসমান লাইভ চ্যাট */}
       <a href={`https://wa.me/${whatsappNumber}?text=${encodeURIComponent('হ্যালো ফিরোজ ভাই, সাহায্য প্রয়োজন।')}`} target="_blank" rel="noopener noreferrer" className="live-chat-btn">
         <span>💬</span><span>লাইভ চ্যাট</span>
       </a>
