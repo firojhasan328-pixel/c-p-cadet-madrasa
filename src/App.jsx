@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from './supabaseClient';
 import Footer from './components/Footer';
+import AdminRoute from './components/AdminRoute';
 
 export default function App() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -495,19 +496,15 @@ export default function App() {
         <div style={{ maxWidth: '1000px', margin: '40px auto', padding: '0 16px' }}>
           <div style={{ textAlign: 'center', marginBottom: '30px' }}>
             <span className="badge">সম্মানিত শিক্ষক মণ্ডলী</span>
-            <h2 style={{ color: '#14532d', margin: '10px 0 6px 0' }}>মাদ্রাসার শিক্ষক-শিক্ষিকাবৃন্দ</h2>
+            <h2 style={{ color: '#14532d', fontSize: '24px', marginTop: '10px' }}>আমাদের দক্ষ ও অভিজ্ঞ শিক্ষকবৃন্দ</h2>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
-            {teachersList.map((t, index) => (
-              <div key={index} className="card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
-                <img src={t.photo} alt={t.name} style={{ width: '120px', height: '120px', borderRadius: '10px', objectFit: 'cover', border: '3px solid #16a34a', marginBottom: '14px' }} />
-                <h3 style={{ margin: '0 0 4px 0', fontSize: '18px', color: '#0f172a' }}>{t.name}</h3>
-                <span style={{ color: '#15803d', fontWeight: '700', fontSize: '13px', marginBottom: '8px' }}>{t.designation}</span>
-                <div style={{ width: '100%', textAlign: 'left', borderTop: '1px solid #f1f5f9', paddingTop: '10px', fontSize: '13px', color: '#334155', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <div><strong>📞 নম্বর:</strong> <a href={`tel:${t.phone}`} style={{ color: '#16a34a', textDecoration: 'none' }}>{t.phone}</a></div>
-                  <div><strong>🎓 যোগ্যতা:</strong> {t.edu}</div>
-                  <div><strong>📚 বিষয়:</strong> {t.subject}</div>
-                </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px' }}>
+            {teachersList.map((t, idx) => (
+              <div key={idx} className="card" style={{ textAlign: 'center' }}>
+                <img src={t.photo} alt={t.name} style={{ width: '100px', height: '100px', borderRadius: '50%', objectFit: 'cover', margin: '0 auto 12px auto', border: '3px solid #16a34a' }} />
+                <h4 style={{ margin: '0 0 4px 0', fontSize: '16px' }}>{t.name}</h4>
+                <p style={{ color: '#15803d', fontSize: '13px', fontWeight: 'bold', margin: '0 0 8px 0' }}>{t.designation}</p>
+                <p style={{ color: '#64748b', fontSize: '12px', margin: 0 }}>শিক্ষাগত যোগ্যতা: {t.edu}</p>
               </div>
             ))}
           </div>
@@ -518,144 +515,98 @@ export default function App() {
       )}
 
       {currentView === 'students' && (
-        <div style={{ maxWidth: '1100px', margin: '40px auto', padding: '0 16px' }}>
-          <div style={{ textAlign: 'center', marginBottom: '30px' }}>
-            <span className="badge">মেধাবী মুখসমূহ</span>
-            <h2 style={{ color: '#14532d', margin: '10px 0 10px 0' }}>ছাত্র-ছাত্রী ও ক্লাসের শীর্ষ স্থানাধিকারীগণ</h2>
-            <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', flexWrap: 'wrap', marginTop: '10px' }}>
-              <div className="card" style={{ padding: '12px 24px', background: '#dcfce7', color: '#14532d', fontWeight: 'bold' }}>👦 মোট ছাত্র: {siteData.totalMaleStudents} জন</div>
-              <div className="card" style={{ padding: '12px 24px', background: '#e0f2fe', color: '#0369a1', fontWeight: 'bold' }}>👧 মোট ছাত্রী: {siteData.totalFemaleStudents} জন</div>
-            </div>
-          </div>
-          <div style={{ marginTop: '30px', textAlign: 'center' }}>
-            <button onClick={() => setCurrentView('home')} className="btn-primary" style={{ backgroundColor: '#64748b' }}>হোম পেজে ফিরে যান</button>
+        <div style={{ maxWidth: '800px', margin: '40px auto', padding: '0 16px' }}>
+          <div className="card" style={{ textAlign: 'center' }}>
+            <h2 style={{ color: '#14532d' }}>ছাত্র-ছাত্রী পরিসংখ্যান</h2>
+            <p>মোট ছাত্র সংখ্যা: {siteData.totalMaleStudents}</p>
+            <p>মোট ছাত্রী সংখ্যা: {siteData.totalFemaleStudents}</p>
+            <button onClick={() => setCurrentView('home')} className="btn-primary" style={{ marginTop: '20px' }}>হোম পেজে ফিরে যান</button>
           </div>
         </div>
       )}
 
-      {currentView === 'teacherPanel' && (
+      {currentView === 'notice' && (
         <div style={{ maxWidth: '800px', margin: '40px auto', padding: '0 16px' }}>
           <div className="card">
-            <h2 style={{ color: '#166534', borderBottom: '2px solid #f1f5f9', paddingBottom: '10px', marginTop: 0 }}>👨‍🏫 টিচার প্যানেল</h2>
-            <p style={{ color: '#334155', fontSize: '15px' }}>স্বাগতম! শিক্ষক হিসেবে আপনার প্যানেল এটি।</p>
-            <div style={{ marginTop: '20px', textAlign: 'center' }}>
-              <button onClick={() => setCurrentView('home')} className="btn-primary" style={{ backgroundColor: '#64748b' }}>হোম পেজে ফিরে যান</button>
-            </div>
+            <h2 style={{ color: '#14532d' }}>সকল নোটিশ</h2>
+            <p>২০২৬-নতুন সেশনের ভর্তি ফরম কার্যক্রম চলমান রয়েছে।</p>
+            <button onClick={() => setCurrentView('home')} className="btn-primary" style={{ marginTop: '20px' }}>হোম পেজে ফিরে যান</button>
           </div>
         </div>
       )}
 
+      {currentView === 'gallery' && (
+        <div style={{ maxWidth: '800px', margin: '40px auto', padding: '0 16px' }}>
+          <div className="card" style={{ textAlign: 'center' }}>
+            <h2 style={{ color: '#14532d' }}>ফটো গ্যালারি</h2>
+            <p>মাদ্রাসার বিভিন্ন কার্যক্রমের ছবি শীঘ্রই যুক্ত করা হবে।</p>
+            <button onClick={() => setCurrentView('home')} className="btn-primary" style={{ marginTop: '20px' }}>হোম পেজে ফিরে যান</button>
+          </div>
+        </div>
+      )}
+
+      {currentView === 'contact' && (
+        <div style={{ maxWidth: '800px', margin: '40px auto', padding: '0 16px' }}>
+          <div className="card" style={{ textAlign: 'center' }}>
+            <h2 style={{ color: '#14532d' }}>যোগাযোগ করুন</h2>
+            <p>📍 চিলমারী, কুড়িগ্রাম, বাংলাদেশ</p>
+            <p>📞 ফোন: {siteData.contactNumber}</p>
+            <button onClick={() => setCurrentView('home')} className="btn-primary" style={{ marginTop: '20px' }}>হোম পেজে ফিরে যান</button>
+          </div>
+        </div>
+      )}
+
+      {/* প্রটেক্টেড এডমিন প্যানেল ভিউ (AdminRoute কম্পোনেন্ট দিয়ে সুরক্ষিত) */}
       {currentView === 'adminPanel' && (
-        <div style={{ maxWidth: '900px', margin: '40px auto', padding: '0 16px' }}>
-          <div className="card">
-            <h2 style={{ color: '#0369a1', borderBottom: '2px solid #f1f5f9', paddingBottom: '10px', marginTop: 0 }}>🛠️ এডমিন প্যানেল</h2>
-            <p style={{ color: '#334155', fontSize: '15px' }}>শিক্ষক ও শিক্ষার্থীদের পারমিশন ম্যানেজ করুন।</p>
-            <div style={{ marginTop: '20px', textAlign: 'center' }}>
-              <button onClick={() => setCurrentView('home')} className="btn-primary" style={{ backgroundColor: '#64748b' }}>হোম পেজে ফিরে যান</button>
+        <AdminRoute userRole={userRole} allowedRoles={['admin', 'superAdmin']}>
+          <div style={{ maxWidth: '800px', margin: '40px auto', padding: '0 16px' }}>
+            <div className="card">
+              <h2 style={{ color: '#0369a1' }}>🛠️ এডমিন প্যানেল</h2>
+              <p>স্বাগতম, {currentUser?.name}! আপনি এখানে এডমিন সংক্রান্ত কার্যক্রম পরিচালনা করতে পারবেন।</p>
+              <button onClick={() => setCurrentView('home')} className="btn-primary" style={{ marginTop: '20px' }}>হোম পেজে ফিরে যান</button>
             </div>
           </div>
-        </div>
+        </AdminRoute>
       )}
 
+      {/* সুপার এডমিন প্যানেল ভিউ */}
       {currentView === 'superAdminPanel' && (
-        <div style={{ maxWidth: '900px', margin: '40px auto', padding: '0 16px' }}>
-          <div className="card" style={{ border: '2px solid #f59e0b' }}>
-            <h2 style={{ color: '#b45309', borderBottom: '2px solid #f1f5f9', paddingBottom: '10px', marginTop: 0 }}>⚙️ সুপার এডমিন প্যানেল (A to Z নিয়ন্ত্রণ)</h2>
-            <p style={{ color: '#334155', fontSize: '15px' }}>আপনি সুপার এডমিন হিসেবে সর্বময় ক্ষমতার অধিকারী। নতুন ইউজার তৈরি করুন এবং পারমিশন দিন:</p>
-
-            <div style={{ marginTop: '20px', background: '#fef3c7', padding: '16px', borderRadius: '12px', border: '1px solid #f59e0b' }}>
-              <h4 style={{ margin: '0 0 12px 0', color: '#b45309' }}>নতুন ইউজার ও পারমিশন তৈরি (Supabase Auth):</h4>
+        <AdminRoute userRole={userRole} allowedRoles={['superAdmin']}>
+          <div style={{ maxWidth: '900px', margin: '40px auto', padding: '0 16px' }}>
+            <div className="card">
+              <h2 style={{ color: '#b45309' }}>⚙️ সুপার এডমিন কন্ট্রোল ও ইউজার ম্যানেজমেন্ট</h2>
+              <p>এখানে নতুন শিক্ষক বা ইউজার তৈরি এবং তাদের পারমিশন সেট করতে পারবেন:</p>
               
-              <form onSubmit={handleAddUser} style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
-                <input type="text" placeholder="ইউজারের নাম" value={newUserName} onChange={(e) => setNewUserName(e.target.value)} required style={{ padding: '8px', borderRadius: '6px', border: '1px solid #d97706' }} />
-                <input type="email" placeholder="ইমেল" value={newUserEmail} onChange={(e) => setNewUserEmail(e.target.value)} required style={{ padding: '8px', borderRadius: '6px', border: '1px solid #d97706' }} />
-                <input type="password" placeholder="পাসওয়ার্ড" value={newUserPassword} onChange={(e) => setNewUserPassword(e.target.value)} required style={{ padding: '8px', borderRadius: '6px', border: '1px solid #d97706' }} />
-                <select value={newUserRole} onChange={(e) => setNewUserRole(e.target.value)} style={{ padding: '8px', borderRadius: '6px', border: '1px solid #d97706' }}>
-                  <option value="teacher">টিচার</option>
-                  <option value="admin">এডমিন</option>
-                  <option value="superAdmin">সুপার এডমিন</option>
+              <form onSubmit={handleAddUser} style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '20px', padding: '16px', background: '#f8fafc', borderRadius: '12px' }}>
+                <h4>নতুন ইউজার তৈরি করুন</h4>
+                <input type="text" placeholder="পূর্ণ নাম" value={newUserName} onChange={(e) => setNewUserName(e.target.value)} style={{ padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1' }} />
+                <input type="email" placeholder="ইমেল" value={newUserEmail} onChange={(e) => setNewUserEmail(e.target.value)} style={{ padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1' }} />
+                <input type="password" placeholder="পাসওয়ার্ড" value={newUserPassword} onChange={(e) => setNewUserPassword(e.target.value)} style={{ padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1' }} />
+                <select value={newUserRole} onChange={(e) => setNewUserRole(e.target.value)} style={{ padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1' }}>
+                  <option value="teacher">Teacher (শিক্ষক)</option>
+                  <option value="admin">Admin (এডমিন)</option>
+                  <option value="superAdmin">Super Admin (সুপার এডমিন)</option>
                 </select>
-                <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
-                  <label><input type="checkbox" checked={newUserCanEdit} onChange={(e) => setNewUserCanEdit(e.target.checked)} /> এডিট ক্ষমতা</label>
-                  <label><input type="checkbox" checked={newUserCanAdmission} onChange={(e) => setNewUserCanAdmission(e.target.checked)} /> ভর্তি ম্যানেজমেন্ট</label>
-                </div>
-                <button type="submit" className="btn-primary" style={{ background: '#d97706' }}>ইউজার তৈরি করুন</button>
+                <button type="submit" className="btn-primary" style={{ padding: '10px' }}>ইউজার তৈরি করুন</button>
               </form>
 
-              <h4 style={{ margin: '16px 0 8px 0', color: '#b45309' }}>বিদ্যমান ইউজারদের পারমিশন বক্স:</h4>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {managedUsers.map((u) => (
-                  <div key={u.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'white', padding: '10px 14px', borderRadius: '8px', border: '1px solid #fcd34d', flexWrap: 'wrap', gap: '8px' }}>
-                    <div>
-                      <strong>⚙️ {u.name}</strong> 
-                      <span className="badge" style={{ marginLeft: '6px', background: u.role === 'superAdmin' ? '#f59e0b' : '#dcfce7', color: u.role === 'superAdmin' ? 'white' : '#15803d' }}>
-                        {u.role}
-                      </span>
-                    </div>
-                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center', fontSize: '13px' }}>
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
-                        <input type="checkbox" checked={u.can_edit} onChange={(e) => handleUpdateUserPermission(u.id, 'canEdit', e.target.checked)} /> এডিট ক্ষমতা
-                      </label>
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
-                        <input type="checkbox" checked={u.can_manage_admission} onChange={(e) => handleUpdateUserPermission(u.id, 'canManageAdmission', e.target.checked)} /> ভর্তি ম্যানেজমেন্ট
-                      </label>
-                    </div>
+              <div style={{ marginTop: '30px' }}>
+                <h4>বর্তমান ইউজার ও পারমিশন তালিকা</h4>
+                {managedUsers.map(u => (
+                  <div key={u.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', borderBottom: '1px solid #e2e8f0', fontSize: '14px' }}>
+                    <span>{u.name} ({u.role})</span>
+                    <button onClick={() => setCurrentView('home')} style={{ background: '#64748b', color: 'white', border: 'none', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer' }}>ব্যাক</button>
                   </div>
                 ))}
               </div>
             </div>
-
-            <div style={{ marginTop: '20px', textAlign: 'center' }}>
-              <button onClick={() => setCurrentView('home')} className="btn-primary" style={{ backgroundColor: '#64748b' }}>হোম পেজে ফিরে যান</button>
-            </div>
           </div>
-        </div>
+        </AdminRoute>
       )}
 
-      {/* ভর্তি ফরম মোডাল */}
-      {isAdmissionModalOpen && (
-        <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div style={{ backgroundColor: '#ffffff', borderRadius: '20px', padding: '24px', width: '100%', maxWidth: '520px', maxHeight: '90vh', overflowY: 'auto', position: 'relative' }}>
-            <button onClick={() => setIsAdmissionModalOpen(false)} style={{ position: 'absolute', top: '16px', right: '16px', background: '#f1f5f9', border: 'none', width: '36px', height: '36px', borderRadius: '50%', fontSize: '18px', cursor: 'pointer' }}>✕</button>
-
-            {!isAdmissionOpen ? (
-              <div style={{ backgroundColor: '#fef2f2', border: '1px solid #fecaca', color: '#991b1b', padding: '30px 20px', borderRadius: '12px', textAlign: 'center' }}>
-                <div style={{ fontSize: '36px', marginBottom: '10px' }}>⚠️</div>
-                <h4 style={{ margin: '0 0 8px 0', fontSize: '18px' }}>আবেদন ফরম বন্ধ রয়েছে</h4>
-                <p style={{ margin: 0, fontSize: '15px', fontWeight: '600' }}>{closedMessage}</p>
-              </div>
-            ) : (
-              <div>
-                {formStep === 1 && (
-                  <form onSubmit={handleVerifyPhone} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                    <h3 style={{ fontSize: '18px', color: '#166534', margin: '6px 0 2px 0', textAlign: 'center' }}>ভর্তি আবেদন ফরম</h3>
-                    <input type="text" name="studentName" required placeholder="শিক্ষার্থীর নাম লিখুন" value={formData.studentName} onChange={handleInputChange} style={{ width: '100%', padding: '10px', border: '1px solid #cbd5e1', borderRadius: '8px' }} />
-                    <input type="tel" name="phone" required placeholder="মোবাইল নাম্বার (01XXXXXXXXX)" value={formData.phone} onChange={handleInputChange} style={{ width: '100%', padding: '10px', border: '1px solid #cbd5e1', borderRadius: '8px' }} />
-                    <button type="submit" className="btn-primary" style={{ width: '100%' }}>নম্বর ভেরিফাই করুন (OTP পাঠান)</button>
-                  </form>
-                )}
-                {formStep === 2 && (
-                  <form onSubmit={handleVerifyOtp} style={{ display: 'flex', flexDirection: 'column', gap: '16px', textAlign: 'center' }}>
-                    <h3>কোড ইনপুট করুন</h3>
-                    <input type="text" maxLength="5" required placeholder="-----" value={formData.otp} onChange={(e) => setFormData({...formData, otp: e.target.value})} style={{ width: '200px', textAlign: 'center', padding: '12px', fontSize: '22px', margin: '0 auto', border: '2px solid #16a34a', borderRadius: '10px' }} />
-                    <button type="submit" className="btn-primary">কোড নিশ্চিত করুন</button>
-                  </form>
-                )}
-                {formStep === 3 && (
-                  <div style={{ textAlign: 'center', padding: '20px' }}>
-                    <h3>🎉 আবেদন সফলভাবে জমা হয়েছে!</h3>
-                    <button onClick={() => setIsAdmissionModalOpen(false)} className="btn-primary">বন্ধ করুন</button>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* ভাসমান লাইভ চ্যাট */}
-      <a href={`https://wa.me/${whatsappNumber}?text=${encodeURIComponent('হ্যালো ফিরোজ ভাই, সাহায্য প্রয়োজন।')}`} target="_blank" rel="noopener noreferrer" className="live-chat-btn">
-        <span>💬</span><span>লাইভ চ্যাট</span>
+      {/* হোয়াটসঅ্যাপ লাইভ চ্যাট বাটন */}
+      <a href={`https://wa.me/${whatsappNumber}`} target="_blank" rel="noopener noreferrer" className="live-chat-btn">
+        💬 লাইভ চ্যাট
       </a>
 
       <Footer />
