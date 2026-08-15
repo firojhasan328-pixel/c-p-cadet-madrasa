@@ -53,7 +53,6 @@ export default function Footer() {
 
       <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
         
-        {/* মাদ্রাসার মৌলিক তথ্য */}
         <div style={{ textAlign: 'center', marginBottom: '35px', borderBottom: '1px solid #1e293b', paddingBottom: '25px' }}>
           <h4 style={{ color: '#ffffff', margin: '0 0 8px 0', fontSize: '20px', fontWeight: '700' }}>চিলমারী প্রি ক্যাডেট মাদ্রাসা</h4>
           <p style={{ fontSize: '14px', margin: '0 0 8px 0', color: '#cbd5e1' }}>📍 ঠিকানা: চিলমারী, কুড়িগ্রাম, বাংলাদেশ</p>
@@ -62,7 +61,6 @@ export default function Footer() {
           </p>
         </div>
 
-        {/* ডেভলপার তথ্য ও সার্ভিস কার্ড */}
         <div className="dev-card">
           <div style={{ position: 'relative', display: 'inline-block' }}>
             <img 
@@ -83,7 +81,6 @@ export default function Footer() {
             </p>
           </div>
 
-          {/* আপডেট করা কন্টাক্ট লিঙ্কস */}
           <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap', marginTop: '16px' }}>
             <a href={`https://wa.me/${whatsappNumber}`} target="_blank" rel="noopener noreferrer" className="contact-btn" style={{ backgroundColor: '#25D366', color: '#ffffff' }}>
               💬 WhatsApp
@@ -97,7 +94,6 @@ export default function Footer() {
           </div>
         </div>
 
-        {/* কপিরাইট নোটিশ */}
         <div style={{ textAlign: 'center', fontSize: '12px', color: '#64748b' }}>
           <p style={{ margin: 0 }}>
             © {new Date().getFullYear()} চিলমারী প্রি ক্যাডেট মাদ্রাসা। সর্বস্বত্ব সংরক্ষিত।
