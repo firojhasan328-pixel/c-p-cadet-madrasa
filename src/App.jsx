@@ -5,7 +5,7 @@ import AdmissionForm from './components/AdmissionForm';
 import AdminAdmissions from './components/AdminAdmissions';
 import ContentManager from './components/ContentManager';
 import TeacherManager from './components/TeacherManager';
-import Gallery from './components/Gallery'; // ← গ্যালারি ইম্পোর্ট করা হয়েছে
+import Gallery from './components/Gallery';
 
 export default function App() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -30,6 +30,10 @@ export default function App() {
     totalFemaleStudents: "২২০"
   });
 
+  // ✅ সুপাবেস থেকে শিক্ষক ডেটা আনার স্টেট
+  const [teachers, setTeachers] = useState([]);
+  const [teachersLoading, setTeachersLoading] = useState(true);
+
   const [managedUsers, setManagedUsers] = useState([]);
   const [newUserName, setNewUserName] = useState('');
   const [newUserEmail, setNewUserEmail] = useState('');
@@ -51,10 +55,27 @@ export default function App() {
     fatherNidPhoto: null
   });
 
+  // 🔄 শিক্ষক ডেটা ফেচ করার ফাংশন
+  const fetchTeachers = async () => {
+    setTeachersLoading(true);
+    const { data, error } = await supabase
+      .from('teachers')
+      .select('*')
+      .order('name', { ascending: true });
+    
+    if (data) {
+      setTeachers(data);
+    } else {
+      console.error('শিক্ষক ডেটা লোড করতে সমস্যা:', error);
+    }
+    setTeachersLoading(false);
+  };
+
   useEffect(() => {
     fetchSiteContents();
     fetchManagedUsers();
     checkUserSession();
+    fetchTeachers(); // ✅ শিক্ষক ডেটা লোড
 
     const channel = supabase
       .channel('schema-db-changes')
@@ -221,13 +242,6 @@ export default function App() {
 
   const whatsappNumber = "8801918568313";
 
-  const teachersList = [
-    { name: siteData.headmasterName || "Arif Ashab Khorshed", phone: siteData.contactNumber, designation: "প্রধান শিক্ষক ও পরিচালক", edu: "এম.এ (মাস্টার্স), কামিল", subject: "আল-কুরআন ও হাদিস", photo: "https://i.postimg.cc/xd8py0DW/1786523361131.jpg" },
-    { name: "মাওলানা আব্দুল্লাহ আল মামুন", phone: "+8801700-000001", designation: "সহকারী প্রধান শিক্ষক", edu: "বি.এ (অনার্স), দাওরায়ে হাদিস", subject: "আরবি ও আকাইদ", photo: "https://i.postimg.cc/gjktXPpH/1786523361131.jpg" },
-    { name: "হাফিজ মাওলানা জোবায়ের আহমেদ", phone: "+8801800-000002", designation: "হিফজ বিভাগ প্রধান", edu: "হাফেজ ও ক্বারী", subject: "হিফজুল কুরআন ও তাজবীদ", photo: "https://i.postimg.cc/gjktXPpH/1786523361131.jpg" },
-    { name: "শিক্ষিকা ফাতেমা খাতুন", phone: "+8801900-000003", designation: "সহকারী শিক্ষক", edu: "বি.এস.সি (গণিত)", subject: "গণিত ও ইংরেজি", photo: "https://i.postimg.cc/gjktXPpH/1786523361131.jpg" }
-  ];
-
   return (
     <div style={{ fontFamily: "'Hind Siliguri', 'Segoe UI', sans-serif", backgroundColor: '#f8fafc', color: '#0f172a', minHeight: '100vh', margin: 0, padding: 0, position: 'relative' }}>
       <style>{`
@@ -241,6 +255,33 @@ export default function App() {
         .badge { background: #dcfce7; color: #15803d; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; display: inline-block; }
         .live-chat-btn { position: fixed; bottom: 25px; right: 25px; background-color: #25D366; color: white; border-radius: 50px; padding: 12px 20px; display: flex; align-items: center; gap: 10px; box-shadow: 0 10px 20px rgba(37, 211, 102, 0.4); text-decoration: none; font-weight: bold; font-size: 14px; z-index: 1000; transition: all 0.3s ease; }
         .live-chat-btn:hover { transform: scale(1.05); box-shadow: 0 12px 25px rgba(37, 211, 102, 0.6); }
+        /* শিক্ষক কার্ডের জন্য স্টাইল */
+        .teacher-card {
+          background: white;
+          border-radius: 16px;
+          padding: 20px;
+          text-align: center;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+          border: 1px solid #e2e8f0;
+          transition: all 0.3s ease;
+        }
+        .teacher-card:hover {
+          transform: translateY(-4px);
+          box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+        }
+        .teacher-photo {
+          width: 120px;
+          height: 120px;
+          border-radius: 12px;
+          object-fit: cover;
+          border: 3px solid #16a34a;
+          margin: 0 auto 12px auto;
+          display: block;
+        }
+        .teacher-name { font-size: 18px; font-weight: 700; color: #0f172a; margin: 0 0 4px 0; }
+        .teacher-designation { color: #15803d; font-weight: 600; font-size: 14px; margin-bottom: 8px; }
+        .teacher-details { font-size: 13px; color: #334155; border-top: 1px solid #f1f5f9; padding-top: 10px; margin-top: 8px; }
+        .teacher-details div { margin: 2px 0; }
       `}</style>
 
       {/* টপ কন্টাক্ট বার */}
@@ -281,7 +322,7 @@ export default function App() {
             <span className="nav-link" onClick={() => { setCurrentView('teachers'); setMobileMenuOpen(false); }}>শিক্ষকবৃন্দ</span>
             <span className="nav-link" onClick={() => { setCurrentView('students'); setMobileMenuOpen(false); }}>ছাত্র-ছাত্রী</span>
             <span className="nav-link" onClick={() => { setCurrentView('notice'); setMobileMenuOpen(false); }}>নোটিশ বোর্ড</span>
-            <span className="nav-link" onClick={() => { setCurrentView('gallery'); setMobileMenuOpen(false); }}>গ্যালারি</span> {/* ← গ্যালারি যোগ করা হয়েছে */}
+            <span className="nav-link" onClick={() => { setCurrentView('gallery'); setMobileMenuOpen(false); }}>গ্যালারি</span>
             <span className="nav-link" onClick={() => { setCurrentView('contact'); setMobileMenuOpen(false); }}>যোগাযোগ</span>
             
             {(userRole === 'teacher' || userRole === 'admin' || userRole === 'superAdmin') && (
@@ -468,7 +509,7 @@ export default function App() {
         </>
       )}
 
-      {/* অন্যান্য সাব-পেজ ভিউসমূহ */}
+      {/* প্রধান শিক্ষকের বাণী পেজ */}
       {currentView === 'about' && (
         <div style={{ maxWidth: '800px', margin: '40px auto', padding: '0 16px' }}>
           <div className="card">
@@ -488,32 +529,49 @@ export default function App() {
         </div>
       )}
 
+      {/* ✅ আপডেটেড শিক্ষক পেজ (সুপাবেস ডেটা + পাসপোর্ট সাইজ স্কোয়ার ফ্রেম) */}
       {currentView === 'teachers' && (
-        <div style={{ maxWidth: '1000px', margin: '40px auto', padding: '0 16px' }}>
+        <div style={{ maxWidth: '1200px', margin: '40px auto', padding: '0 16px' }}>
           <div style={{ textAlign: 'center', marginBottom: '30px' }}>
             <span className="badge">সম্মানিত শিক্ষক মণ্ডলী</span>
             <h2 style={{ color: '#14532d', margin: '10px 0 6px 0' }}>মাদ্রাসার শিক্ষক-শিক্ষিকাবৃন্দ</h2>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
-            {teachersList.map((t, index) => (
-              <div key={index} className="card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
-                <img src={t.photo} alt={t.name} style={{ width: '120px', height: '120px', borderRadius: '10px', objectFit: 'cover', border: '3px solid #16a34a', marginBottom: '14px' }} />
-                <h3 style={{ margin: '0 0 4px 0', fontSize: '18px', color: '#0f172a' }}>{t.name}</h3>
-                <span style={{ color: '#15803d', fontWeight: '700', fontSize: '13px', marginBottom: '8px' }}>{t.designation}</span>
-                <div style={{ width: '100%', textAlign: 'left', borderTop: '1px solid #f1f5f9', paddingTop: '10px', fontSize: '13px', color: '#334155', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <div><strong>📞 নম্বর:</strong> <a href={`tel:${t.phone}`} style={{ color: '#16a34a', textDecoration: 'none' }}>{t.phone}</a></div>
-                  <div><strong>🎓 যোগ্যতা:</strong> {t.edu}</div>
-                  <div><strong>📚 বিষয়:</strong> {t.subject}</div>
+          
+          {teachersLoading ? (
+            <p style={{ textAlign: 'center' }}>⏳ লোড হচ্ছে...</p>
+          ) : (
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', 
+              gap: '24px',
+              justifyItems: 'center'
+            }}>
+              {teachers.map((teacher, index) => (
+                <div key={index} className="teacher-card">
+                  <img 
+                    src={teacher.photo || 'https://i.postimg.cc/gjktXPpH/1786523361131.jpg'} 
+                    alt={teacher.name} 
+                    className="teacher-photo"
+                  />
+                  <h3 className="teacher-name">{teacher.name}</h3>
+                  <div className="teacher-designation">{teacher.designation || 'শিক্ষক'}</div>
+                  <div className="teacher-details">
+                    <div>📞 {teacher.phone}</div>
+                    <div>🎓 {teacher.edu || '—'}</div>
+                    <div>📚 {teacher.subject || '—'}</div>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
+
           <div style={{ marginTop: '30px', textAlign: 'center' }}>
             <button onClick={() => setCurrentView('home')} className="btn-primary" style={{ backgroundColor: '#64748b' }}>হোম পেজে ফিরে যান</button>
           </div>
         </div>
       )}
 
+      {/* ছাত্র-ছাত্রী পেজ */}
       {currentView === 'students' && (
         <div style={{ maxWidth: '1100px', margin: '40px auto', padding: '0 16px' }}>
           <div style={{ textAlign: 'center', marginBottom: '30px' }}>
@@ -533,6 +591,7 @@ export default function App() {
       {/* গ্যালারি ভিউ */}
       {currentView === 'gallery' && <Gallery />}
 
+      {/* টিচার প্যানেল */}
       {currentView === 'teacherPanel' && (
         <div style={{ maxWidth: '800px', margin: '40px auto', padding: '0 16px' }}>
           <div className="card">
@@ -545,6 +604,7 @@ export default function App() {
         </div>
       )}
 
+      {/* এডমিন প্যানেল */}
       {currentView === 'adminPanel' && (
         <div style={{ maxWidth: '900px', margin: '40px auto', padding: '0 16px' }}>
           <div className="card">
@@ -557,6 +617,7 @@ export default function App() {
         </div>
       )}
 
+      {/* সুপার এডমিন প্যানেল */}
       {currentView === 'superAdminPanel' && (
         <div style={{ maxWidth: '900px', margin: '40px auto', padding: '0 16px' }}>
           <div className="card" style={{ border: '2px solid #f59e0b' }}>
