@@ -5,7 +5,7 @@ import AdmissionForm from './components/AdmissionForm';
 import AdminAdmissions from './components/AdminAdmissions';
 import ContentManager from './components/ContentManager';
 import TeacherManager from './components/TeacherManager';
-import Gallery from './components/Gallery'; // নতুন যোগ
+import Gallery from './components/Gallery'; // ← গ্যালারি ইম্পোর্ট করা হয়েছে
 
 export default function App() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -98,7 +98,7 @@ export default function App() {
       setCurrentUser(data);
       setUserRole(data.role);
       setUserPermissions({ canEdit: data.can_edit, canManageAdmission: data.can_manage_admission });
-      window.userRole = data.role; // গ্যালারির জন্য গ্লোবাল ভেরিয়েবল
+      window.userRole = data.role;
     }
   };
 
@@ -281,7 +281,7 @@ export default function App() {
             <span className="nav-link" onClick={() => { setCurrentView('teachers'); setMobileMenuOpen(false); }}>শিক্ষকবৃন্দ</span>
             <span className="nav-link" onClick={() => { setCurrentView('students'); setMobileMenuOpen(false); }}>ছাত্র-ছাত্রী</span>
             <span className="nav-link" onClick={() => { setCurrentView('notice'); setMobileMenuOpen(false); }}>নোটিশ বোর্ড</span>
-            <span className="nav-link" onClick={() => { setCurrentView('gallery'); setMobileMenuOpen(false); }}>গ্যালারি</span> {/* গ্যালারি যোগ করা হয়েছে */}
+            <span className="nav-link" onClick={() => { setCurrentView('gallery'); setMobileMenuOpen(false); }}>গ্যালারি</span> {/* ← গ্যালারি যোগ করা হয়েছে */}
             <span className="nav-link" onClick={() => { setCurrentView('contact'); setMobileMenuOpen(false); }}>যোগাযোগ</span>
             
             {(userRole === 'teacher' || userRole === 'admin' || userRole === 'superAdmin') && (
