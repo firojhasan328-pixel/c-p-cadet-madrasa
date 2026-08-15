@@ -21,23 +21,36 @@ export default function AdmissionForm({ onClose, isOpen }) {
   const birthCertInput = useRef(null);
   const fatherNidInput = useRef(null);
 
+  // 📤 প্রাইভেট বাকেটে ছবি আপলোড
   const uploadFile = async (file, folder) => {
     const fileExt = file.name.split('.').pop();
     const fileName = `${Date.now()}.${fileExt}`;
     const filePath = `${folder}/${fileName}`;
     
     const { data, error } = await supabase.storage
-      .from('admission-files')
+      .from('private-admission-files')  // ← প্রাইভেট বাকেট
       .upload(filePath, file);
 
     if (error) throw error;
     return data.path;
   };
 
+  // 📸 সাইনড ইউআরএল জেনারেট (শুধু এডমিন দেখতে পাবে)
+  const getSignedUrl = async (filePath) => {
+    if (!filePath) return null;
+    const { data, error } = await supabase.storage
+      .from('private-admission-files')
+      .createSignedUrl(filePath, 60); // ৬০ সেকেন্ড বৈধ
+    
+    if (error) return null;
+    return data.signedUrl;
+  };
+
   const handleSubmitForm = async (e) => {
     e.preventDefault();
     setError('');
     
+    // ভ্যালিডেশন
     if (!formData.studentName || !formData.classToAdmit || !formData.fatherName || 
         !formData.motherName || !formData.phone || formData.phone.length !== 11) {
       setError('সব ঘর সঠিকভাবে পূরণ করুন এবং ১১ ডিজিটের মোবাইল নম্বর দিন');
@@ -51,10 +64,12 @@ export default function AdmissionForm({ onClose, isOpen }) {
 
     setLoading(true);
     try {
+      // ১. ছবি আপলোড (প্রাইভেট বাকেটে)
       const studentPhotoPath = await uploadFile(formData.studentPhoto, 'student-photos');
       const birthCertPath = await uploadFile(formData.birthCertPhoto, 'birth-certs');
       const fatherNidPath = await uploadFile(formData.fatherNidPhoto, 'nid-photos');
 
+      // ২. ডেটাবেসে ডেটা সংরক্ষণ
       const { data, error } = await supabase
         .from('admissions')
         .insert([{
@@ -71,6 +86,7 @@ export default function AdmissionForm({ onClose, isOpen }) {
 
       if (error) throw error;
       
+      // ৩. OTP স্টেপে যান (সিমুলেটেড)
       setStep(2);
       alert(`OTP পাঠানো হয়েছে: ১২৩৪৫ (সিমুলেটেড)`);
       
@@ -85,8 +101,10 @@ export default function AdmissionForm({ onClose, isOpen }) {
     e.preventDefault();
     setLoading(true);
     try {
+      // সিমুলেটেড OTP চেক
       if (formData.otp === '12345') {
         setStep(3);
+        // এখানে ডেটাবেসে OTP ভেরিফাইড আপডেট করতে পারেন
       } else {
         setError('ভুল কোড, আবার চেষ্টা করুন');
       }
@@ -335,11 +353,10 @@ const styles = {
   }
 };
 
-// গ্লোবাল অ্যানিমেশন (CSS-in-JS এ যোগ করতে হবে)
+// গ্লোবাল অ্যানিমেশন
 const styleTag = document.createElement('style');
 styleTag.textContent = `
   @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
   input:focus, select:focus { border-color: #16a34a !important; box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.15) !important; }
-  .file-wrapper:hover { border-color: #16a34a; background-color: #f0fdf4; }
 `;
 document.head.appendChild(styleTag);
