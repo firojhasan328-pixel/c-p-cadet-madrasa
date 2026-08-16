@@ -6,10 +6,12 @@ import AdminAdmissions from './components/AdminAdmissions';
 import ContentManager from './components/ContentManager';
 import TeacherManager from './components/TeacherManager';
 import Gallery from './components/Gallery';
+import SignInModal from './components/SignInModal';
 
 export default function App() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isAdmissionModalOpen, setIsAdmissionModalOpen] = useState(false);
+  const [isSignInModalOpen, setIsSignInModalOpen] = useState(false);
   
   const [currentView, setCurrentView] = useState('home');
 
@@ -30,7 +32,6 @@ export default function App() {
     totalFemaleStudents: "২২০"
   });
 
-  // ✅ সুপাবেস থেকে শিক্ষক ডেটা আনার স্টেট
   const [teachers, setTeachers] = useState([]);
   const [teachersLoading, setTeachersLoading] = useState(true);
 
@@ -55,7 +56,6 @@ export default function App() {
     fatherNidPhoto: null
   });
 
-  // 🔄 শিক্ষক ডেটা ফেচ করার ফাংশন
   const fetchTeachers = async () => {
     setTeachersLoading(true);
     const { data, error } = await supabase
@@ -75,7 +75,7 @@ export default function App() {
     fetchSiteContents();
     fetchManagedUsers();
     checkUserSession();
-    fetchTeachers(); // ✅ শিক্ষক ডেটা লোড
+    fetchTeachers();
 
     const channel = supabase
       .channel('schema-db-changes')
@@ -255,7 +255,6 @@ export default function App() {
         .badge { background: #dcfce7; color: #15803d; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; display: inline-block; }
         .live-chat-btn { position: fixed; bottom: 25px; right: 25px; background-color: #25D366; color: white; border-radius: 50px; padding: 12px 20px; display: flex; align-items: center; gap: 10px; box-shadow: 0 10px 20px rgba(37, 211, 102, 0.4); text-decoration: none; font-weight: bold; font-size: 14px; z-index: 1000; transition: all 0.3s ease; }
         .live-chat-btn:hover { transform: scale(1.05); box-shadow: 0 12px 25px rgba(37, 211, 102, 0.6); }
-        /* শিক্ষক কার্ডের জন্য স্টাইল */
         .teacher-card {
           background: white;
           border-radius: 16px;
@@ -324,6 +323,11 @@ export default function App() {
             <span className="nav-link" onClick={() => { setCurrentView('notice'); setMobileMenuOpen(false); }}>নোটিশ বোর্ড</span>
             <span className="nav-link" onClick={() => { setCurrentView('gallery'); setMobileMenuOpen(false); }}>গ্যালারি</span>
             <span className="nav-link" onClick={() => { setCurrentView('contact'); setMobileMenuOpen(false); }}>যোগাযোগ</span>
+            
+            {/* 🔑 সাইন ইন বাটন এখানে যোগ করা হয়েছে */}
+            <span className="nav-link" style={{ color: '#2563eb', fontWeight: 'bold' }} onClick={() => { setMobileMenuOpen(false); setIsSignInModalOpen(true); }}>
+              🔑 সাইন ইন
+            </span>
             
             {(userRole === 'teacher' || userRole === 'admin' || userRole === 'superAdmin') && (
               <span className="nav-link" style={{ color: '#16a34a', fontWeight: 'bold' }} onClick={() => { setCurrentView('teacherPanel'); setMobileMenuOpen(false); }}>👨‍🏫 টিচার প্যানেল</span>
@@ -529,7 +533,7 @@ export default function App() {
         </div>
       )}
 
-      {/* ✅ আপডেটেড শিক্ষক পেজ (সুপাবেস ডেটা + পাসপোর্ট সাইজ স্কোয়ার ফ্রেম) */}
+      {/* শিক্ষক পেজ */}
       {currentView === 'teachers' && (
         <div style={{ maxWidth: '1200px', margin: '40px auto', padding: '0 16px' }}>
           <div style={{ textAlign: 'center', marginBottom: '30px' }}>
@@ -685,6 +689,13 @@ export default function App() {
         </div>
       )}
 
+      {/* সাইন ইন মোডাল */}
+      <SignInModal 
+        isOpen={isSignInModalOpen} 
+        onClose={() => setIsSignInModalOpen(false)} 
+      />
+
+      {/* অ্যাডমিশন মোডাল */}
       {isAdmissionModalOpen && (
         <AdmissionForm 
           isOpen={isAdmissionModalOpen} 
