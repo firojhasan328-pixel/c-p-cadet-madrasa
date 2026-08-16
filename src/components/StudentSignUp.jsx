@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { supabase } from '../supabaseClient';
-import { generateOTP, verifyOTP, sendOTPEmail } from '../utils/otpService';
+import { generateOTP, saveOTP, verifyOTP, sendCustomOTPEmail } from '../utils/otpService';
 
 export default function StudentSignUp({ onBack, onClose }) {
   const [step, setStep] = useState(1);
@@ -64,7 +64,9 @@ export default function StudentSignUp({ onBack, onClose }) {
     }
   };
 
-  // ========== সাবমিট ==========
+  // ========================================
+  // সাবমিট (OTP পাঠান)
+  // ========================================
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -74,7 +76,7 @@ export default function StudentSignUp({ onBack, onClose }) {
       // ১. ছবি আপলোড
       const photoPath = await uploadPhoto();
 
-      // ২. ডেটাবেসে ছাত্র ইনসার্ট
+      // ২. ছাত্র ডেটা ইনসার্ট
       const { data, error } = await supabase
         .from('students')
         .insert([{
@@ -99,8 +101,10 @@ export default function StudentSignUp({ onBack, onClose }) {
 
       // ৩. OTP জেনারেট ও ইমেইল পাঠান
       const otp = generateOTP();
-      const emailResult = await sendOTPEmail(formData.email, otp);
-
+      await saveOTP(formData.email, otp);
+      
+      const emailResult = await sendCustomOTPEmail(formData.email, otp);
+      
       if (!emailResult.success) {
         setError('OTP পাঠাতে সমস্যা: ' + emailResult.error);
         setLoading(false);
@@ -108,7 +112,7 @@ export default function StudentSignUp({ onBack, onClose }) {
       }
 
       setStep(2);
-      alert(`✅ আপনার ইমেইলে OTP পাঠানো হয়েছে! (ডেভে: ${otp})`);
+      alert(`✅ আপনার ইমেইলে OTP কোড পাঠানো হয়েছে!`);
     } catch (err) {
       console.error('Submit Error:', err);
       setError('সাবমিট করতে সমস্যা: ' + err.message);
@@ -117,7 +121,9 @@ export default function StudentSignUp({ onBack, onClose }) {
     }
   };
 
-  // ========== OTP ভেরিফাই ==========
+  // ========================================
+  // OTP ভেরিফাই
+  // ========================================
   const handleVerifyOtp = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -125,7 +131,7 @@ export default function StudentSignUp({ onBack, onClose }) {
       const result = await verifyOTP(formData.email, formData.otp);
       
       if (result.success) {
-        // স্টুডেন্টের is_verified আপডেট করুন
+        // students টেবিলে is_verified আপডেট করুন
         await supabase
           .from('students')
           .update({ is_verified: true })
@@ -211,6 +217,7 @@ export default function StudentSignUp({ onBack, onClose }) {
         <div style={styles.otpContainer}>
           <h2 style={styles.otpHeading}>📧 ইমেইল ভেরিফিকেশন</h2>
           <p style={styles.otpText}>আপনার ইমেইলে ৬ ডিজিটের কোড পাঠানো হয়েছে।</p>
+          <p style={styles.otpSubText}>📩 আপনার ইমেইল চেক করুন।</p>
           {error && <div style={styles.error}>{error}</div>}
           <form onSubmit={handleVerifyOtp} style={styles.otpForm}>
             <input 
@@ -255,7 +262,8 @@ const styles = {
   },
   otpContainer: { textAlign: 'center', padding: '20px 0' },
   otpHeading: { fontSize: '20px', fontWeight: '700', color: '#0f172a', margin: '0 0 4px 0' },
-  otpText: { fontSize: '14px', color: '#64748b', marginBottom: '16px' },
+  otpText: { fontSize: '14px', color: '#64748b', marginBottom: '4px' },
+  otpSubText: { fontSize: '12px', color: '#94a3b8', marginBottom: '16px' },
   otpForm: { display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'center' },
   otpInput: { 
     width: '200px', padding: '12px', fontSize: '24px', letterSpacing: '8px', 
