@@ -50,12 +50,17 @@ export default function StudentSignUp({ onBack, onClose }) {
     const fileName = `student_${Date.now()}.${fileExt}`;
     const filePath = `student-photos/${fileName}`;
     
-    const { data, error } = await supabase.storage
-      .from('private-admission-files')
-      .upload(filePath, formData.photo);
-    
-    if (error) throw error;
-    return data.path;
+    try {
+      const { data, error } = await supabase.storage
+        .from('private-admission-files')
+        .upload(filePath, formData.photo);
+      
+      if (error) throw error;
+      return data.path;
+    } catch (err) {
+      console.error('ছবি আপলোড সমস্যা:', err);
+      return null;
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -81,12 +86,18 @@ export default function StudentSignUp({ onBack, onClose }) {
           is_approved: false
         }]);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Insert Error:', error);
+        setError('ডেটা জমা দিতে সমস্যা: ' + error.message);
+        setLoading(false);
+        return;
+      }
 
       setStep(2);
-      alert('আপনার ইমেইলে ৬ ডিজিটের কোড পাঠানো হয়েছে (123456)');
+      alert('✅ আপনার তথ্য সফলভাবে জমা হয়েছে! ইমেইল ভেরিফিকেশনের জন্য অপেক্ষা করুন।');
     } catch (err) {
-      setError(err.message);
+      console.error('Submit Error:', err);
+      setError('সাবমিট করতে সমস্যা: ' + err.message);
     } finally {
       setLoading(false);
     }
@@ -97,33 +108,15 @@ export default function StudentSignUp({ onBack, onClose }) {
     setLoading(true);
     try {
       if (formData.otp === '123456') {
-        alert('আপনার রিকোয়েস্ট সুপার এডমিনের কাছে পাঠানো হয়েছে। অনুমোদনের অপেক্ষায় থাকুন।');
+        alert('✅ আপনার রিকোয়েস্ট সুপার এডমিনের কাছে পাঠানো হয়েছে।');
         onClose();
-        await sendNotificationToAdmin('নতুন ছাত্র নিবন্ধন রিকোয়েস্ট', formData.name);
       } else {
-        setError('ভুল কোড। অনুগ্রহ করে সঠিক কোড দিন।');
+        setError('❌ ভুল কোড। অনুগ্রহ করে সঠিক কোড দিন।');
       }
     } catch (err) {
       setError(err.message);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const sendNotificationToAdmin = async (title, message) => {
-    const { data: adminData } = await supabase
-      .from('profiles')
-      .select('email')
-      .eq('role', 'superAdmin');
-    
-    if (adminData && adminData.length > 0) {
-      await supabase
-        .from('notifications')
-        .insert([{
-          user_email: adminData[0].email,
-          title: title,
-          message: message
-        }]);
     }
   };
 
@@ -168,8 +161,8 @@ export default function StudentSignUp({ onBack, onClose }) {
           </div>
 
           <div style={styles.field}>
-            <label>রোল (ঐচ্ছিক)</label>
-            <input type="number" name="roll" value={formData.roll} onChange={handleInputChange} style={styles.input} placeholder="১-৩ এর মধ্যে" />
+            <label>রোল (ঐচ্ছিক, ১-৩ এর মধ্যে)</label>
+            <input type="number" name="roll" min="1" max="3" value={formData.roll} onChange={handleInputChange} style={styles.input} placeholder="১-৩" />
           </div>
 
           <div style={styles.field}>
@@ -185,7 +178,7 @@ export default function StudentSignUp({ onBack, onClose }) {
           <div style={styles.buttonGroup}>
             <button type="button" onClick={onBack} style={styles.backBtn}>পিছনে</button>
             <button type="submit" disabled={loading} style={styles.submitBtn}>
-              {loading ? '⏳...' : 'সাইন ইন'}
+              {loading ? '⏳ জমা দিচ্ছি...' : '✅ সাইন ইন'}
             </button>
           </div>
         </form>
@@ -193,16 +186,23 @@ export default function StudentSignUp({ onBack, onClose }) {
 
       {step === 2 && (
         <div style={styles.otpContainer}>
-          <h2>📧 ইমেইল ভেরিফিকেশন</h2>
-          <p>আপনার ইমেইলে ৬ ডিজিটের কোড পাঠানো হয়েছে।</p>
+          <h2 style={styles.otpHeading}>📧 ইমেইল ভেরিফিকেশন</h2>
+          <p style={styles.otpText}>আপনার ইমেইলে ৬ ডিজিটের কোড পাঠানো হয়েছে।</p>
           {error && <div style={styles.error}>{error}</div>}
-          <form onSubmit={handleVerifyOtp}>
-            <input type="text" maxLength="6" placeholder="------" required
-              value={formData.otp} onChange={(e) => setFormData({...formData, otp: e.target.value})}
-              style={styles.otpInput} />
-            <button type="submit" disabled={loading} style={styles.submitBtn}>
+          <form onSubmit={handleVerifyOtp} style={styles.otpForm}>
+            <input 
+              type="text" 
+              maxLength="6" 
+              placeholder="------" 
+              required
+              value={formData.otp} 
+              onChange={(e) => setFormData({...formData, otp: e.target.value})}
+              style={styles.otpInput} 
+            />
+            <button type="submit" disabled={loading} style={styles.otpBtn}>
               {loading ? '⏳ ভেরিফাই করছি...' : '✅ কনফার্ম'}
             </button>
+            <button type="button" onClick={onBack} style={styles.backBtn}>পিছনে</button>
           </form>
         </div>
       )}
@@ -218,9 +218,29 @@ const styles = {
   select: { padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px' },
   fileInput: { padding: '8px', borderRadius: '8px', border: '1px solid #cbd5e1' },
   buttonGroup: { display: 'flex', gap: '10px', marginTop: '8px' },
-  backBtn: { background: '#f1f5f9', border: 'none', padding: '10px', borderRadius: '8px', flex: 1, cursor: 'pointer' },
-  submitBtn: { background: '#16a34a', color: 'white', border: 'none', padding: '10px', borderRadius: '8px', flex: 2, cursor: 'pointer' },
-  error: { background: '#fee2e2', color: '#991b1b', padding: '8px', borderRadius: '6px', fontSize: '13px' },
+  backBtn: { 
+    background: '#f1f5f9', border: 'none', padding: '10px', 
+    borderRadius: '8px', flex: 1, cursor: 'pointer', fontWeight: '600'
+  },
+  submitBtn: { 
+    background: '#16a34a', color: 'white', border: 'none', padding: '10px', 
+    borderRadius: '8px', flex: 2, cursor: 'pointer', fontWeight: '600'
+  },
+  error: { 
+    background: '#fee2e2', color: '#991b1b', padding: '8px 12px', 
+    borderRadius: '6px', fontSize: '13px', borderLeft: '3px solid #dc2626'
+  },
   otpContainer: { textAlign: 'center', padding: '20px 0' },
-  otpInput: { width: '200px', padding: '12px', fontSize: '24px', letterSpacing: '8px', textAlign: 'center', border: '2px solid #cbd5e1', borderRadius: '12px', marginBottom: '16px' }
+  otpHeading: { fontSize: '20px', fontWeight: '700', color: '#0f172a', margin: '0 0 4px 0' },
+  otpText: { fontSize: '14px', color: '#64748b', marginBottom: '16px' },
+  otpForm: { display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'center' },
+  otpInput: { 
+    width: '200px', padding: '12px', fontSize: '24px', letterSpacing: '8px', 
+    textAlign: 'center', border: '2px solid #cbd5e1', borderRadius: '12px',
+    outline: 'none'
+  },
+  otpBtn: {
+    background: '#2563eb', color: 'white', border: 'none', padding: '10px 32px',
+    borderRadius: '8px', fontWeight: '600', cursor: 'pointer'
+  }
 };
