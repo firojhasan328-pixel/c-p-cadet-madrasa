@@ -7,6 +7,7 @@ import ContentManager from './components/ContentManager';
 import TeacherManager from './components/TeacherManager';
 import Gallery from './components/Gallery';
 import SignInModal from './components/SignInModal';
+import StudentList from './components/StudentList';
 
 export default function App() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -324,7 +325,7 @@ export default function App() {
             <span className="nav-link" onClick={() => { setCurrentView('gallery'); setMobileMenuOpen(false); }}>গ্যালারি</span>
             <span className="nav-link" onClick={() => { setCurrentView('contact'); setMobileMenuOpen(false); }}>যোগাযোগ</span>
             
-            {/* 🔑 সাইন ইন বাটন এখানে যোগ করা হয়েছে */}
+            {/* 🔑 সাইন ইন বাটন */}
             <span className="nav-link" style={{ color: '#2563eb', fontWeight: 'bold' }} onClick={() => { setMobileMenuOpen(false); setIsSignInModalOpen(true); }}>
               🔑 সাইন ইন
             </span>
@@ -575,7 +576,7 @@ export default function App() {
         </div>
       )}
 
-      {/* ছাত্র-ছাত্রী পেজ */}
+      {/* ছাত্র-ছাত্রী পেজ (আপডেট) */}
       {currentView === 'students' && (
         <div style={{ maxWidth: '1100px', margin: '40px auto', padding: '0 16px' }}>
           <div style={{ textAlign: 'center', marginBottom: '30px' }}>
@@ -586,6 +587,10 @@ export default function App() {
               <div className="card" style={{ padding: '12px 24px', background: '#e0f2fe', color: '#0369a1', fontWeight: 'bold' }}>👧 মোট ছাত্রী: {siteData.totalFemaleStudents} জন</div>
             </div>
           </div>
+          
+          {/* StudentList কম্পোনেন্ট */}
+          <StudentList />
+          
           <div style={{ marginTop: '30px', textAlign: 'center' }}>
             <button onClick={() => setCurrentView('home')} className="btn-primary" style={{ backgroundColor: '#64748b' }}>হোম পেজে ফিরে যান</button>
           </div>
