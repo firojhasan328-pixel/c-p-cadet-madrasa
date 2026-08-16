@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { supabase } from '../supabaseClient';
+import { generateOTP, verifyOTP, sendOTPEmail } from '../utils/otpService';
 
 export default function StudentSignUp({ onBack, onClose }) {
   const [step, setStep] = useState(1);
@@ -63,14 +64,17 @@ export default function StudentSignUp({ onBack, onClose }) {
     }
   };
 
+  // ========== সাবমিট ==========
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setLoading(true);
 
     try {
+      // ১. ছবি আপলোড
       const photoPath = await uploadPhoto();
 
+      // ২. ডেটাবেসে ছাত্র ইনসার্ট
       const { data, error } = await supabase
         .from('students')
         .insert([{
@@ -93,8 +97,18 @@ export default function StudentSignUp({ onBack, onClose }) {
         return;
       }
 
+      // ৩. OTP জেনারেট ও ইমেইল পাঠান
+      const otp = generateOTP();
+      const emailResult = await sendOTPEmail(formData.email, otp);
+
+      if (!emailResult.success) {
+        setError('OTP পাঠাতে সমস্যা: ' + emailResult.error);
+        setLoading(false);
+        return;
+      }
+
       setStep(2);
-      alert('✅ আপনার তথ্য সফলভাবে জমা হয়েছে! ইমেইল ভেরিফিকেশনের জন্য অপেক্ষা করুন।');
+      alert(`✅ আপনার ইমেইলে OTP পাঠানো হয়েছে! (ডেভে: ${otp})`);
     } catch (err) {
       console.error('Submit Error:', err);
       setError('সাবমিট করতে সমস্যা: ' + err.message);
@@ -103,15 +117,24 @@ export default function StudentSignUp({ onBack, onClose }) {
     }
   };
 
+  // ========== OTP ভেরিফাই ==========
   const handleVerifyOtp = async (e) => {
     e.preventDefault();
     setLoading(true);
     try {
-      if (formData.otp === '123456') {
-        alert('✅ আপনার রিকোয়েস্ট সুপার এডমিনের কাছে পাঠানো হয়েছে।');
+      const result = await verifyOTP(formData.email, formData.otp);
+      
+      if (result.success) {
+        // স্টুডেন্টের is_verified আপডেট করুন
+        await supabase
+          .from('students')
+          .update({ is_verified: true })
+          .eq('email', formData.email);
+        
+        alert('✅ ইমেইল ভেরিফাইড! আপনার রিকোয়েস্ট সুপার এডমিনের কাছে গেছে।');
         onClose();
       } else {
-        setError('❌ ভুল কোড। অনুগ্রহ করে সঠিক কোড দিন।');
+        setError(result.message);
       }
     } catch (err) {
       setError(err.message);
