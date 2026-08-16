@@ -3,111 +3,174 @@ import { supabase } from '../supabaseClient';
 
 export default function AdminAdmissions() {
   const [applications, setApplications] = useState([]);
+  const [studentRequests, setStudentRequests] = useState([]);
+  const [teacherRequests, setTeacherRequests] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchApplications();
+    fetchAllData();
   }, []);
 
-  const fetchApplications = async () => {
+  const fetchAllData = async () => {
     setLoading(true);
-    const { data, error } = await supabase
+    
+    const { data: admissions } = await supabase
       .from('admissions')
       .select('*')
       .order('created_at', { ascending: false });
     
-    if (data) {
-      // সাইনড ইউআরএল জেনারেট (শুধু সুপার এডমিন দেখতে পাবে)
-      const appsWithUrls = await Promise.all(data.map(async (app) => {
-        const studentPhotoUrl = await getSignedUrl(app.student_photo);
-        const birthCertUrl = await getSignedUrl(app.birth_cert_photo);
-        const fatherNidUrl = await getSignedUrl(app.father_nid_photo);
-        
-        return {
-          ...app,
-          studentPhotoUrl,
-          birthCertUrl,
-          fatherNidUrl
-        };
-      }));
-      setApplications(appsWithUrls);
-    }
+    const { data: students } = await supabase
+      .from('students')
+      .select('*')
+      .eq('is_approved', false);
+    
+    const { data: teachers } = await supabase
+      .from('teachers')
+      .select('*')
+      .eq('is_approved', false);
+    
+    setApplications(admissions || []);
+    setStudentRequests(students || []);
+    setTeacherRequests(teachers || []);
     setLoading(false);
   };
 
-  // প্রাইভেট বাকেট থেকে সাইনড ইউআরএল তৈরি
+  const approveStudent = async (id) => {
+    await supabase
+      .from('students')
+      .update({ is_approved: true })
+      .eq('id', id);
+    fetchAllData();
+  };
+
+  const rejectStudent = async (id) => {
+    await supabase
+      .from('students')
+      .delete()
+      .eq('id', id);
+    fetchAllData();
+  };
+
+  const approveTeacher = async (id) => {
+    await supabase
+      .from('teachers')
+      .update({ is_approved: true })
+      .eq('id', id);
+    fetchAllData();
+  };
+
+  const rejectTeacher = async (id) => {
+    await supabase
+      .from('teachers')
+      .delete()
+      .eq('id', id);
+    fetchAllData();
+  };
+
+  // সাইনড ইউআরএল জেনারেট
   const getSignedUrl = async (filePath) => {
     if (!filePath) return null;
     const { data, error } = await supabase.storage
       .from('private-admission-files')
-      .createSignedUrl(filePath, 60); // ৬০ সেকেন্ড বৈধ
+      .createSignedUrl(filePath, 60);
     
     if (error) return null;
     return data.signedUrl;
   };
 
-  const updateStatus = async (id, newStatus) => {
-    const { error } = await supabase
-      .from('admissions')
-      .update({ status: newStatus })
-      .eq('id', id);
-    
-    if (!error) fetchApplications();
-  };
-
   return (
     <div style={{ padding: '16px' }}>
-      <h3 style={{ color: '#b45309' }}>📋 ভর্তি আবেদনসমূহ (সুপার এডমিন)</h3>
+      <h3 style={{ color: '#b45309' }}>📋 সকল রিকোয়েস্ট (সুপার এডমিন)</h3>
       {loading ? <p>লোড হচ্ছে...</p> : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {applications.map(app => (
-            <div key={app.id} style={{ 
-              background: '#fef3c7', padding: '14px', borderRadius: '10px',
-              border: '1px solid #f59e0b'
-            }}>
-              <div><strong>{app.student_name}</strong> - {app.class_to_admit} শ্রেণী</div>
-              <div style={{ fontSize: '13px', color: '#334155' }}>
-                বাবা: {app.father_name}, মোবাইল: {app.phone}
-              </div>
-              
-              {/* ছবি প্রিভিউ (শুধুমাত্র সুপার এডমিন দেখতে পাবে) */}
-              <div style={{ display: 'flex', gap: '10px', marginTop: '8px', flexWrap: 'wrap' }}>
-                {app.studentPhotoUrl && (
-                  <a href={app.studentPhotoUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb' }}>
-                    📸 ছাত্র/ছাত্রীর ছবি
-                  </a>
-                )}
-                {app.birthCertUrl && (
-                  <a href={app.birthCertUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb' }}>
-                    📄 জন্ম নিবন্ধন
-                  </a>
-                )}
-                {app.fatherNidUrl && (
-                  <a href={app.fatherNidUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb' }}>
-                    🆔 বাবার NID
-                  </a>
-                )}
-              </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          
+          {/* ছাত্র রিকোয়েস্ট */}
+          <div>
+            <h4>🎓 ছাত্র নিবন্ধন রিকোয়েস্ট</h4>
+            {studentRequests.length === 0 ? (
+              <p style={{ color: '#64748b' }}>কোনো পেন্ডিং রিকোয়েস্ট নেই</p>
+            ) : (
+              studentRequests.map(app => (
+                <div key={app.id} style={styles.requestCard}>
+                  <div><strong>{app.name}</strong> - {app.class_name} শ্রেণী</div>
+                  <div style={{ fontSize: '13px', color: '#334155' }}>
+                    বাবা: {app.father_name}, গ্রাম: {app.village}
+                  </div>
+                  <div style={styles.buttonGroup}>
+                    <button onClick={() => approveStudent(app.id)} style={styles.approveBtn}>অনুমোদন</button>
+                    <button onClick={() => rejectStudent(app.id)} style={styles.rejectBtn}>বাতিল</button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
 
-              <div style={{ marginTop: '8px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                <span style={{ 
-                  padding: '3px 10px', borderRadius: '12px', background: 
-                  app.status === 'approved' ? '#dcfce7' : app.status === 'rejected' ? '#fee2e2' : '#fef9c3',
-                  color: app.status === 'approved' ? '#15803d' : app.status === 'rejected' ? '#dc2626' : '#854d0e'
-                }}>
-                  {app.status === 'approved' ? '✅ অনুমোদিত' : app.status === 'rejected' ? '❌ বাতিল' : '⏳ পেন্ডিং'}
-                </span>
-                {app.status === 'pending' && (
-                  <>
-                    <button onClick={() => updateStatus(app.id, 'approved')} style={{ background: '#16a34a', color: 'white', border: 'none', padding: '4px 12px', borderRadius: '6px', cursor: 'pointer' }}>অনুমোদন</button>
-                    <button onClick={() => updateStatus(app.id, 'rejected')} style={{ background: '#dc2626', color: 'white', border: 'none', padding: '4px 12px', borderRadius: '6px', cursor: 'pointer' }}>বাতিল</button>
-                  </>
-                )}
-              </div>
-            </div>
-          ))}
+          {/* শিক্ষক রিকোয়েস্ট */}
+          <div>
+            <h4>👨‍🏫 শিক্ষক নিবন্ধন রিকোয়েস্ট</h4>
+            {teacherRequests.length === 0 ? (
+              <p style={{ color: '#64748b' }}>কোনো পেন্ডিং রিকোয়েস্ট নেই</p>
+            ) : (
+              teacherRequests.map(app => (
+                <div key={app.id} style={styles.requestCard}>
+                  <div><strong>{app.name}</strong> - {app.designation}</div>
+                  <div style={{ fontSize: '13px', color: '#334155' }}>
+                    বিষয়: {app.subject}, মোবাইল: {app.phone}
+                  </div>
+                  <div style={styles.buttonGroup}>
+                    <button onClick={() => approveTeacher(app.id)} style={styles.approveBtn}>অনুমোদন</button>
+                    <button onClick={() => rejectTeacher(app.id)} style={styles.rejectBtn}>বাতিল</button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* পুরাতন অ্যাডমিশন রিকোয়েস্ট */}
+          <div>
+            <h4>📝 ভর্তি আবেদনসমূহ</h4>
+            {applications.length === 0 ? (
+              <p style={{ color: '#64748b' }}>কোনো আবেদন নেই</p>
+            ) : (
+              applications.map(app => (
+                <div key={app.id} style={styles.requestCard}>
+                  <div><strong>{app.student_name}</strong> - {app.class_to_admit} শ্রেণী</div>
+                  <div style={{ fontSize: '13px', color: '#334155' }}>
+                    বাবা: {app.father_name}, মোবাইল: {app.phone}
+                  </div>
+                  <span style={styles.statusBadge}>
+                    {app.status === 'approved' ? '✅ অনুমোদিত' : app.status === 'rejected' ? '❌ বাতিল' : '⏳ পেন্ডিং'}
+                  </span>
+                </div>
+              ))
+            )}
+          </div>
+
         </div>
       )}
     </div>
   );
 }
+
+const styles = {
+  requestCard: {
+    background: '#fef3c7', padding: '14px', borderRadius: '10px',
+    border: '1px solid #f59e0b', marginBottom: '10px'
+  },
+  buttonGroup: { display: 'flex', gap: '8px', marginTop: '8px' },
+  approveBtn: { 
+    background: '#16a34a', color: 'white', border: 'none', 
+    padding: '6px 16px', borderRadius: '6px', cursor: 'pointer',
+    fontWeight: '600'
+  },
+  rejectBtn: { 
+    background: '#dc2626', color: 'white', border: 'none', 
+    padding: '6px 16px', borderRadius: '6px', cursor: 'pointer',
+    fontWeight: '600'
+  },
+  statusBadge: { 
+    display: 'inline-block', padding: '3px 10px', borderRadius: '12px', 
+    background: '#fef9c3', color: '#854d0e', marginTop: '6px',
+    fontSize: '13px', fontWeight: '600'
+  }
+};
