@@ -8,7 +8,7 @@ export function generateOTP() {
 // ২. ওটিপি সংরক্ষণ করুন
 export async function saveOTP(email, otp) {
   const expiresAt = new Date();
-  expiresAt.setMinutes(expiresAt.getMinutes() + 10); // ১০ মিনিট বৈধ
+  expiresAt.setMinutes(expiresAt.getMinutes() + 10);
 
   const { data, error } = await supabase
     .from('otp_verifications')
@@ -48,7 +48,6 @@ export async function verifyOTP(email, otp) {
     return { success: false, message: 'কোডের মেয়াদ শেষ হয়ে গেছে' };
   }
 
-  // ওটিপি ইউজ করে ফেলুন
   await supabase
     .from('otp_verifications')
     .update({ is_used: true })
@@ -59,11 +58,7 @@ export async function verifyOTP(email, otp) {
 
 // ৪. ইমেইল পাঠান (সিমুলেটেড)
 export async function sendOTPEmail(email, otp) {
-  // 실제 প্রোডাকশনে EmailJS বা Supabase Edge Functions ব্যবহার করুন
   console.log(`📧 ইমেইল: ${email} - ওটিপি: ${otp}`);
-  
-  // ডেভেলপমেন্টে অ্যালার্ট দেখান
   alert(`📧 আপনার ওটিপি কোড: ${otp}\n(ইমেইল: ${email})`);
-  
   return { success: true };
 }
