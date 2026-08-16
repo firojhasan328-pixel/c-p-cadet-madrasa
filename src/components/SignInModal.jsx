@@ -3,12 +3,13 @@ import StudentSignUp from './StudentSignUp';
 import TeacherSignUp from './TeacherSignUp';
 
 export default function SignInModal({ isOpen, onClose }) {
-  const [step, setStep] = useState(1); // 1=role select, 2=student form, 3=teacher form
+  const [step, setStep] = useState(1);
   const [role, setRole] = useState(null);
 
   if (!isOpen) return null;
 
   const handleRoleSelect = (selectedRole) => {
+    console.log('🔍 Selected role:', selectedRole);
     setRole(selectedRole);
     setStep(2);
   };
@@ -38,7 +39,7 @@ export default function SignInModal({ isOpen, onClose }) {
           <StudentSignUp onBack={() => setStep(1)} onClose={onClose} />
         )}
 
-        {step === 3 && role === 'teacher' && (
+        {step === 2 && role === 'teacher' && (
           <TeacherSignUp onBack={() => setStep(1)} onClose={onClose} />
         )}
       </div>
