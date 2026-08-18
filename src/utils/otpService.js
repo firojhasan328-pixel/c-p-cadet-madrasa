@@ -2,7 +2,7 @@ import { supabase } from '../supabaseClient';
 import emailjs from '@emailjs/browser';
 
 // =============================================
-// EmailJS Credentials (আপনার তথ্য)
+// EmailJS Credentials
 // =============================================
 const SERVICE_ID = 'service_vznszfm';
 const TEMPLATE_ID = 'template_byuqvor';
@@ -39,12 +39,13 @@ export async function saveOTP(email, otp) {
 }
 
 // =============================================
-// ৩. OTP ভেরিফাই
+// ৩. OTP ভেরিফাই (সরলীকৃত)
 // =============================================
 export async function verifyOTP(email, otp) {
   const normalizedEmail = email.toLowerCase().trim();
   const normalizedOtp = otp.toString().trim();
 
+  // ১. ডাটাবেস থেকে OTP খুঁজুন
   const { data, error } = await supabase
     .from('otp_verifications')
     .select('*')
@@ -59,11 +60,14 @@ export async function verifyOTP(email, otp) {
     return { success: false, message: 'ডাটাবেস সমস্যা' };
   }
 
+  // ২. OTP পাওয়া যায়নি
   if (!data || data.length === 0) {
     return { success: false, message: '❌ ভুল কোড বা কোডের মেয়াদ শেষ' };
   }
 
   const otpData = data[0];
+
+  // ৩. মেয়াদ শেষ চেক
   const now = new Date();
   const expiresAt = new Date(otpData.expires_at);
 
@@ -71,6 +75,7 @@ export async function verifyOTP(email, otp) {
     return { success: false, message: '⏳ কোডের মেয়াদ শেষ' };
   }
 
+  // ৪. OTP ব্যবহার করা হয়েছে
   await supabase
     .from('otp_verifications')
     .update({ is_used: true })
@@ -80,9 +85,9 @@ export async function verifyOTP(email, otp) {
 }
 
 // =============================================
-// ৪. EmailJS দিয়ে OTP পাঠান (সঠিক নাম)
+// ৪. EmailJS দিয়ে OTP পাঠান
 // =============================================
-export async function sendCustomOTPEmail(email, otp) {
+export async function sendOTPEmail(email, otp) {
   try {
     emailjs.init(PUBLIC_KEY);
 
