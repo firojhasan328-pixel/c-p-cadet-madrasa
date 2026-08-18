@@ -5,12 +5,21 @@ import { generateOTP, saveOTP, verifyOTP, sendCustomOTPEmail } from '../utils/ot
 export default function TeacherSignUp({ onBack, onClose }) {
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
-    name: '', gender: '', designation: '', subject: '', 
-    phone: '', email: '', photo: null, otp: ''
+    name: '',
+    gender: '',
+    designation: '',
+    subject: '',
+    phone: '',
+    email: '',
+    photo: null,
+    otp: ''
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // ========================================
+  // হ্যান্ডলার ফাংশন
+  // ========================================
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
@@ -64,9 +73,9 @@ export default function TeacherSignUp({ onBack, onClose }) {
     }
   };
 
-  // =============================================
-  // ধাপ ১: ইমেইল চেক + OTP পাঠান (ফোন নম্বরসহ)
-  // =============================================
+  // ========================================
+  // ধাপ ১: OTP পাঠান
+  // ========================================
   const handleSendOTP = async (e) => {
     e.preventDefault();
     setError('');
@@ -80,20 +89,20 @@ export default function TeacherSignUp({ onBack, onClose }) {
     }
 
     try {
-      // ১. ইমেইল আগে থেকে আছে কিনা চেক করুন
-      const { data: existingTeacher } = await supabase
+      // ১. ইমেইল চেক
+      const { data: existingEmail } = await supabase
         .from('teachers')
         .select('email')
         .eq('email', formData.email.toLowerCase().trim())
         .maybeSingle();
 
-      if (existingTeacher) {
+      if (existingEmail) {
         setError('❌ এই ইমেইলটি ইতিমধ্যে ব্যবহার করা হয়েছে।');
         setLoading(false);
         return;
       }
 
-      // ২. ফোন নম্বর আগে থেকে আছে কিনা চেক করুন
+      // ২. ফোন চেক
       const { data: existingPhone } = await supabase
         .from('teachers')
         .select('phone')
@@ -127,9 +136,9 @@ export default function TeacherSignUp({ onBack, onClose }) {
     }
   };
 
-  // =============================================
+  // ========================================
   // ধাপ ২: OTP ভেরিফাই ও রেজিস্ট্রেশন
-  // =============================================
+  // ========================================
   const handleVerifyAndSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -148,7 +157,7 @@ export default function TeacherSignUp({ onBack, onClose }) {
       // ২. ছবি আপলোড
       const photoPath = await uploadPhoto();
 
-      // ৩. ডেটা ইনসার্ট (ফোন ও ইমেইল দুটোই সংরক্ষণ)
+      // ৩. ডেটা ইনসার্ট
       const { error: insertError } = await supabase
         .from('teachers')
         .insert([{
@@ -182,6 +191,9 @@ export default function TeacherSignUp({ onBack, onClose }) {
     }
   };
 
+  // ========================================
+  // UI (StudentSignUp এর মতো ডিজাইন)
+  // ========================================
   return (
     <div>
       {step === 1 && (
@@ -213,13 +225,11 @@ export default function TeacherSignUp({ onBack, onClose }) {
             <input type="text" name="name" required value={formData.name} onChange={handleInputChange} style={styles.input} />
           </div>
 
-          {/* 📱 মোবাইল নাম্বার ফিল্ড (বাধ্যতামূলক কিন্তু SMS ভেরিফাই নেই) */}
           <div style={styles.field}>
             <label>মোবাইল নাম্বার *</label>
             <input type="tel" name="phone" required pattern="01[3-9]\d{8}" placeholder="01XXXXXXXXX" value={formData.phone} onChange={handleInputChange} style={styles.input} />
           </div>
 
-          {/* 📧 ইমেইল ফিল্ড (এই ইমেইলে OTP যাবে) */}
           <div style={styles.field}>
             <label>ইমেইল *</label>
             <input type="email" name="email" required placeholder="example@gmail.com" value={formData.email} onChange={handleInputChange} style={styles.input} />
@@ -265,9 +275,9 @@ export default function TeacherSignUp({ onBack, onClose }) {
   );
 }
 
-// =============================================
-// স্টাইল (StudentSignUp এর মতোই, আপনার পুরনো ডিজাইন)
-// =============================================
+// ========================================
+// স্টাইল (StudentSignUp এর মতো)
+// ========================================
 const styles = {
   form: { display: 'flex', flexDirection: 'column', gap: '12px' },
   heading: { fontSize: '20px', fontWeight: '700', color: '#0f172a', margin: '0 0 8px 0' },
