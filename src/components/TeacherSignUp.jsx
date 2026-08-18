@@ -1,6 +1,11 @@
 import React, { useState } from 'react';
 import { supabase } from '../supabaseClient';
-import { generateOTP, saveOTP, verifyOTP, sendCustomOTPEmail } from '../utils/otpService';
+import { 
+  generateOTP, 
+  saveTeacherOTP, 
+  verifyTeacherOTP, 
+  sendTeacherOTPEmail 
+} from '../utils/teacherOtpService';
 
 export default function TeacherSignUp({ onBack, onClose }) {
   const [step, setStep] = useState(1);
@@ -17,9 +22,6 @@ export default function TeacherSignUp({ onBack, onClose }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // ========================================
-  // হ্যান্ডলার ফাংশন
-  // ========================================
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
@@ -73,15 +75,14 @@ export default function TeacherSignUp({ onBack, onClose }) {
     }
   };
 
-  // ========================================
+  // =============================================
   // ধাপ ১: OTP পাঠান
-  // ========================================
+  // =============================================
   const handleSendOTP = async (e) => {
     e.preventDefault();
     setError('');
     setLoading(true);
 
-    // ফোন নম্বর ভ্যালিডেশন
     if (!formData.phone || formData.phone.length < 11) {
       setError('❌ সঠিক ১১ ডিজিটের মোবাইল নাম্বার দিন');
       setLoading(false);
@@ -117,9 +118,9 @@ export default function TeacherSignUp({ onBack, onClose }) {
 
       // ৩. OTP জেনারেট ও ইমেইল পাঠান
       const otp = generateOTP();
-      await saveOTP(formData.email, otp);
+      await saveTeacherOTP(formData.email, otp);
       
-      const emailResult = await sendCustomOTPEmail(formData.email, otp);
+      const emailResult = await sendTeacherOTPEmail(formData.email, otp);
       
       if (!emailResult.success) {
         setError('OTP পাঠাতে সমস্যা: ' + (emailResult.error || 'অজানা সমস্যা'));
@@ -136,9 +137,9 @@ export default function TeacherSignUp({ onBack, onClose }) {
     }
   };
 
-  // ========================================
+  // =============================================
   // ধাপ ২: OTP ভেরিফাই ও রেজিস্ট্রেশন
-  // ========================================
+  // =============================================
   const handleVerifyAndSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -146,7 +147,7 @@ export default function TeacherSignUp({ onBack, onClose }) {
 
     try {
       // ১. OTP ভেরিফাই
-      const result = await verifyOTP(formData.email, formData.otp);
+      const result = await verifyTeacherOTP(formData.email, formData.otp);
       
       if (!result.success) {
         setError(result.message);
@@ -182,7 +183,7 @@ export default function TeacherSignUp({ onBack, onClose }) {
         return;
       }
 
-      alert('✅ শিক্ষক রেজিস্ট্রেশন সম্পূর্ণ! রিকোয়েস্ট সুপার এডমিনের কাছে গেছে।');
+      alert('✅ শিক্ষক রেজিস্ট্রেশন সম্পূর্ণ!');
       onClose();
     } catch (err) {
       setError(err.message || 'সাবমিট করতে সমস্যা');
@@ -191,9 +192,9 @@ export default function TeacherSignUp({ onBack, onClose }) {
     }
   };
 
-  // ========================================
-  // UI (StudentSignUp এর মতো ডিজাইন)
-  // ========================================
+  // =============================================
+  // UI
+  // =============================================
   return (
     <div>
       {step === 1 && (
@@ -275,9 +276,6 @@ export default function TeacherSignUp({ onBack, onClose }) {
   );
 }
 
-// ========================================
-// স্টাইল (StudentSignUp এর মতো)
-// ========================================
 const styles = {
   form: { display: 'flex', flexDirection: 'column', gap: '12px' },
   heading: { fontSize: '20px', fontWeight: '700', color: '#0f172a', margin: '0 0 8px 0' },
