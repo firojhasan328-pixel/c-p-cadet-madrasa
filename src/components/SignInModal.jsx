@@ -9,7 +9,6 @@ export default function SignInModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const handleRoleSelect = (selectedRole) => {
-    console.log('🔍 Selected role:', selectedRole);
     setRole(selectedRole);
     setStep(2);
   };
