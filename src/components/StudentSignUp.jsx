@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { supabase } from '../supabaseClient';
-import { generateOTP, saveOTP, verifyOTP, sendCustomOTPEmail } from '../utils/otpService';
+import { generateOTP, saveOTP, verifyOTP, sendOTPEmail } from '../utils/otpService';
 
 export default function StudentSignUp({ onBack, onClose }) {
   const [step, setStep] = useState(1);
@@ -65,7 +65,7 @@ export default function StudentSignUp({ onBack, onClose }) {
   };
 
   // =============================================
-  // ধাপ ১: ইমেইল চেক + OTP পাঠান
+  // OTP পাঠান
   // =============================================
   const handleSendOTP = async (e) => {
     e.preventDefault();
@@ -73,7 +73,7 @@ export default function StudentSignUp({ onBack, onClose }) {
     setLoading(true);
 
     try {
-      // ১. ইমেইল আগে থেকে আছে কিনা চেক করুন
+      // ১. ইমেইল চেক
       const { data: existingUser } = await supabase
         .from('students')
         .select('email')
@@ -90,10 +90,10 @@ export default function StudentSignUp({ onBack, onClose }) {
       const otp = generateOTP();
       await saveOTP(formData.email, otp);
       
-      const emailResult = await sendCustomOTPEmail(formData.email, otp);
+      const emailResult = await sendOTPEmail(formData.email, otp);
       
       if (!emailResult.success) {
-        setError('OTP পাঠাতে সমস্যা: ' + emailResult.error);
+        setError('OTP পাঠাতে সমস্যা: ' + (emailResult.error || 'অজানা সমস্যা'));
         setLoading(false);
         return;
       }
@@ -101,14 +101,14 @@ export default function StudentSignUp({ onBack, onClose }) {
       setStep(2);
       alert('✅ আপনার ইমেইলে OTP কোড পাঠানো হয়েছে!');
     } catch (err) {
-      setError('OTP পাঠাতে সমস্যা: ' + err.message);
+      setError(err.message || 'OTP পাঠাতে সমস্যা');
     } finally {
       setLoading(false);
     }
   };
 
   // =============================================
-  // ধাপ ২: OTP ভেরিফাই + ডেটা ইনসার্ট
+  // OTP ভেরিফাই ও রেজিস্ট্রেশন
   // =============================================
   const handleVerifyAndSubmit = async (e) => {
     e.preventDefault();
@@ -116,7 +116,7 @@ export default function StudentSignUp({ onBack, onClose }) {
     setLoading(true);
 
     try {
-      // ১. OTP ভেরিফাই করুন
+      // ১. OTP ভেরিফাই
       const result = await verifyOTP(formData.email, formData.otp);
       
       if (!result.success) {
@@ -129,7 +129,7 @@ export default function StudentSignUp({ onBack, onClose }) {
       const photoPath = await uploadPhoto();
 
       // ৩. ডেটা ইনসার্ট
-      const { error } = await supabase
+      const { error: insertError } = await supabase
         .from('students')
         .insert([{
           name: formData.name,
@@ -144,20 +144,20 @@ export default function StudentSignUp({ onBack, onClose }) {
           is_approved: false
         }]);
 
-      if (error) {
-        if (error.code === '23505') {
+      if (insertError) {
+        if (insertError.code === '23505') {
           setError('❌ এই ইমেইলটি ইতিমধ্যে ব্যবহার করা হয়েছে।');
         } else {
-          setError('ডেটা জমা দিতে সমস্যা: ' + error.message);
+          setError('ডেটা জমা দিতে সমস্যা: ' + insertError.message);
         }
         setLoading(false);
         return;
       }
 
-      alert('✅ রেজিস্ট্রেশন সম্পূর্ণ! রিকোয়েস্ট সুপার এডমিনের কাছে গেছে।');
+      alert('✅ রেজিস্ট্রেশন সম্পূর্ণ!');
       onClose();
     } catch (err) {
-      setError('সাবমিট করতে সমস্যা: ' + err.message);
+      setError(err.message || 'সাবমিট করতে সমস্যা');
     } finally {
       setLoading(false);
     }
@@ -253,9 +253,6 @@ export default function StudentSignUp({ onBack, onClose }) {
   );
 }
 
-// =============================================
-// স্টাইল (অপরিবর্তিত)
-// =============================================
 const styles = {
   form: { display: 'flex', flexDirection: 'column', gap: '12px' },
   heading: { fontSize: '20px', fontWeight: '700', color: '#0f172a', margin: '0 0 8px 0' },
