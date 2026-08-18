@@ -45,31 +45,43 @@ export default function StudentSignUp({ onBack, onClose }) {
     reader.readAsDataURL(file);
   };
 
+  const uploadPhoto = async () => {
+    if (!formData.photo) return null;
+    const fileExt = formData.photo.name.split('.').pop();
+    const fileName = `student_${Date.now()}.${fileExt}`;
+    const filePath = `student-photos/${fileName}`;
+    
+    try {
+      const { data, error } = await supabase.storage
+        .from('private-admission-files')
+        .upload(filePath, formData.photo);
+      
+      if (error) throw error;
+      return data.path;
+    } catch (err) {
+      console.error('ছবি আপলোড সমস্যা:', err);
+      return null;
+    }
+  };
+
   // =============================================
-  // ধাপ ১: ইমেইল চেক + OTP পাঠান (ডেটা ইনসার্ট ছাড়া)
+  // ধাপ ১: ইমেইল চেক + OTP পাঠান
   // =============================================
   const handleSendOTP = async (e) => {
     e.preventDefault();
     setError('');
     setLoading(true);
 
-    // ফর্ম ভ্যালিডেশন
-    if (!formData.email) {
-      setError('ইমেইল দিন');
-      setLoading(false);
-      return;
-    }
-
     try {
-      // ১. ইমেইলটি আগে থেকে আছে কিনা চেক করুন
-      const { data: existingUser, error: checkError } = await supabase
+      // ১. ইমেইল আগে থেকে আছে কিনা চেক করুন
+      const { data: existingUser } = await supabase
         .from('students')
         .select('email')
-        .eq('email', formData.email)
+        .eq('email', formData.email.toLowerCase().trim())
         .maybeSingle();
 
       if (existingUser) {
-        setError('❌ এই ইমেইলটি ইতিমধ্যে ব্যবহার করা হয়েছে। ভিন্ন ইমেইল ব্যবহার করুন।');
+        setError('❌ এই ইমেইলটি ইতিমধ্যে ব্যবহার করা হয়েছে।');
         setLoading(false);
         return;
       }
@@ -86,7 +98,6 @@ export default function StudentSignUp({ onBack, onClose }) {
         return;
       }
 
-      // ৩. OTP স্টেপে যান
       setStep(2);
       alert('✅ আপনার ইমেইলে OTP কোড পাঠানো হয়েছে!');
     } catch (err) {
@@ -117,8 +128,8 @@ export default function StudentSignUp({ onBack, onClose }) {
       // ২. ছবি আপলোড
       const photoPath = await uploadPhoto();
 
-      // ৩. ডেটা ইনসার্ট (এখন OTP ভেরিফাইড)
-      const { data, error } = await supabase
+      // ৩. ডেটা ইনসার্ট
+      const { error } = await supabase
         .from('students')
         .insert([{
           name: formData.name,
@@ -128,8 +139,8 @@ export default function StudentSignUp({ onBack, onClose }) {
           class_name: formData.class,
           roll_number: formData.roll || null,
           photo_url: photoPath,
-          email: formData.email,
-          is_verified: true, // OTP ভেরিফাইড
+          email: formData.email.toLowerCase().trim(),
+          is_verified: true,
           is_approved: false
         }]);
 
@@ -143,7 +154,7 @@ export default function StudentSignUp({ onBack, onClose }) {
         return;
       }
 
-      alert('✅ ইমেইল ভেরিফাইড ও রেজিস্ট্রেশন সম্পূর্ণ! রিকোয়েস্ট সুপার এডমিনের কাছে গেছে।');
+      alert('✅ রেজিস্ট্রেশন সম্পূর্ণ! রিকোয়েস্ট সুপার এডমিনের কাছে গেছে।');
       onClose();
     } catch (err) {
       setError('সাবমিট করতে সমস্যা: ' + err.message);
@@ -152,31 +163,8 @@ export default function StudentSignUp({ onBack, onClose }) {
     }
   };
 
-  // =============================================
-  // ছবি আপলোড ফাংশন
-  // =============================================
-  const uploadPhoto = async () => {
-    if (!formData.photo) return null;
-    const fileExt = formData.photo.name.split('.').pop();
-    const fileName = `student_${Date.now()}.${fileExt}`;
-    const filePath = `student-photos/${fileName}`;
-    
-    try {
-      const { data, error } = await supabase.storage
-        .from('private-admission-files')
-        .upload(filePath, formData.photo);
-      
-      if (error) throw error;
-      return data.path;
-    } catch (err) {
-      console.error('ছবি আপলোড সমস্যা:', err);
-      return null;
-    }
-  };
-
   return (
     <div>
-      {/* ধাপ ১: ফর্ম + OTP পাঠান */}
       {step === 1 && (
         <form onSubmit={handleSendOTP} style={styles.form}>
           <h2 style={styles.heading}>🎓 ছাত্র নিবন্ধন</h2>
@@ -239,7 +227,6 @@ export default function StudentSignUp({ onBack, onClose }) {
         </form>
       )}
 
-      {/* ধাপ ২: OTP ভেরিফাই + ডেটা ইনসার্ট */}
       {step === 2 && (
         <div style={styles.otpContainer}>
           <h2 style={styles.otpHeading}>📧 ইমেইল ভেরিফিকেশন</h2>
@@ -266,7 +253,9 @@ export default function StudentSignUp({ onBack, onClose }) {
   );
 }
 
-// স্টাইল (আগের মতোই)
+// =============================================
+// স্টাইল (অপরিবর্তিত)
+// =============================================
 const styles = {
   form: { display: 'flex', flexDirection: 'column', gap: '12px' },
   heading: { fontSize: '20px', fontWeight: '700', color: '#0f172a', margin: '0 0 8px 0' },
