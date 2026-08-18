@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { supabase } from '../supabaseClient';
+import { generateOTP, saveOTP, verifyOTP, sendCustomOTPEmail } from '../utils/otpService';
 
 export default function TeacherSignUp({ onBack, onClose }) {
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
-    gender: '', designation: '', subject: '', name: '', phone: '', photo: null, otp: ''
+    name: '', gender: '', designation: '', subject: '', 
+    phone: '', email: '', photo: null, otp: ''
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -12,6 +14,15 @@ export default function TeacherSignUp({ onBack, onClose }) {
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
+  };
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      compressImage(file, (compressedFile) => {
+        setFormData({ ...formData, photo: compressedFile });
+      });
+    }
   };
 
   const compressImage = (file, callback) => {
@@ -34,15 +45,6 @@ export default function TeacherSignUp({ onBack, onClose }) {
     reader.readAsDataURL(file);
   };
 
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      compressImage(file, (compressedFile) => {
-        setFormData({ ...formData, photo: compressedFile });
-      });
-    }
-  };
-
   const uploadPhoto = async () => {
     if (!formData.photo) return null;
     const fileExt = formData.photo.name.split('.').pop();
@@ -62,56 +64,119 @@ export default function TeacherSignUp({ onBack, onClose }) {
     }
   };
 
-  const handleSubmit = async (e) => {
+  // =============================================
+  // ধাপ ১: ইমেইল চেক + OTP পাঠান (ফোন নম্বরসহ)
+  // =============================================
+  const handleSendOTP = async (e) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+
+    // ফোন নম্বর ভ্যালিডেশন
+    if (!formData.phone || formData.phone.length < 11) {
+      setError('❌ সঠিক ১১ ডিজিটের মোবাইল নাম্বার দিন');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      // ১. ইমেইল আগে থেকে আছে কিনা চেক করুন
+      const { data: existingTeacher } = await supabase
+        .from('teachers')
+        .select('email')
+        .eq('email', formData.email.toLowerCase().trim())
+        .maybeSingle();
+
+      if (existingTeacher) {
+        setError('❌ এই ইমেইলটি ইতিমধ্যে ব্যবহার করা হয়েছে।');
+        setLoading(false);
+        return;
+      }
+
+      // ২. ফোন নম্বর আগে থেকে আছে কিনা চেক করুন
+      const { data: existingPhone } = await supabase
+        .from('teachers')
+        .select('phone')
+        .eq('phone', formData.phone.trim())
+        .maybeSingle();
+
+      if (existingPhone) {
+        setError('❌ এই মোবাইল নাম্বারটি ইতিমধ্যে ব্যবহার করা হয়েছে।');
+        setLoading(false);
+        return;
+      }
+
+      // ৩. OTP জেনারেট ও ইমেইল পাঠান
+      const otp = generateOTP();
+      await saveOTP(formData.email, otp);
+      
+      const emailResult = await sendCustomOTPEmail(formData.email, otp);
+      
+      if (!emailResult.success) {
+        setError('OTP পাঠাতে সমস্যা: ' + (emailResult.error || 'অজানা সমস্যা'));
+        setLoading(false);
+        return;
+      }
+
+      setStep(2);
+      alert('✅ আপনার ইমেইলে OTP কোড পাঠানো হয়েছে!');
+    } catch (err) {
+      setError(err.message || 'OTP পাঠাতে সমস্যা');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // =============================================
+  // ধাপ ২: OTP ভেরিফাই ও রেজিস্ট্রেশন
+  // =============================================
+  const handleVerifyAndSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setLoading(true);
 
     try {
+      // ১. OTP ভেরিফাই
+      const result = await verifyOTP(formData.email, formData.otp);
+      
+      if (!result.success) {
+        setError(result.message);
+        setLoading(false);
+        return;
+      }
+
+      // ২. ছবি আপলোড
       const photoPath = await uploadPhoto();
 
-      const { data, error } = await supabase
+      // ৩. ডেটা ইনসার্ট (ফোন ও ইমেইল দুটোই সংরক্ষণ)
+      const { error: insertError } = await supabase
         .from('teachers')
         .insert([{
           name: formData.name,
           gender: formData.gender,
           designation: formData.designation,
           subject: formData.subject,
-          phone: formData.phone,
+          phone: formData.phone.trim(),
+          email: formData.email.toLowerCase().trim(),
           photo_url: photoPath,
-          is_verified: false,
+          is_verified: true,
           is_approved: false
         }]);
 
-      if (error) {
-        console.error('Insert Error:', error);
-        setError('ডেটা জমা দিতে সমস্যা: ' + error.message);
+      if (insertError) {
+        if (insertError.code === '23505') {
+          setError('❌ এই ইমেইল বা ফোন নাম্বারটি ইতিমধ্যে ব্যবহার করা হয়েছে।');
+        } else {
+          setError('ডেটা জমা দিতে সমস্যা: ' + insertError.message);
+        }
         setLoading(false);
         return;
       }
 
-      setStep(2);
-      alert('✅ আপনার তথ্য সফলভাবে জমা হয়েছে! মোবাইল ভেরিফিকেশনের জন্য অপেক্ষা করুন।');
+      alert('✅ শিক্ষক রেজিস্ট্রেশন সম্পূর্ণ! রিকোয়েস্ট সুপার এডমিনের কাছে গেছে।');
+      onClose();
     } catch (err) {
-      console.error('Submit Error:', err);
-      setError('সাবমিট করতে সমস্যা: ' + err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleVerifyOtp = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      if (formData.otp === '123456') {
-        alert('✅ আপনার রিকোয়েস্ট সুপার এডমিনের কাছে পাঠানো হয়েছে।');
-        onClose();
-      } else {
-        setError('❌ ভুল কোড। অনুগ্রহ করে সঠিক কোড দিন।');
-      }
-    } catch (err) {
-      setError(err.message);
+      setError(err.message || 'সাবমিট করতে সমস্যা');
     } finally {
       setLoading(false);
     }
@@ -120,7 +185,7 @@ export default function TeacherSignUp({ onBack, onClose }) {
   return (
     <div>
       {step === 1 && (
-        <form onSubmit={handleSubmit} style={styles.form}>
+        <form onSubmit={handleSendOTP} style={styles.form}>
           <h2 style={styles.heading}>👨‍🏫 শিক্ষক নিবন্ধন</h2>
           {error && <div style={styles.error}>{error}</div>}
 
@@ -148,9 +213,16 @@ export default function TeacherSignUp({ onBack, onClose }) {
             <input type="text" name="name" required value={formData.name} onChange={handleInputChange} style={styles.input} />
           </div>
 
+          {/* 📱 মোবাইল নাম্বার ফিল্ড (বাধ্যতামূলক কিন্তু SMS ভেরিফাই নেই) */}
           <div style={styles.field}>
             <label>মোবাইল নাম্বার *</label>
             <input type="tel" name="phone" required pattern="01[3-9]\d{8}" placeholder="01XXXXXXXXX" value={formData.phone} onChange={handleInputChange} style={styles.input} />
+          </div>
+
+          {/* 📧 ইমেইল ফিল্ড (এই ইমেইলে OTP যাবে) */}
+          <div style={styles.field}>
+            <label>ইমেইল *</label>
+            <input type="email" name="email" required placeholder="example@gmail.com" value={formData.email} onChange={handleInputChange} style={styles.input} />
           </div>
 
           <div style={styles.field}>
@@ -161,7 +233,7 @@ export default function TeacherSignUp({ onBack, onClose }) {
           <div style={styles.buttonGroup}>
             <button type="button" onClick={onBack} style={styles.backBtn}>পিছনে</button>
             <button type="submit" disabled={loading} style={styles.submitBtn}>
-              {loading ? '⏳ জমা দিচ্ছি...' : '✅ কনফার্ম'}
+              {loading ? '⏳ OTP পাঠাচ্ছি...' : '📧 OTP পাঠান'}
             </button>
           </div>
         </form>
@@ -169,10 +241,10 @@ export default function TeacherSignUp({ onBack, onClose }) {
 
       {step === 2 && (
         <div style={styles.otpContainer}>
-          <h2 style={styles.otpHeading}>📱 মোবাইল ভেরিফিকেশন</h2>
-          <p style={styles.otpText}>আপনার মোবাইলে ৬ ডিজিটের কোড পাঠানো হয়েছে।</p>
+          <h2 style={styles.otpHeading}>📧 ইমেইল ভেরিফিকেশন</h2>
+          <p style={styles.otpText}>আপনার ইমেইলে ৬ ডিজিটের কোড পাঠানো হয়েছে।</p>
           {error && <div style={styles.error}>{error}</div>}
-          <form onSubmit={handleVerifyOtp} style={styles.otpForm}>
+          <form onSubmit={handleVerifyAndSubmit} style={styles.otpForm}>
             <input 
               type="text" 
               maxLength="6" 
@@ -183,9 +255,9 @@ export default function TeacherSignUp({ onBack, onClose }) {
               style={styles.otpInput} 
             />
             <button type="submit" disabled={loading} style={styles.otpBtn}>
-              {loading ? '⏳ ভেরিফাই করছি...' : '✅ কনফার্ম'}
+              {loading ? '⏳ ভেরিফাই করছি...' : '✅ নিশ্চিত করুন'}
             </button>
-            <button type="button" onClick={onBack} style={styles.backBtn}>পিছনে</button>
+            <button type="button" onClick={() => setStep(1)} style={styles.backBtn}>পিছনে</button>
           </form>
         </div>
       )}
@@ -193,6 +265,9 @@ export default function TeacherSignUp({ onBack, onClose }) {
   );
 }
 
+// =============================================
+// স্টাইল (StudentSignUp এর মতোই, আপনার পুরনো ডিজাইন)
+// =============================================
 const styles = {
   form: { display: 'flex', flexDirection: 'column', gap: '12px' },
   heading: { fontSize: '20px', fontWeight: '700', color: '#0f172a', margin: '0 0 8px 0' },
@@ -201,29 +276,13 @@ const styles = {
   select: { padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px' },
   fileInput: { padding: '8px', borderRadius: '8px', border: '1px solid #cbd5e1' },
   buttonGroup: { display: 'flex', gap: '10px', marginTop: '8px' },
-  backBtn: { 
-    background: '#f1f5f9', border: 'none', padding: '10px', 
-    borderRadius: '8px', flex: 1, cursor: 'pointer', fontWeight: '600'
-  },
-  submitBtn: { 
-    background: '#16a34a', color: 'white', border: 'none', padding: '10px', 
-    borderRadius: '8px', flex: 2, cursor: 'pointer', fontWeight: '600'
-  },
-  error: { 
-    background: '#fee2e2', color: '#991b1b', padding: '8px 12px', 
-    borderRadius: '6px', fontSize: '13px', borderLeft: '3px solid #dc2626'
-  },
+  backBtn: { background: '#f1f5f9', border: 'none', padding: '10px', borderRadius: '8px', flex: 1, cursor: 'pointer', fontWeight: '600' },
+  submitBtn: { background: '#16a34a', color: 'white', border: 'none', padding: '10px', borderRadius: '8px', flex: 2, cursor: 'pointer', fontWeight: '600' },
+  error: { background: '#fee2e2', color: '#991b1b', padding: '8px 12px', borderRadius: '6px', fontSize: '13px', borderLeft: '3px solid #dc2626' },
   otpContainer: { textAlign: 'center', padding: '20px 0' },
   otpHeading: { fontSize: '20px', fontWeight: '700', color: '#0f172a', margin: '0 0 4px 0' },
   otpText: { fontSize: '14px', color: '#64748b', marginBottom: '16px' },
   otpForm: { display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'center' },
-  otpInput: { 
-    width: '200px', padding: '12px', fontSize: '24px', letterSpacing: '8px', 
-    textAlign: 'center', border: '2px solid #cbd5e1', borderRadius: '12px',
-    outline: 'none'
-  },
-  otpBtn: {
-    background: '#2563eb', color: 'white', border: 'none', padding: '10px 32px',
-    borderRadius: '8px', fontWeight: '600', cursor: 'pointer'
-  }
+  otpInput: { width: '200px', padding: '12px', fontSize: '24px', letterSpacing: '8px', textAlign: 'center', border: '2px solid #cbd5e1', borderRadius: '12px', outline: 'none' },
+  otpBtn: { background: '#2563eb', color: 'white', border: 'none', padding: '10px 32px', borderRadius: '8px', fontWeight: '600', cursor: 'pointer' }
 };
