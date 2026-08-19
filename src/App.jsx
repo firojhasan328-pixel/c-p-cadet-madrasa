@@ -10,6 +10,7 @@ import SignInModal from './components/SignInModal';
 import StudentList from './components/StudentList';
 import { useAuth } from './context/AuthContext';
 import SuperAdminDashboard from './components/SuperAdminDashboard';
+import AdminPermissionManager from './components/AdminPermissionManager';
 
 export default function App() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -347,6 +348,9 @@ export default function App() {
             {isSuperAdmin && (
               <span className="nav-link" style={{ color: '#b45309', fontWeight: 'bold' }} onClick={() => { setCurrentView('superAdminPanel'); setMobileMenuOpen(false); }}>⚙️ সুপার এডমিন প্যানেল</span>
             )}
+            {isSuperAdmin && (
+              <span className="nav-link" style={{ color: '#7c3aed', fontWeight: 'bold' }} onClick={() => { setCurrentView('adminPermissionManager'); setMobileMenuOpen(false); }}>🛡️ এডমিন পারমিশন</span>
+            )}
 
             <button onClick={() => { setMobileMenuOpen(false); setIsAdmissionModalOpen(true); }} className="btn-primary" style={{ width: '100%', textAlign: 'center', marginTop: '6px' }}>অনলাইন ভর্তি</button>
             
@@ -636,6 +640,11 @@ export default function App() {
       {/* সুপার এডমিন প্যানেল - SuperAdminDashboard কম্পোনেন্ট ব্যবহার করা হয়েছে */}
       {currentView === 'superAdminPanel' && (
         <SuperAdminDashboard />
+      )}
+
+      {/* এডমিন পারমিশন ম্যানেজার */}
+      {currentView === 'adminPermissionManager' && (
+        <AdminPermissionManager />
       )}
 
       {/* সাইন ইন মোডাল */}
