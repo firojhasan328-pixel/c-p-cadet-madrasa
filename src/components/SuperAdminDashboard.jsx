@@ -10,6 +10,7 @@ import {
   logActivity
 } from '../utils/permissionService';
 import AdminPermissionManager from './AdminPermissionManager';
+import AdvancedCMS from './AdvancedCMS';
 
 export default function SuperAdminDashboard() {
   const { user, isSuperAdmin, refreshUser } = useAuth();
@@ -432,6 +433,7 @@ export default function SuperAdminDashboard() {
         <TabButton id="dashboard" label="ড্যাশবোর্ড" icon="📊" />
         <TabButton id="users" label="ইউজার ম্যানেজমেন্ট" icon="👥" />
         <TabButton id="adminPermissions" label="এডমিন পারমিশন" icon="🛡️" />
+        <TabButton id="cms" label="CMS" icon="📝" />
         <TabButton id="permissions" label="সব পারমিশন" icon="🔑" />
         <TabButton id="logs" label="অ্যাক্টিভিটি লগ" icon="📋" />
       </div>
@@ -543,6 +545,10 @@ export default function SuperAdminDashboard() {
 
       {activeTab === 'adminPermissions' && (
         <AdminPermissionManager />
+      )}
+
+      {activeTab === 'cms' && (
+        <AdvancedCMS />
       )}
 
       {activeTab === 'permissions' && (
