@@ -11,6 +11,7 @@ import StudentList from './components/StudentList';
 import { useAuth } from './context/AuthContext';
 import SuperAdminDashboard from './components/SuperAdminDashboard';
 import AdminPermissionManager from './components/AdminPermissionManager';
+import TeacherManagement from './components/TeacherManagement';
 
 export default function App() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -624,14 +625,14 @@ export default function App() {
         </div>
       )}
 
-      {/* এডমিন প্যানেল */}
+      {/* এডমিন প্যানেল - TeacherManagement যোগ করা হয়েছে */}
       {currentView === 'adminPanel' && (
-        <div style={{ maxWidth: '900px', margin: '40px auto', padding: '0 16px' }}>
+        <div style={{ maxWidth: '1200px', margin: '40px auto', padding: '0 16px' }}>
           <div className="card">
             <h2 style={{ color: '#0369a1', borderBottom: '2px solid #f1f5f9', paddingBottom: '10px', marginTop: 0 }}>🛠️ এডমিন প্যানেল</h2>
             <p style={{ color: '#334155', fontSize: '15px' }}>শিক্ষক ও শিক্ষার্থীদের পারমিশন ম্যানেজ করুন।</p>
-            <div style={{ marginTop: '20px', textAlign: 'center' }}>
-              <button onClick={() => setCurrentView('home')} className="btn-primary" style={{ backgroundColor: '#64748b' }}>হোম পেজে ফিরে যান</button>
+            <div style={{ marginTop: '20px' }}>
+              <TeacherManagement />
             </div>
           </div>
         </div>
