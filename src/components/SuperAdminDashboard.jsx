@@ -9,6 +9,7 @@ import {
   sendNotification,
   logActivity
 } from '../utils/permissionService';
+import AdminPermissionManager from './AdminPermissionManager';
 
 export default function SuperAdminDashboard() {
   const { user, isSuperAdmin, refreshUser } = useAuth();
@@ -67,10 +68,16 @@ export default function SuperAdminDashboard() {
         .select('*', { count: 'exact', head: true });
 
       // মোট এডমিন
+      const { data: adminRole } = await supabase
+        .from('roles')
+        .select('id')
+        .eq('name', 'admin')
+        .single();
+      
       const { count: adminCount } = await supabase
         .from('user_roles')
         .select('*', { count: 'exact', head: true })
-        .eq('role_id', (await supabase.from('roles').select('id').eq('name', 'admin').single()).data.id);
+        .eq('role_id', adminRole?.id);
 
       // মোট শিক্ষক
       const { count: teacherCount } = await supabase
@@ -424,7 +431,8 @@ export default function SuperAdminDashboard() {
       }}>
         <TabButton id="dashboard" label="ড্যাশবোর্ড" icon="📊" />
         <TabButton id="users" label="ইউজার ম্যানেজমেন্ট" icon="👥" />
-        <TabButton id="permissions" label="পারমিশন" icon="🔑" />
+        <TabButton id="adminPermissions" label="এডমিন পারমিশন" icon="🛡️" />
+        <TabButton id="permissions" label="সব পারমিশন" icon="🔑" />
         <TabButton id="logs" label="অ্যাক্টিভিটি লগ" icon="📋" />
       </div>
 
@@ -531,6 +539,10 @@ export default function SuperAdminDashboard() {
             ))}
           </div>
         </div>
+      )}
+
+      {activeTab === 'adminPermissions' && (
+        <AdminPermissionManager />
       )}
 
       {activeTab === 'permissions' && (
