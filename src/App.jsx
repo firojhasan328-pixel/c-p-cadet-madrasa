@@ -9,6 +9,7 @@ import Gallery from './components/Gallery';
 import SignInModal from './components/SignInModal';
 import StudentList from './components/StudentList';
 import { useAuth } from './context/AuthContext';
+import SuperAdminDashboard from './components/SuperAdminDashboard';
 
 export default function App() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -632,72 +633,9 @@ export default function App() {
         </div>
       )}
 
-      {/* সুপার এডমিন প্যানেল */}
+      {/* সুপার এডমিন প্যানেল - SuperAdminDashboard কম্পোনেন্ট ব্যবহার করা হয়েছে */}
       {currentView === 'superAdminPanel' && (
-        <div style={{ maxWidth: '900px', margin: '40px auto', padding: '0 16px' }}>
-          <div className="card" style={{ border: '2px solid #f59e0b' }}>
-            <h2 style={{ color: '#b45309', borderBottom: '2px solid #f1f5f9', paddingBottom: '10px', marginTop: 0 }}>⚙️ সুপার এডমিন প্যানেল (A to Z নিয়ন্ত্রণ)</h2>
-            <p style={{ color: '#334155', fontSize: '15px' }}>আপনি সুপার এডমিন হিসেবে সর্বময় ক্ষমতার অধিকারী। নতুন ইউজার তৈরি করুন এবং পারমিশন দিন:</p>
-
-            <div style={{ marginTop: '20px', background: '#fef3c7', padding: '16px', borderRadius: '12px', border: '1px solid #f59e0b' }}>
-              <h4 style={{ margin: '0 0 12px 0', color: '#b45309' }}>নতুন ইউজার ও পারমিশন তৈরি (Supabase Auth):</h4>
-              
-              <form onSubmit={handleAddUser} style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
-                <input type="text" placeholder="ইউজারের নাম" value={newUserName} onChange={(e) => setNewUserName(e.target.value)} required style={{ padding: '8px', borderRadius: '6px', border: '1px solid #d97706' }} />
-                <input type="email" placeholder="ইমেল" value={newUserEmail} onChange={(e) => setNewUserEmail(e.target.value)} required style={{ padding: '8px', borderRadius: '6px', border: '1px solid #d97706' }} />
-                <input type="password" placeholder="পাসওয়ার্ড" value={newUserPassword} onChange={(e) => setNewUserPassword(e.target.value)} required style={{ padding: '8px', borderRadius: '6px', border: '1px solid #d97706' }} />
-                <select value={newUserRole} onChange={(e) => setNewUserRole(e.target.value)} style={{ padding: '8px', borderRadius: '6px', border: '1px solid #d97706' }}>
-                  <option value="teacher">টিচার</option>
-                  <option value="admin">এডমিন</option>
-                  <option value="superAdmin">সুপার এডমিন</option>
-                </select>
-                <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
-                  <label><input type="checkbox" checked={newUserCanEdit} onChange={(e) => setNewUserCanEdit(e.target.checked)} /> এডিট ক্ষমতা</label>
-                  <label><input type="checkbox" checked={newUserCanAdmission} onChange={(e) => setNewUserCanAdmission(e.target.checked)} /> ভর্তি ম্যানেজমেন্ট</label>
-                </div>
-                <button type="submit" className="btn-primary" style={{ background: '#d97706' }}>ইউজার তৈরি করুন</button>
-              </form>
-
-              <h4 style={{ margin: '16px 0 8px 0', color: '#b45309' }}>বিদ্যমান ইউজারদের পারমিশন বক্স:</h4>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {managedUsers.map((u) => (
-                  <div key={u.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'white', padding: '10px 14px', borderRadius: '8px', border: '1px solid #fcd34d', flexWrap: 'wrap', gap: '8px' }}>
-                    <div>
-                      <strong>⚙️ {u.name}</strong> 
-                      <span className="badge" style={{ marginLeft: '6px', background: u.role === 'superAdmin' ? '#f59e0b' : '#dcfce7', color: u.role === 'superAdmin' ? 'white' : '#15803d' }}>
-                        {u.role}
-                      </span>
-                    </div>
-                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center', fontSize: '13px' }}>
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
-                        <input type="checkbox" checked={u.can_edit} onChange={(e) => handleUpdateUserPermission(u.id, 'canEdit', e.target.checked)} /> এডিট ক্ষমতা
-                      </label>
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
-                        <input type="checkbox" checked={u.can_manage_admission} onChange={(e) => handleUpdateUserPermission(u.id, 'canManageAdmission', e.target.checked)} /> ভর্তি ম্যানেজমেন্ট
-                      </label>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div style={{ marginTop: '24px', borderTop: '2px solid #f59e0b', paddingTop: '16px' }}>
-                <AdminAdmissions />
-              </div>
-              
-              <div style={{ marginTop: '24px', borderTop: '2px solid #f59e0b', paddingTop: '16px' }}>
-                <ContentManager />
-              </div>
-              
-              <div style={{ marginTop: '24px', borderTop: '2px solid #f59e0b', paddingTop: '16px' }}>
-                <TeacherManager />
-              </div>
-            </div>
-
-            <div style={{ marginTop: '20px', textAlign: 'center' }}>
-              <button onClick={() => setCurrentView('home')} className="btn-primary" style={{ backgroundColor: '#64748b' }}>হোম পেজে ফিরে যান</button>
-            </div>
-          </div>
-        </div>
+        <SuperAdminDashboard />
       )}
 
       {/* সাইন ইন মোডাল */}
