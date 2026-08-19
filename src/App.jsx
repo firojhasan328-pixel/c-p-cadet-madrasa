@@ -8,6 +8,7 @@ import TeacherManager from './components/TeacherManager';
 import Gallery from './components/Gallery';
 import SignInModal from './components/SignInModal';
 import StudentList from './components/StudentList';
+import { useAuth } from './context/AuthContext';
 
 export default function App() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -15,6 +16,11 @@ export default function App() {
   const [isSignInModalOpen, setIsSignInModalOpen] = useState(false);
   
   const [currentView, setCurrentView] = useState('home');
+
+  // =============================================
+  // AUTH CONTEXT (Phase 2)
+  // =============================================
+  const { isSuperAdmin, isAdmin, isTeacher, hasPermission, user, loading } = useAuth();
 
   const [authEmail, setAuthEmail] = useState('');
   const [authPassword, setAuthPassword] = useState('');
@@ -330,13 +336,14 @@ export default function App() {
               🔑 সাইন ইন
             </span>
             
-            {(userRole === 'teacher' || userRole === 'admin' || userRole === 'superAdmin') && (
+            {/* ব্যবহার পারমিশন অনুযায়ী মেনু দেখানো */}
+            {(isTeacher || isAdmin || isSuperAdmin) && (
               <span className="nav-link" style={{ color: '#16a34a', fontWeight: 'bold' }} onClick={() => { setCurrentView('teacherPanel'); setMobileMenuOpen(false); }}>👨‍🏫 টিচার প্যানেল</span>
             )}
-            {(userRole === 'admin' || userRole === 'superAdmin') && (
+            {(isAdmin || isSuperAdmin) && (
               <span className="nav-link" style={{ color: '#0369a1', fontWeight: 'bold' }} onClick={() => { setCurrentView('adminPanel'); setMobileMenuOpen(false); }}>🛠️ এডমিন প্যানেল</span>
             )}
-            {userRole === 'superAdmin' && (
+            {isSuperAdmin && (
               <span className="nav-link" style={{ color: '#b45309', fontWeight: 'bold' }} onClick={() => { setCurrentView('superAdminPanel'); setMobileMenuOpen(false); }}>⚙️ সুপার এডমিন প্যানেল</span>
             )}
 
@@ -357,7 +364,7 @@ export default function App() {
                 </div>
               )}
 
-              {userRole === 'superAdmin' && (
+              {isSuperAdmin && (
                 <button 
                   onClick={() => setIsAdminMode(!isAdminMode)} 
                   style={{ background: '#0f172a', color: '#f8fafc', border: 'none', padding: '8px 12px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', width: '100%', fontWeight: '600', marginTop: '4px' }}
@@ -371,7 +378,7 @@ export default function App() {
       </nav>
 
       {/* সুপার এডমিন লাইভ কন্ট্রোল প্যানেল */}
-      {isAdminMode && userRole === 'superAdmin' && (
+      {isAdminMode && isSuperAdmin && (
         <div style={{ background: '#fef3c7', borderBottom: '2px solid #f59e0b', padding: '16px 20px', fontSize: '14px', zIndex: 100, position: 'relative' }}>
           <div style={{ maxWidth: '800px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <strong>🛠️ সুপার এডমিন লাইভ কন্ট্রোল প্যানেল:</strong>
@@ -576,7 +583,7 @@ export default function App() {
         </div>
       )}
 
-      {/* ছাত্র-ছাত্রী পেজ (আপডেট) */}
+      {/* ছাত্র-ছাত্রী পেজ */}
       {currentView === 'students' && (
         <div style={{ maxWidth: '1100px', margin: '40px auto', padding: '0 16px' }}>
           <div style={{ textAlign: 'center', marginBottom: '30px' }}>
@@ -588,7 +595,6 @@ export default function App() {
             </div>
           </div>
           
-          {/* StudentList কম্পোনেন্ট */}
           <StudentList />
           
           <div style={{ marginTop: '30px', textAlign: 'center' }}>
