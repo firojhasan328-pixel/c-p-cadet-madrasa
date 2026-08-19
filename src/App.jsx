@@ -12,6 +12,9 @@ import { useAuth } from './context/AuthContext';
 import SuperAdminDashboard from './components/SuperAdminDashboard';
 import AdminPermissionManager from './components/AdminPermissionManager';
 import TeacherManagement from './components/TeacherManagement';
+import ContactPage from './components/ContactPage';
+import NotificationSystem from './components/NotificationSystem';
+import AuditLog from './components/AuditLog';
 
 export default function App() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -338,6 +341,11 @@ export default function App() {
             <span className="nav-link" style={{ color: '#2563eb', fontWeight: 'bold' }} onClick={() => { setMobileMenuOpen(false); setIsSignInModalOpen(true); }}>
               🔑 সাইন ইন
             </span>
+
+            {/* নোটিফিকেশন (শুধু লগইন থাকলে) */}
+            {currentUser && (
+              <span className="nav-link" style={{ color: '#2563eb', fontWeight: 'bold' }} onClick={() => { setCurrentView('notifications'); setMobileMenuOpen(false); }}>🔔 নোটিফিকেশন</span>
+            )}
             
             {/* ব্যবহার পারমিশন অনুযায়ী মেনু দেখানো */}
             {(isTeacher || isAdmin || isSuperAdmin) && (
@@ -611,6 +619,12 @@ export default function App() {
 
       {/* গ্যালারি ভিউ */}
       {currentView === 'gallery' && <Gallery />}
+
+      {/* যোগাযোগ পেজ */}
+      {currentView === 'contact' && <ContactPage />}
+
+      {/* নোটিফিকেশন সিস্টেম */}
+      {currentView === 'notifications' && <NotificationSystem />}
 
       {/* টিচার প্যানেল */}
       {currentView === 'teacherPanel' && (
