@@ -37,6 +37,14 @@ export default function App() {
     refreshUser
   } = useAuth();
 
+  // =============================================
+  // ✅ এডমিন লগইন স্টেট
+  // =============================================
+  const [adminEmail, setAdminEmail] = useState('');
+  const [adminPassword, setAdminPassword] = useState('');
+  const [adminLoginError, setAdminLoginError] = useState('');
+  const [adminLoginLoading, setAdminLoginLoading] = useState(false);
+
   const [authEmail, setAuthEmail] = useState('');
   const [authPassword, setAuthPassword] = useState('');
   const [currentUser, setCurrentUser] = useState(null);
@@ -159,16 +167,23 @@ export default function App() {
     }
   };
 
-  const handleLogin = async (e) => {
+  // =============================================
+  // ✅ এডমিন লগইন ফাংশন (নতুন)
+  // =============================================
+  const handleAdminLogin = async (e) => {
     e.preventDefault();
+    setAdminLoginError('');
+    setAdminLoginLoading(true);
+
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
-        email: authEmail,
-        password: authPassword,
+        email: adminEmail,
+        password: adminPassword,
       });
 
       if (error) {
-        alert("লগইন ব্যর্থ হয়েছে: " + error.message);
+        setAdminLoginError('❌ লগইন ব্যর্থ: ' + error.message);
+        setAdminLoginLoading(false);
         return;
       }
 
@@ -193,17 +208,22 @@ export default function App() {
           window.userRole = profileData.role;
         }
         
-        alert("✅ সফলভাবে লগইন হয়েছে! সিস্টেম আপনার রোল স্বয়ংক্রিয়ভাবে নির্ধারণ করেছে।");
+        alert("✅ সফলভাবে লগইন হয়েছে!");
         setCurrentView('home');
-        setAuthEmail('');
-        setAuthPassword('');
-        setIsSignInModalOpen(false);
+        setAdminEmail('');
+        setAdminPassword('');
+        setMobileMenuOpen(false);
       }
     } catch (err) {
-      alert("লগইন ব্যর্থ: " + err.message);
+      setAdminLoginError('❌ লগইন ব্যর্থ: ' + err.message);
+    } finally {
+      setAdminLoginLoading(false);
     }
   };
 
+  // =============================================
+  // ✅ লগআউট ফাংশন (আপডেট)
+  // =============================================
   const handleLogout = async () => {
     await supabase.auth.signOut();
     setCurrentUser(null);
@@ -344,6 +364,39 @@ export default function App() {
         .teacher-designation { color: #15803d; font-weight: 600; font-size: 14px; margin-bottom: 8px; }
         .teacher-details { font-size: 13px; color: #334155; border-top: 1px solid #f1f5f9; padding-top: 10px; margin-top: 8px; }
         .teacher-details div { margin: 2px 0; }
+        .admin-login-box {
+          background: #f0fdf4;
+          border: 2px solid #16a34a;
+          border-radius: 12px;
+          padding: 16px;
+          margin-top: 12px;
+        }
+        .admin-login-box input {
+          width: 100%;
+          padding: 8px 12px;
+          border-radius: 8px;
+          border: 1px solid #cbd5e1;
+          font-size: 13px;
+          margin-bottom: 8px;
+        }
+        .admin-login-box .login-btn {
+          background: #16a34a;
+          color: white;
+          border: none;
+          padding: 8px;
+          border-radius: 8px;
+          font-weight: 600;
+          cursor: pointer;
+          width: 100%;
+        }
+        .admin-login-box .login-btn:hover {
+          background: #15803d;
+        }
+        .admin-login-box .error-text {
+          color: #dc2626;
+          font-size: 12px;
+          margin-top: 4px;
+        }
       `}</style>
 
       {/* টপ কন্টাক্ট বার */}
@@ -387,12 +440,48 @@ export default function App() {
             <span className="nav-link" onClick={() => { setCurrentView('gallery'); setMobileMenuOpen(false); }}>গ্যালারি</span>
             <span className="nav-link" onClick={() => { setCurrentView('contact'); setMobileMenuOpen(false); }}>যোগাযোগ</span>
             
-            {/* সাইন ইন বাটন */}
+            {/* ============================================= */}
+            {/* ✅ ছাত্র/শিক্ষক সাইন ইন বাটন */}
+            {/* ============================================= */}
+            <span className="nav-link" style={{ color: '#2563eb', fontWeight: 'bold' }} onClick={() => { setMobileMenuOpen(false); setIsSignInModalOpen(true); }}>
+              📝 ছাত্র/শিক্ষক সাইন ইন
+            </span>
+
+            {/* ============================================= */}
+            {/* ✅ এডমিন লগইন বক্স (নতুন) */}
+            {/* ============================================= */}
             {!user ? (
-              <span className="nav-link" style={{ color: '#2563eb', fontWeight: 'bold' }} onClick={() => { setMobileMenuOpen(false); setIsSignInModalOpen(true); }}>
-                🔑 সাইন ইন
-              </span>
+              <div className="admin-login-box">
+                <div style={{ fontWeight: 'bold', color: '#166534', marginBottom: '8px', fontSize: '14px' }}>
+                  🔑 এডমিন লগইন
+                </div>
+                <form onSubmit={handleAdminLogin}>
+                  <input 
+                    type="email" 
+                    placeholder="এডমিন ইমেইল" 
+                    value={adminEmail}
+                    onChange={(e) => setAdminEmail(e.target.value)}
+                    required
+                  />
+                  <input 
+                    type="password" 
+                    placeholder="পাসওয়ার্ড" 
+                    value={adminPassword}
+                    onChange={(e) => setAdminPassword(e.target.value)}
+                    required
+                  />
+                  {adminLoginError && (
+                    <div className="error-text">{adminLoginError}</div>
+                  )}
+                  <button type="submit" className="login-btn" disabled={adminLoginLoading}>
+                    {adminLoginLoading ? '⏳ লগইন হচ্ছে...' : '🚀 এডমিন লগইন'}
+                  </button>
+                </form>
+              </div>
             ) : (
+              /* ============================================= */
+              /* ✅ লগইন থাকলে দেখাবে */
+              /* ============================================= */
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', borderTop: '1px solid #e2e8f0', paddingTop: '10px' }}>
                 <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#16a34a' }}>
                   👤 {profile?.name || user.email} 
