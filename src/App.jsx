@@ -34,9 +34,9 @@ export default function App() {
     refreshUser
   } = useAuth();
 
-  // ✅ ডিবাগ স্টেট - স্ক্রিনে দেখানোর জন্য
-  const [debugInfo, setDebugInfo] = useState({});
-  const [directRoleCheck, setDirectRoleCheck] = useState(null);
+  // ✅ ডাইরেক্ট সুপার এডমিন চেক - AuthContext এর উপর নির্ভর করবে না
+  const [directSuperAdmin, setDirectSuperAdmin] = useState(false);
+  const [directRoles, setDirectRoles] = useState([]);
 
   const [adminEmail, setAdminEmail] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
@@ -99,14 +99,13 @@ export default function App() {
     setTeachersLoading(false);
   };
 
-  // =============================================
-  // ✅ ডাইরেক্ট রোল চেক (সরাসরি ডাটাবেস থেকে)
-  // =============================================
+  // ✅ ডাইরেক্ট রোল চেক ফাংশন
   const checkDirectRole = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        setDirectRoleCheck({ role: 'Not logged in' });
+        setDirectSuperAdmin(false);
+        setDirectRoles([]);
         return;
       }
 
@@ -115,21 +114,12 @@ export default function App() {
         .select('roles(name)')
         .eq('user_id', user.id);
 
-      const hasSuperAdmin = roles?.some(r => r.roles?.name === 'super_admin');
-      const hasAdmin = roles?.some(r => r.roles?.name === 'admin');
-      const hasTeacher = roles?.some(r => r.roles?.name === 'teacher');
-
-      setDirectRoleCheck({
-        userId: user.id,
-        email: user.email,
-        roles: roles?.map(r => r.roles?.name) || [],
-        hasSuperAdmin,
-        hasAdmin,
-        hasTeacher
-      });
-
-      console.log('✅ Direct Role Check:', { hasSuperAdmin, hasAdmin, hasTeacher, roles });
-
+      const roleNames = roles?.map(r => r.roles?.name) || [];
+      setDirectRoles(roleNames);
+      setDirectSuperAdmin(roleNames.includes('super_admin'));
+      
+      console.log('✅ Direct Role Check:', { roleNames, isSuperAdmin: roleNames.includes('super_admin') });
+      
     } catch (error) {
       console.error('Direct role check error:', error);
     }
@@ -153,27 +143,6 @@ export default function App() {
       supabase.removeChannel(channel);
     };
   }, []);
-
-  // Auth State ডিবাগ
-  useEffect(() => {
-    console.log('🔍 App Auth State:', { 
-      isSuperAdmin, 
-      isAdmin, 
-      isTeacher, 
-      user: user?.email,
-      profile,
-      highestRole
-    });
-    setDebugInfo({
-      isSuperAdmin,
-      isAdmin,
-      isTeacher,
-      userEmail: user?.email,
-      highestRole,
-      profileName: profile?.name,
-      profileRole: profile?.role
-    });
-  }, [isSuperAdmin, isAdmin, isTeacher, user, profile, highestRole]);
 
   // লগইন হলে ডাইরেক্ট চেক
   useEffect(() => {
@@ -235,6 +204,7 @@ export default function App() {
 
       if (data.user) {
         await refreshUser();
+        await checkDirectRole();
         
         const { data: profileData } = await supabase
           .from('profiles')
@@ -251,9 +221,6 @@ export default function App() {
           });
           window.userRole = profileData.role;
         }
-        
-        // ডাইরেক্ট রোল চেক
-        await checkDirectRole();
         
         alert("✅ সফলভাবে লগইন হয়েছে!");
         setCurrentView('home');
@@ -273,8 +240,9 @@ export default function App() {
     setCurrentUser(null);
     setUserRole(null);
     window.userRole = null;
+    setDirectSuperAdmin(false);
+    setDirectRoles([]);
     setCurrentView('home');
-    setDirectRoleCheck(null);
     alert("লগআউট সফল হয়েছে।");
   };
 
@@ -370,8 +338,8 @@ export default function App() {
 
   const whatsappNumber = "8801918568313";
 
-  // ✅ ডাইরেক্ট রোল থেকে সুপার এডমিন চেক
-  const isSuperAdminDirect = directRoleCheck?.hasSuperAdmin || false;
+  // ✅ AuthContext এবং Direct চেক - উভয়ই ব্যবহার করবো
+  const isSuperAdminFinal = isSuperAdmin || directSuperAdmin;
 
   return (
     <div style={{ fontFamily: "'Hind Siliguri', 'Segoe UI', sans-serif", backgroundColor: '#f8fafc', color: '#0f172a', minHeight: '100vh', margin: 0, padding: 0, position: 'relative' }}>
@@ -445,22 +413,33 @@ export default function App() {
           font-size: 12px;
           margin-top: 4px;
         }
-        .debug-box {
-          background: #1e293b;
-          color: #a5f3fc;
-          padding: 12px 16px;
-          border-radius: 10px;
-          font-family: monospace;
-          font-size: 12px;
-          margin-top: 8px;
-          border: 1px solid #334155;
-          white-space: pre-wrap;
-          word-break: break-all;
+        /* ✅ সুপার এডমিন ফ্লোটিং বাটন */
+        .super-admin-float-btn {
+          position: fixed;
+          bottom: 90px;
+          right: 20px;
+          z-index: 9999;
+          background: linear-gradient(135deg, #b45309, #92400e);
+          color: white;
+          padding: 14px 22px;
+          border-radius: 50px;
+          box-shadow: 0 6px 20px rgba(180, 83, 9, 0.5);
+          font-weight: 700;
+          cursor: pointer;
+          border: none;
+          font-size: 14px;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          transition: all 0.3s ease;
         }
-        .debug-box .label { color: #fcd34d; }
-        .debug-box .value { color: #6ee7b7; }
-        .debug-box .true { color: #34d399; font-weight: bold; }
-        .debug-box .false { color: #f87171; font-weight: bold; }
+        .super-admin-float-btn:hover {
+          transform: scale(1.05);
+          box-shadow: 0 8px 25px rgba(180, 83, 9, 0.7);
+        }
+        .super-admin-float-btn:active {
+          transform: scale(0.95);
+        }
       `}</style>
 
       {/* টপ কন্টাক্ট বার */}
@@ -539,7 +518,6 @@ export default function App() {
                 </form>
               </div>
             ) : (
-              /* লগইন থাকলে দেখাবে */
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', borderTop: '1px solid #e2e8f0', paddingTop: '10px' }}>
                 <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#16a34a' }}>
                   👤 {profile?.name || user.email} 
@@ -548,10 +526,10 @@ export default function App() {
                     padding: '2px 10px',
                     borderRadius: '12px',
                     fontSize: '11px',
-                    background: (isSuperAdmin || isSuperAdminDirect) ? '#fef3c7' : '#dcfce7',
-                    color: (isSuperAdmin || isSuperAdminDirect) ? '#b45309' : '#15803d'
+                    background: isSuperAdminFinal ? '#fef3c7' : '#dcfce7',
+                    color: isSuperAdminFinal ? '#b45309' : '#15803d'
                   }}>
-                    {(isSuperAdmin || isSuperAdminDirect) ? 'সুপার এডমিন' : 
+                    {isSuperAdminFinal ? 'সুপার এডমিন' : 
                      isAdmin ? 'এডমিন' : 
                      isTeacher ? 'টিচার' : 'ইউজার'}
                   </span>
@@ -561,19 +539,19 @@ export default function App() {
                   🔔 নোটিফিকেশন
                 </span>
                 
-                {(isTeacher || isAdmin || isSuperAdmin || isSuperAdminDirect) && (
+                {(isTeacher || isAdmin || isSuperAdminFinal) && (
                   <span className="nav-link" style={{ color: '#16a34a', fontWeight: 'bold' }} onClick={() => { setCurrentView('teacherPanel'); setMobileMenuOpen(false); }}>
                     👨‍🏫 টিচার প্যানেল
                   </span>
                 )}
                 
-                {(isAdmin || isSuperAdmin || isSuperAdminDirect) && (
+                {(isAdmin || isSuperAdminFinal) && (
                   <span className="nav-link" style={{ color: '#0369a1', fontWeight: 'bold' }} onClick={() => { setCurrentView('adminPanel'); setMobileMenuOpen(false); }}>
                     🛠️ এডমিন প্যানেল
                   </span>
                 )}
                 
-                {(isSuperAdmin || isSuperAdminDirect) && (
+                {isSuperAdminFinal && (
                   <>
                     <span className="nav-link" style={{ color: '#b45309', fontWeight: 'bold' }} onClick={() => { setCurrentView('superAdminPanel'); setMobileMenuOpen(false); }}>
                       ⚙️ সুপার এডমিন প্যানেল
@@ -597,33 +575,12 @@ export default function App() {
             )}
 
             <button onClick={() => { setMobileMenuOpen(false); setIsAdmissionModalOpen(true); }} className="btn-primary" style={{ width: '100%', textAlign: 'center', marginTop: '6px' }}>অনলাইন ভর্তি</button>
-
-            {/* ============================================= */}
-            {/* ✅ ডিবাগ ইনফো - স্ক্রিনে দেখানো হবে */}
-            {/* ============================================= */}
-            <div className="debug-box">
-              <div><span className="label">📊 ডিবাগ ইনফো:</span></div>
-              <div>🔹 ইউজার: <span className="value">{user?.email || 'লগইন নেই'}</span></div>
-              <div>🔹 isSuperAdmin (AuthContext): <span className={isSuperAdmin ? 'true' : 'false'}>{String(isSuperAdmin)}</span></div>
-              <div>🔹 isSuperAdmin (Direct): <span className={isSuperAdminDirect ? 'true' : 'false'}>{String(isSuperAdminDirect)}</span></div>
-              <div>🔹 isAdmin: <span className={isAdmin ? 'true' : 'false'}>{String(isAdmin)}</span></div>
-              <div>🔹 isTeacher: <span className={isTeacher ? 'true' : 'false'}>{String(isTeacher)}</span></div>
-              <div>🔹 highestRole: <span className="value">{highestRole || '—'}</span></div>
-              <div>🔹 profile.role: <span className="value">{profile?.role || '—'}</span></div>
-              {directRoleCheck && (
-                <>
-                  <div>🔹 Direct Roles: <span className="value">{directRoleCheck.roles?.join(', ') || '—'}</span></div>
-                  <div>🔹 Direct Super Admin: <span className={directRoleCheck.hasSuperAdmin ? 'true' : 'false'}>{String(directRoleCheck.hasSuperAdmin)}</span></div>
-                </>
-              )}
-            </div>
-            {/* ============================================= */}
           </div>
         )}
       </nav>
 
       {/* সুপার এডমিন লাইভ কন্ট্রোল প্যানেল */}
-      {isAdminMode && (isSuperAdmin || isSuperAdminDirect) && (
+      {isAdminMode && isSuperAdminFinal && (
         <div style={{ background: '#fef3c7', borderBottom: '2px solid #f59e0b', padding: '16px 20px', fontSize: '14px', zIndex: 100, position: 'relative' }}>
           <div style={{ maxWidth: '800px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <strong>🛠️ সুপার এডমিন লাইভ কন্ট্রোল প্যানেল:</strong>
@@ -669,6 +626,16 @@ export default function App() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* ✅ সুপার এডমিন ফ্লোটিং বাটন - সবসময় দেখাবে */}
+      {user && isSuperAdminFinal && (
+        <button 
+          className="super-admin-float-btn"
+          onClick={() => setCurrentView('superAdminPanel')}
+        >
+          ⚙️ সুপার এডমিন
+        </button>
       )}
 
       {/* হোমপেজ ভিউ */}
