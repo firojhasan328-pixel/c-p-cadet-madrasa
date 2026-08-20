@@ -2,56 +2,38 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from './supabaseClient';
 import Footer from './components/Footer';
 import AdmissionForm from './components/AdmissionForm';
-import AdminAdmissions from './components/AdminAdmissions';
-import ContentManager from './components/ContentManager';
-import TeacherManager from './components/TeacherManager';
 import Gallery from './components/Gallery';
 import SignInModal from './components/SignInModal';
 import StudentList from './components/StudentList';
-import { useAuth } from './context/AuthContext';
 import SuperAdminDashboard from './components/SuperAdminDashboard';
 import AdminPermissionManager from './components/AdminPermissionManager';
 import TeacherManagement from './components/TeacherManagement';
 import ContactPage from './components/ContactPage';
 import NotificationSystem from './components/NotificationSystem';
-import AuditLog from './components/AuditLog';
 
 export default function App() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isAdmissionModalOpen, setIsAdmissionModalOpen] = useState(false);
   const [isSignInModalOpen, setIsSignInModalOpen] = useState(false);
-  
   const [currentView, setCurrentView] = useState('home');
+  
+  // =============================================
+  // ✅ ডাইরেক্ট সুপার এডমিন চেক - AuthContext ছাড়া
+  // =============================================
+  const [user, setUser] = useState(null);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [isTeacher, setIsTeacher] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [profile, setProfile] = useState(null);
 
-  const { 
-    isSuperAdmin, 
-    isAdmin, 
-    isTeacher, 
-    user, 
-    loading,
-    profile,
-    highestRole,
-    refreshUser
-  } = useAuth();
-
-  // ✅ ডাইরেক্ট সুপার এডমিন চেক - AuthContext এর উপর নির্ভর করবে না
-  const [directSuperAdmin, setDirectSuperAdmin] = useState(false);
-  const [directRoles, setDirectRoles] = useState([]);
-
+  // =============================================
+  // ✅ এডমিন লগইন স্টেট
+  // =============================================
   const [adminEmail, setAdminEmail] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
   const [adminLoginError, setAdminLoginError] = useState('');
   const [adminLoginLoading, setAdminLoginLoading] = useState(false);
-
-  const [authEmail, setAuthEmail] = useState('');
-  const [authPassword, setAuthPassword] = useState('');
-  const [currentUser, setCurrentUser] = useState(null);
-  const [userRole, setUserRole] = useState(null);
-  const [userPermissions, setUserPermissions] = useState({ canEdit: false, canManageAdmission: false });
-
-  const [isAdmissionOpen, setIsAdmissionOpen] = useState(true);
-  const [closedMessage, setClosedMessage] = useState("পর্যাপ্ত পরিমাণ ছাত্র-ছাত্রী বুকিং হওয়ায় আর কোনো সিট খালি নাই।");
-  const [isAdminMode, setIsAdminMode] = useState(false);
 
   const [siteData, setSiteData] = useState({
     headmasterName: "Arif Ashab Khorshed",
@@ -63,13 +45,9 @@ export default function App() {
   const [teachers, setTeachers] = useState([]);
   const [teachersLoading, setTeachersLoading] = useState(true);
 
-  const [managedUsers, setManagedUsers] = useState([]);
-  const [newUserName, setNewUserName] = useState('');
-  const [newUserEmail, setNewUserEmail] = useState('');
-  const [newUserPassword, setNewUserPassword] = useState('');
-  const [newUserRole, setNewUserRole] = useState('teacher');
-  const [newUserCanEdit, setNewUserCanEdit] = useState(false);
-  const [newUserCanAdmission, setNewUserCanAdmission] = useState(false);
+  const [isAdmissionOpen, setIsAdmissionOpen] = useState(true);
+  const [closedMessage, setClosedMessage] = useState("পর্যাপ্ত পরিমাণ ছাত্র-ছাত্রী বুকিং হওয়ায় আর কোনো সিট খালি নাই।");
+  const [isAdminMode, setIsAdminMode] = useState(false);
 
   const [formStep, setFormStep] = useState(1);
   const [formData, setFormData] = useState({
@@ -84,6 +62,94 @@ export default function App() {
     fatherNidPhoto: null
   });
 
+  // =============================================
+  // ✅ ইউজার রোল চেক ফাংশন (ডাইরেক্ট)
+  // =============================================
+  const checkUserRole = async (userId) => {
+    try {
+      // ১. প্রোফাইল চেক
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+      
+      setProfile(profileData);
+
+      // ২. রোল চেক
+      const { data: roles } = await supabase
+        .from('user_roles')
+        .select('roles(name)')
+        .eq('user_id', userId);
+
+      const roleNames = roles?.map(r => r.roles?.name) || [];
+      
+      console.log('✅ Direct Role Check:', roleNames);
+      
+      setIsSuperAdmin(roleNames.includes('super_admin'));
+      setIsAdmin(roleNames.includes('admin') || roleNames.includes('super_admin'));
+      setIsTeacher(roleNames.includes('teacher') || roleNames.includes('admin') || roleNames.includes('super_admin'));
+
+      return true;
+    } catch (error) {
+      console.error('Role check error:', error);
+      return false;
+    }
+  };
+
+  // =============================================
+  // ✅ সেশন চেক
+  // =============================================
+  useEffect(() => {
+    const checkSession = async () => {
+      setLoading(true);
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session) {
+        setUser(session.user);
+        await checkUserRole(session.user.id);
+      } else {
+        setUser(null);
+        setIsSuperAdmin(false);
+        setIsAdmin(false);
+        setIsTeacher(false);
+        setProfile(null);
+      }
+      setLoading(false);
+    };
+
+    checkSession();
+
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        console.log('🔐 Auth Event:', event);
+        if (event === 'SIGNED_IN' && session) {
+          setUser(session.user);
+          await checkUserRole(session.user.id);
+        } else if (event === 'SIGNED_OUT') {
+          setUser(null);
+          setIsSuperAdmin(false);
+          setIsAdmin(false);
+          setIsTeacher(false);
+          setProfile(null);
+        }
+        setLoading(false);
+      }
+    );
+
+    return () => {
+      authListener?.subscription?.unsubscribe();
+    };
+  }, []);
+
+  // =============================================
+  // ✅ অন্যান্য useEffect
+  // =============================================
+  useEffect(() => {
+    fetchSiteContents();
+    fetchTeachers();
+  }, []);
+
   const fetchTeachers = async () => {
     setTeachersLoading(true);
     const { data, error } = await supabase
@@ -91,65 +157,9 @@ export default function App() {
       .select('*')
       .order('name', { ascending: true });
     
-    if (data) {
-      setTeachers(data);
-    } else {
-      console.error('শিক্ষক ডেটা লোড করতে সমস্যা:', error);
-    }
+    if (data) setTeachers(data);
     setTeachersLoading(false);
   };
-
-  // ✅ ডাইরেক্ট রোল চেক ফাংশন
-  const checkDirectRole = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        setDirectSuperAdmin(false);
-        setDirectRoles([]);
-        return;
-      }
-
-      const { data: roles } = await supabase
-        .from('user_roles')
-        .select('roles(name)')
-        .eq('user_id', user.id);
-
-      const roleNames = roles?.map(r => r.roles?.name) || [];
-      setDirectRoles(roleNames);
-      setDirectSuperAdmin(roleNames.includes('super_admin'));
-      
-      console.log('✅ Direct Role Check:', { roleNames, isSuperAdmin: roleNames.includes('super_admin') });
-      
-    } catch (error) {
-      console.error('Direct role check error:', error);
-    }
-  };
-
-  useEffect(() => {
-    fetchSiteContents();
-    fetchManagedUsers();
-    checkUserSession();
-    fetchTeachers();
-    checkDirectRole();
-
-    const channel = supabase
-      .channel('schema-db-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'site_contents' }, (payload) => {
-        fetchSiteContents();
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
-
-  // লগইন হলে ডাইরেক্ট চেক
-  useEffect(() => {
-    if (user) {
-      checkDirectRole();
-    }
-  }, [user]);
 
   const fetchSiteContents = async () => {
     const { data, error } = await supabase.from('site_contents').select('*');
@@ -163,28 +173,9 @@ export default function App() {
     }
   };
 
-  const fetchManagedUsers = async () => {
-    const { data, error } = await supabase.from('profiles').select('*');
-    if (data) setManagedUsers(data);
-  };
-
-  const checkUserSession = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session) {
-      fetchUserProfile(session.user.id);
-    }
-  };
-
-  const fetchUserProfile = async (userId) => {
-    const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).single();
-    if (data) {
-      setCurrentUser(data);
-      setUserRole(data.role);
-      setUserPermissions({ canEdit: data.can_edit, canManageAdmission: data.can_manage_admission });
-      window.userRole = data.role;
-    }
-  };
-
+  // =============================================
+  // ✅ এডমিন লগইন
+  // =============================================
   const handleAdminLogin = async (e) => {
     e.preventDefault();
     setAdminLoginError('');
@@ -203,25 +194,8 @@ export default function App() {
       }
 
       if (data.user) {
-        await refreshUser();
-        await checkDirectRole();
-        
-        const { data: profileData } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', data.user.id)
-          .single();
-        
-        if (profileData) {
-          setCurrentUser(profileData);
-          setUserRole(profileData.role);
-          setUserPermissions({ 
-            canEdit: profileData.can_edit, 
-            canManageAdmission: profileData.can_manage_admission 
-          });
-          window.userRole = profileData.role;
-        }
-        
+        setUser(data.user);
+        await checkUserRole(data.user.id);
         alert("✅ সফলভাবে লগইন হয়েছে!");
         setCurrentView('home');
         setAdminEmail('');
@@ -235,13 +209,16 @@ export default function App() {
     }
   };
 
+  // =============================================
+  // ✅ লগআউট
+  // =============================================
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    setCurrentUser(null);
-    setUserRole(null);
-    window.userRole = null;
-    setDirectSuperAdmin(false);
-    setDirectRoles([]);
+    setUser(null);
+    setIsSuperAdmin(false);
+    setIsAdmin(false);
+    setIsTeacher(false);
+    setProfile(null);
     setCurrentView('home');
     alert("লগআউট সফল হয়েছে।");
   };
@@ -251,29 +228,6 @@ export default function App() {
     if (!error) {
       setSiteData(prev => ({ ...prev, [key]: value }));
     }
-  };
-
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
-  };
-
-  const handleVerifyPhone = (e) => {
-    e.preventDefault();
-    if (!formData.phone || formData.phone.length < 11) {
-      alert("দয়া করে সঠিক ১১ ডিজিটের মোবাইল নম্বর দিন।");
-      return;
-    }
-    setFormStep(2);
-  };
-
-  const handleVerifyOtp = (e) => {
-    e.preventDefault();
-    if (formData.otp.length !== 5) {
-      alert("দয়া করে ৫ সংখ্যার সঠিক কোডটি দিন।");
-      return;
-    }
-    setFormStep(3);
   };
 
   const resetForm = () => {
@@ -291,56 +245,11 @@ export default function App() {
     });
   };
 
-  const handleAddUser = async (e) => {
-    e.preventDefault();
-    if (!newUserEmail || !newUserPassword || !newUserName) return;
-
-    const { data, error } = await supabase.auth.signUp({
-      email: newUserEmail,
-      password: newUserPassword,
-    });
-
-    if (error) {
-      alert("ইউজার তৈরি করা সম্ভব হয়নি: " + error.message);
-      return;
-    }
-
-    if (data.user) {
-      const { error: profileError } = await supabase.from('profiles').insert([
-        {
-          id: data.user.id,
-          name: newUserName,
-          role: newUserRole,
-          can_edit: newUserCanEdit,
-          can_manage_admission: newUserCanAdmission
-        }
-      ]);
-
-      if (profileError) {
-        alert("প্রোফাইল তৈরি ত্রুটি: " + profileError.message);
-      } else {
-        alert("নতুন ব্যবহারকারী ও পারমিশন সফলভাবে যুক্ত হয়েছে!");
-        setNewUserName('');
-        setNewUserEmail('');
-        setNewUserPassword('');
-        fetchManagedUsers();
-      }
-    }
-  };
-
-  const handleUpdateUserPermission = async (id, field, value) => {
-    const updateField = field === 'canEdit' ? 'can_edit' : 'can_manage_admission';
-    const { error } = await supabase.from('profiles').update({ [updateField]: value }).eq('id', id);
-    if (!error) {
-      fetchManagedUsers();
-    }
-  };
-
   const whatsappNumber = "8801918568313";
 
-  // ✅ AuthContext এবং Direct চেক - উভয়ই ব্যবহার করবো
-  const isSuperAdminFinal = isSuperAdmin || directSuperAdmin;
-
+  // =============================================
+  // ✅ রেন্ডার
+  // =============================================
   return (
     <div style={{ fontFamily: "'Hind Siliguri', 'Segoe UI', sans-serif", backgroundColor: '#f8fafc', color: '#0f172a', minHeight: '100vh', margin: 0, padding: 0, position: 'relative' }}>
       <style>{`
@@ -413,7 +322,6 @@ export default function App() {
           font-size: 12px;
           margin-top: 4px;
         }
-        /* ✅ সুপার এডমিন ফ্লোটিং বাটন */
         .super-admin-float-btn {
           position: fixed;
           bottom: 90px;
@@ -437,22 +345,17 @@ export default function App() {
           transform: scale(1.05);
           box-shadow: 0 8px 25px rgba(180, 83, 9, 0.7);
         }
-        .super-admin-float-btn:active {
-          transform: scale(0.95);
-        }
       `}</style>
 
-      {/* টপ কন্টাক্ট বার */}
+      {/* টপ বার */}
       <div style={{ backgroundColor: '#14532d', color: '#f0fdf4', padding: '8px 20px', fontSize: '13px' }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
           <div>📍 চিলমারী, কুড়িগ্রাম, বাংলাদেশ</div>
-          <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-            <span>📞 যোগাযোগ: <a href={`tel:${siteData.contactNumber}`} style={{ color: '#ffffff', fontWeight: 'bold', textDecoration: 'none' }}>{siteData.contactNumber}</a></span>
-          </div>
+          <div><span>📞 যোগাযোগ: <a href={`tel:${siteData.contactNumber}`} style={{ color: '#ffffff', fontWeight: 'bold', textDecoration: 'none' }}>{siteData.contactNumber}</a></span></div>
         </div>
       </div>
 
-      {/* নেভিগেশন বার */}
+      {/* নেভিগেশন */}
       <nav style={{ backgroundColor: '#ffffff', position: 'sticky', top: 0, zIndex: 50, boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }} onClick={() => setCurrentView('home')}>
@@ -464,11 +367,7 @@ export default function App() {
               <p style={{ fontSize: '11px', color: '#64748b', margin: 0, fontStyle: 'italic' }}>দ্বীন ও আধুনিক শিক্ষার অপূর্ব মেলবন্ধন</p>
             </div>
           </div>
-
-          <button 
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)} 
-            style={{ background: '#f1f5f9', border: 'none', padding: '8px 12px', borderRadius: '8px', fontSize: '20px', cursor: 'pointer', color: '#1e293b' }}
-          >
+          <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} style={{ background: '#f1f5f9', border: 'none', padding: '8px 12px', borderRadius: '8px', fontSize: '20px', cursor: 'pointer', color: '#1e293b' }}>
             {mobileMenuOpen ? '✕' : '☰'}
           </button>
         </div>
@@ -479,39 +378,20 @@ export default function App() {
             <span className="nav-link" onClick={() => { setCurrentView('about'); setMobileMenuOpen(false); }}>প্রধান শিক্ষকের বাণী</span>
             <span className="nav-link" onClick={() => { setCurrentView('teachers'); setMobileMenuOpen(false); }}>শিক্ষকবৃন্দ</span>
             <span className="nav-link" onClick={() => { setCurrentView('students'); setMobileMenuOpen(false); }}>ছাত্র-ছাত্রী</span>
-            <span className="nav-link" onClick={() => { setCurrentView('notice'); setMobileMenuOpen(false); }}>নোটিশ বোর্ড</span>
             <span className="nav-link" onClick={() => { setCurrentView('gallery'); setMobileMenuOpen(false); }}>গ্যালারি</span>
             <span className="nav-link" onClick={() => { setCurrentView('contact'); setMobileMenuOpen(false); }}>যোগাযোগ</span>
             
-            {/* ছাত্র/শিক্ষক সাইন ইন */}
             <span className="nav-link" style={{ color: '#2563eb', fontWeight: 'bold' }} onClick={() => { setMobileMenuOpen(false); setIsSignInModalOpen(true); }}>
               📝 ছাত্র/শিক্ষক সাইন ইন
             </span>
 
-            {/* এডমিন লগইন বক্স */}
             {!user ? (
               <div className="admin-login-box">
-                <div style={{ fontWeight: 'bold', color: '#166534', marginBottom: '8px', fontSize: '14px' }}>
-                  🔑 এডমিন লগইন
-                </div>
+                <div style={{ fontWeight: 'bold', color: '#166534', marginBottom: '8px', fontSize: '14px' }}>🔑 এডমিন লগইন</div>
                 <form onSubmit={handleAdminLogin}>
-                  <input 
-                    type="email" 
-                    placeholder="এডমিন ইমেইল" 
-                    value={adminEmail}
-                    onChange={(e) => setAdminEmail(e.target.value)}
-                    required
-                  />
-                  <input 
-                    type="password" 
-                    placeholder="পাসওয়ার্ড" 
-                    value={adminPassword}
-                    onChange={(e) => setAdminPassword(e.target.value)}
-                    required
-                  />
-                  {adminLoginError && (
-                    <div className="error-text">{adminLoginError}</div>
-                  )}
+                  <input type="email" placeholder="এডমিন ইমেইল" value={adminEmail} onChange={(e) => setAdminEmail(e.target.value)} required />
+                  <input type="password" placeholder="পাসওয়ার্ড" value={adminPassword} onChange={(e) => setAdminPassword(e.target.value)} required />
+                  {adminLoginError && <div className="error-text">{adminLoginError}</div>}
                   <button type="submit" className="login-btn" disabled={adminLoginLoading}>
                     {adminLoginLoading ? '⏳ লগইন হচ্ছে...' : '🚀 এডমিন লগইন'}
                   </button>
@@ -521,231 +401,101 @@ export default function App() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', borderTop: '1px solid #e2e8f0', paddingTop: '10px' }}>
                 <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#16a34a' }}>
                   👤 {profile?.name || user.email} 
-                  <span style={{ 
-                    marginLeft: '8px',
-                    padding: '2px 10px',
-                    borderRadius: '12px',
-                    fontSize: '11px',
-                    background: isSuperAdminFinal ? '#fef3c7' : '#dcfce7',
-                    color: isSuperAdminFinal ? '#b45309' : '#15803d'
-                  }}>
-                    {isSuperAdminFinal ? 'সুপার এডমিন' : 
-                     isAdmin ? 'এডমিন' : 
-                     isTeacher ? 'টিচার' : 'ইউজার'}
+                  <span style={{ marginLeft: '8px', padding: '2px 10px', borderRadius: '12px', fontSize: '11px', background: isSuperAdmin ? '#fef3c7' : '#dcfce7', color: isSuperAdmin ? '#b45309' : '#15803d' }}>
+                    {isSuperAdmin ? 'সুপার এডমিন' : isAdmin ? 'এডমিন' : isTeacher ? 'টিচার' : 'ইউজার'}
                   </span>
                 </span>
-                
-                <span className="nav-link" style={{ color: '#2563eb', fontWeight: 'bold' }} onClick={() => { setCurrentView('notifications'); setMobileMenuOpen(false); }}>
-                  🔔 নোটিফিকেশন
-                </span>
-                
-                {(isTeacher || isAdmin || isSuperAdminFinal) && (
-                  <span className="nav-link" style={{ color: '#16a34a', fontWeight: 'bold' }} onClick={() => { setCurrentView('teacherPanel'); setMobileMenuOpen(false); }}>
-                    👨‍🏫 টিচার প্যানেল
-                  </span>
-                )}
-                
-                {(isAdmin || isSuperAdminFinal) && (
-                  <span className="nav-link" style={{ color: '#0369a1', fontWeight: 'bold' }} onClick={() => { setCurrentView('adminPanel'); setMobileMenuOpen(false); }}>
-                    🛠️ এডমিন প্যানেল
-                  </span>
-                )}
-                
-                {isSuperAdminFinal && (
+                <span className="nav-link" style={{ color: '#2563eb', fontWeight: 'bold' }} onClick={() => { setCurrentView('notifications'); setMobileMenuOpen(false); }}>🔔 নোটিফিকেশন</span>
+                {(isTeacher || isAdmin || isSuperAdmin) && <span className="nav-link" style={{ color: '#16a34a', fontWeight: 'bold' }} onClick={() => { setCurrentView('teacherPanel'); setMobileMenuOpen(false); }}>👨‍🏫 টিচার প্যানেল</span>}
+                {(isAdmin || isSuperAdmin) && <span className="nav-link" style={{ color: '#0369a1', fontWeight: 'bold' }} onClick={() => { setCurrentView('adminPanel'); setMobileMenuOpen(false); }}>🛠️ এডমিন প্যানেল</span>}
+                {isSuperAdmin && (
                   <>
-                    <span className="nav-link" style={{ color: '#b45309', fontWeight: 'bold' }} onClick={() => { setCurrentView('superAdminPanel'); setMobileMenuOpen(false); }}>
-                      ⚙️ সুপার এডমিন প্যানেল
-                    </span>
-                    <span className="nav-link" style={{ color: '#7c3aed', fontWeight: 'bold' }} onClick={() => { setCurrentView('adminPermissionManager'); setMobileMenuOpen(false); }}>
-                      🛡️ এডমিন পারমিশন
-                    </span>
-                    <button 
-                      onClick={() => setIsAdminMode(!isAdminMode)} 
-                      style={{ background: '#0f172a', color: '#f8fafc', border: 'none', padding: '8px 12px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', width: '100%', fontWeight: '600', marginTop: '4px' }}
-                    >
+                    <span className="nav-link" style={{ color: '#b45309', fontWeight: 'bold' }} onClick={() => { setCurrentView('superAdminPanel'); setMobileMenuOpen(false); }}>⚙️ সুপার এডমিন প্যানেল</span>
+                    <span className="nav-link" style={{ color: '#7c3aed', fontWeight: 'bold' }} onClick={() => { setCurrentView('adminPermissionManager'); setMobileMenuOpen(false); }}>🛡️ এডমিন পারমিশন</span>
+                    <button onClick={() => setIsAdminMode(!isAdminMode)} style={{ background: '#0f172a', color: '#f8fafc', border: 'none', padding: '8px 12px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', width: '100%', fontWeight: '600' }}>
                       {isAdminMode ? '🔒 সুপার এডমিন সেটিংস বন্ধ করুন' : '⚙️ সুপার এডমিন সেটিংস (খুলুন)'}
                     </button>
                   </>
                 )}
-                
-                <button onClick={handleLogout} style={{ background: '#dc2626', color: 'white', border: 'none', padding: '8px', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: 'bold' }}>
-                  লগআউট করুন
-                </button>
+                <button onClick={handleLogout} style={{ background: '#dc2626', color: 'white', border: 'none', padding: '8px', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: 'bold' }}>লগআউট করুন</button>
               </div>
             )}
 
-            <button onClick={() => { setMobileMenuOpen(false); setIsAdmissionModalOpen(true); }} className="btn-primary" style={{ width: '100%', textAlign: 'center', marginTop: '6px' }}>অনলাইন ভর্তি</button>
+            <button onClick={() => { setMobileMenuOpen(false); setIsAdmissionModalOpen(true); }} className="btn-primary" style={{ width: '100%', textAlign: 'center' }}>অনলাইন ভর্তি</button>
           </div>
         )}
       </nav>
 
-      {/* সুপার এডমিন লাইভ কন্ট্রোল প্যানেল */}
-      {isAdminMode && isSuperAdminFinal && (
-        <div style={{ background: '#fef3c7', borderBottom: '2px solid #f59e0b', padding: '16px 20px', fontSize: '14px', zIndex: 100, position: 'relative' }}>
+      {/* সুপার এডমিন কন্ট্রোল */}
+      {isAdminMode && isSuperAdmin && (
+        <div style={{ background: '#fef3c7', borderBottom: '2px solid #f59e0b', padding: '16px 20px', fontSize: '14px' }}>
           <div style={{ maxWidth: '800px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <strong>🛠️ সুপার এডমিন লাইভ কন্ট্রোল প্যানেল:</strong>
-            <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap', alignItems: 'center' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 'bold', cursor: 'pointer' }}>
-                <input 
-                  type="checkbox" 
-                  checked={isAdmissionOpen} 
-                  onChange={(e) => setIsAdmissionOpen(e.target.checked)}
-                  style={{ width: '18px', height: '18px' }}
-                />
-                ভর্তি ফরম অন রাখুন (Form Open/Close)
-              </label>
-            </div>
-            
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '10px' }}>
-              <div>
-                <span style={{ fontSize: '11px', fontWeight: 'bold' }}>প্রধান শিক্ষকের নাম:</span>
+            <strong>🛠️ সুপার এডমিন লাইভ কন্ট্রোল:</strong>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 'bold', cursor: 'pointer' }}>
+              <input type="checkbox" checked={isAdmissionOpen} onChange={(e) => setIsAdmissionOpen(e.target.checked)} style={{ width: '18px', height: '18px' }} />
+              ভর্তি ফরম অন রাখুন
+            </label>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px' }}>
+              <div><span style={{ fontSize: '11px', fontWeight: 'bold' }}>প্রধান শিক্ষকের নাম:</span>
                 <input type="text" value={siteData.headmasterName || ""} onChange={(e) => handleUpdateSiteContent('headmaster_name', e.target.value)} style={{ width: '100%', padding: '6px', borderRadius: '6px', border: '1px solid #d97706' }} />
               </div>
-              <div>
-                <span style={{ fontSize: '11px', fontWeight: 'bold' }}>যোগাযোগ নম্বর:</span>
+              <div><span style={{ fontSize: '11px', fontWeight: 'bold' }}>যোগাযোগ নম্বর:</span>
                 <input type="text" value={siteData.contactNumber || ""} onChange={(e) => handleUpdateSiteContent('contact_number', e.target.value)} style={{ width: '100%', padding: '6px', borderRadius: '6px', border: '1px solid #d97706' }} />
               </div>
-              <div>
-                <span style={{ fontSize: '11px', fontWeight: 'bold' }}>মোট ছাত্র সংখ্যা:</span>
-                <input type="text" value={siteData.totalMaleStudents || ""} onChange={(e) => handleUpdateSiteContent('total_male_students', e.target.value)} style={{ width: '100%', padding: '6px', borderRadius: '6px', border: '1px solid #d97706' }} />
-              </div>
-              <div>
-                <span style={{ fontSize: '11px', fontWeight: 'bold' }}>মোট ছাত্রী সংখ্যা:</span>
-                <input type="text" value={siteData.totalFemaleStudents || ""} onChange={(e) => handleUpdateSiteContent('total_female_students', e.target.value)} style={{ width: '100%', padding: '6px', borderRadius: '6px', border: '1px solid #d97706' }} />
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <span style={{ fontSize: '12px', fontWeight: '600' }}>বন্ধকালীন নোটিশ মেসেজ:</span>
-              <input 
-                type="text" 
-                value={closedMessage} 
-                onChange={(e) => { setClosedMessage(e.target.value); handleUpdateSiteContent('closed_message', e.target.value); }}
-                style={{ padding: '8px', borderRadius: '6px', border: '1px solid #d97706', width: '100%' }}
-              />
             </div>
           </div>
         </div>
       )}
 
-      {/* ✅ সুপার এডমিন ফ্লোটিং বাটন - সবসময় দেখাবে */}
-      {user && isSuperAdminFinal && (
-        <button 
-          className="super-admin-float-btn"
-          onClick={() => setCurrentView('superAdminPanel')}
-        >
+      {/* ⭐ সুপার এডমিন ফ্লোটিং বাটন */}
+      {user && isSuperAdmin && (
+        <button className="super-admin-float-btn" onClick={() => setCurrentView('superAdminPanel')}>
           ⚙️ সুপার এডমিন
         </button>
       )}
 
-      {/* হোমপেজ ভিউ */}
+      {/* হোমপেজ */}
       {currentView === 'home' && (
         <>
-          <header id="home" style={{ background: 'linear-gradient(135deg, #064e3b 0%, #14532d 50%, #166534 100%)', color: 'white', padding: '50px 20px 70px 20px', textAlign: 'center', position: 'relative' }}>
+          <header style={{ background: 'linear-gradient(135deg, #064e3b 0%, #14532d 50%, #166534 100%)', color: 'white', padding: '50px 20px 70px 20px', textAlign: 'center' }}>
             <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-              <span className="badge" style={{ backgroundColor: 'rgba(255,255,255,0.2)', color: '#ffffff', marginBottom: '16px' }}>
-                🎓 নতুন সেশনে ভর্তি চলছে
-              </span>
-              <h2 style={{ fontSize: '2.1rem', fontWeight: '800', margin: '16px 0', lineHeight: '1.3' }}>
-                সুশিক্ষা ও সুন্নাত ভিত্তিক আদর্শ জীবন গড়ার বিশ্বস্ত প্রতিষ্ঠান
-              </h2>
-              <p style={{ fontSize: '15px', color: '#ecfdf5', lineHeight: '1.7', marginBottom: '28px' }}>
-                আমরা দিচ্ছি আধুনিক ক্বওমী ও জেনারেল শিক্ষা ব্যবস্থার এক অনন্য সমন্বয়। অভিজ্ঞ শিক্ষক মণ্ডলীর তত্ত্বাবধানে আপনার সন্তানের দ্বীনি শিক্ষার পথ সুগম করুন।
-              </p>
+              <span className="badge" style={{ backgroundColor: 'rgba(255,255,255,0.2)', color: '#ffffff' }}>🎓 নতুন সেশনে ভর্তি চলছে</span>
+              <h2 style={{ fontSize: '2.1rem', fontWeight: '800', margin: '16px 0' }}>সুশিক্ষা ও সুন্নাত ভিত্তিক আদর্শ জীবন গড়ার বিশ্বস্ত প্রতিষ্ঠান</h2>
+              <p style={{ fontSize: '15px', color: '#ecfdf5', lineHeight: '1.7', marginBottom: '28px' }}>আমরা দিচ্ছি আধুনিক ক্বওমী ও জেনারেল শিক্ষা ব্যবস্থার এক অনন্য সমন্বয়।</p>
               <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
-                <button onClick={() => { resetForm(); setIsAdmissionModalOpen(true); }} className="btn-primary" style={{ backgroundColor: '#ffffff', color: '#14532d', fontWeight: 'bold' }}>
-                  ভর্তি আবেদন করুন
-                </button>
-                <a href={`tel:${siteData.contactNumber}`} className="btn-primary" style={{ backgroundColor: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)' }}>
-                  📞 সরাসরি কল দিন
-                </a>
+                <button onClick={() => { resetForm(); setIsAdmissionModalOpen(true); }} className="btn-primary" style={{ backgroundColor: '#ffffff', color: '#14532d', fontWeight: 'bold' }}>ভর্তি আবেদন করুন</button>
+                <a href={`tel:${siteData.contactNumber}`} className="btn-primary" style={{ backgroundColor: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)' }}>📞 সরাসরি কল দিন</a>
               </div>
             </div>
           </header>
 
           <main style={{ maxWidth: '1200px', margin: '-30px auto 40px auto', padding: '0 16px', position: 'relative', zIndex: 10 }}>
-            <section id="about" style={{ marginBottom: '32px' }}>
-              <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '20px', alignItems: 'center' }}>
-                <div style={{ textAlign: 'center', flexShrink: 0 }}>
-                  <img 
-                    src="https://i.postimg.cc/xd8py0DW/1786523361131.jpg" 
-                    alt={siteData.headmasterName} 
-                    style={{ width: '130px', height: '130px', borderRadius: '50%', objectFit: 'cover', border: '4px solid #16a34a', boxShadow: '0 6px 16px rgba(0,0,0,0.15)' }}
-                  />
-                  <h3 style={{ margin: '12px 0 2px 0', fontSize: '20px', color: '#0f172a', fontWeight: '700' }}>{siteData.headmasterName}</h3>
-                  <span className="badge">প্রধান শিক্ষক ও পরিচালক</span>
-                </div>
-                
-                <div style={{ textAlign: 'left', width: '100%' }}>
-                  <h3 style={{ fontSize: '20px', color: '#166534', marginTop: 0, marginBottom: '12px', borderBottom: '2px solid #f1f5f9', paddingBottom: '8px' }}>
-                    প্রধান শিক্ষকের বার্তা
-                  </h3>
-                  <p style={{ lineHeight: '1.8', color: '#334155', margin: 0, fontSize: '15px' }}>
-                    "বিসমিল্লাহির রহমানির রহিম। চিলমারী প্রি ক্যাডেট মাদ্রাসায় আপনাকে জানাই আন্তরিক শুভেচ্ছা। আমাদের সুনির্দিষ্ট লক্ষ্য হলো কোমলমতি শিশুদের ধর্মীয় মূল্যবোধ, উত্তম চরিত্র এবং আধুনিক শিক্ষার মাধ্যমে এক আদর্শ সুনাগরিক হিসেবে গড়ে তোলা।"
-                  </p>
-                </div>
+            <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '20px', alignItems: 'center' }}>
+              <div style={{ textAlign: 'center' }}>
+                <img src="https://i.postimg.cc/xd8py0DW/1786523361131.jpg" alt={siteData.headmasterName} style={{ width: '130px', height: '130px', borderRadius: '50%', objectFit: 'cover', border: '4px solid #16a34a' }} />
+                <h3 style={{ margin: '12px 0 2px 0', fontSize: '20px', color: '#0f172a', fontWeight: '700' }}>{siteData.headmasterName}</h3>
+                <span className="badge">প্রধান শিক্ষক ও পরিচালক</span>
               </div>
-            </section>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px', marginBottom: '32px' }}>
-              <div id="notice" className="card">
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', borderBottom: '2px solid #f1f5f9', paddingBottom: '10px' }}>
-                  <h3 style={{ margin: 0, fontSize: '18px', color: '#166534', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    📌 নোটিশ বোর্ড
-                  </h3>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  <div style={{ padding: '12px', borderRadius: '10px', background: '#f8fafc', borderLeft: '4px solid #16a34a' }}>
-                    <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 'bold' }}>আগামী ১ জানুয়ারি থেকে</span>
-                    <p style={{ margin: '4px 0 0 0', fontSize: '14px', fontWeight: '600' }}>২০২৬-২৭ শিক্ষাবর্ষের নতুন ভর্তি ফরম অনলাইন ও অফিসে পাওয়া যাচ্ছে।</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="card">
-                <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', color: '#166534', borderBottom: '2px solid #f1f5f9', paddingBottom: '10px' }}>
-                  🌟 আমাদের বিশেষত্ব
-                </h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  {['অভিজ্ঞ ও দ্বীনদার শিক্ষক মণ্ডলী', 'হিফজ ও বিশুদ্ধ ক্বিরাআত প্রশিক্ষণ', 'কম্পিউটার ও তথ্যপ্রযুক্তি শিক্ষা', 'নিরাপদ ও সিসিটিভি নিয়ন্ত্রিত ক্যাম্পাস', 'সুপরিসর ক্লাসরুম ও মনোরম পরিবেশ'].map((item, idx) => (
-                    <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '14px', color: '#334155' }}>
-                      <span style={{ color: '#16a34a', fontWeight: 'bold' }}>✓</span>
-                      <span>{item}</span>
-                    </div>
-                  ))}
-                </div>
+              <div style={{ textAlign: 'left', width: '100%' }}>
+                <h3 style={{ fontSize: '20px', color: '#166534', borderBottom: '2px solid #f1f5f9', paddingBottom: '8px' }}>প্রধান শিক্ষকের বার্তা</h3>
+                <p style={{ lineHeight: '1.8', color: '#334155' }}>"বিসমিল্লাহির রহমানির রহিম। চিলমারী প্রি ক্যাডেট মাদ্রাসায় আপনাকে জানাই আন্তরিক শুভেচ্ছা।"</p>
               </div>
             </div>
-
-            <section id="admission" className="card" style={{ maxWidth: '600px', margin: '0 auto', textAlign: 'center', padding: '35px 24px' }}>
-              <span className="badge">সহজ নিয়ম</span>
-              <h3 style={{ fontSize: '22px', color: '#166534', margin: '10px 0 6px 0' }}>অনলাইন ভর্তি আবেদন</h3>
-              <p style={{ color: '#64748b', fontSize: '14px', margin: '0 0 20px 0' }}>আপনার সন্তানের ভর্তি নিশ্চিত করতে নিচের বাটনে ক্লিক করে ফরম পূরণ করুন</p>
-              <button 
-                onClick={() => { resetForm(); setIsAdmissionModalOpen(true); }} 
-                className="btn-primary" 
-                style={{ fontSize: '16px', padding: '14px 28px', width: '100%', maxWidth: '300px', justifyContent: 'center' }}
-              >
-                🎓 ভর্তি আবেদন করুন
-              </button>
-            </section>
           </main>
         </>
       )}
 
-      {/* প্রধান শিক্ষকের বাণী পেজ */}
+      {/* অন্যান্য ভিউ */}
       {currentView === 'about' && (
         <div style={{ maxWidth: '800px', margin: '40px auto', padding: '0 16px' }}>
           <div className="card">
-            <h2 style={{ color: '#14532d', borderBottom: '2px solid #f1f5f9', paddingBottom: '10px', marginTop: 0 }}>প্রধান শিক্ষকের বাণী</h2>
+            <h2 style={{ color: '#14532d', borderBottom: '2px solid #f1f5f9', paddingBottom: '10px' }}>প্রধান শিক্ষকের বাণী</h2>
             <div style={{ textAlign: 'center', margin: '20px 0' }}>
               <img src="https://i.postimg.cc/xd8py0DW/1786523361131.jpg" alt={siteData.headmasterName} style={{ width: '140px', height: '140px', borderRadius: '50%', objectFit: 'cover', border: '4px solid #16a34a' }} />
-              <h3 style={{ margin: '10px 0 4px 0' }}>{siteData.headmasterName}</h3>
+              <h3>{siteData.headmasterName}</h3>
               <span className="badge">প্রধান শিক্ষক ও পরিচালক</span>
             </div>
-            <p style={{ lineHeight: '1.8', color: '#334155', fontSize: '15px' }}>
-              "বিসমিল্লাহির রহমানির রহিম। চিলমারী প্রি ক্যাডেট মাদ্রাসায় আপনাকে জানাই আন্তরিক শুভেচ্ছা।"
-            </p>
+            <p style={{ lineHeight: '1.8', color: '#334155' }}>"বিসমিল্লাহির রহমানির রহিম। চিলমারী প্রি ক্যাডেট মাদ্রাসায় আপনাকে জানাই আন্তরিক শুভেচ্ছা। আমাদের সুনির্দিষ্ট লক্ষ্য হলো কোমলমতি শিশুদের ধর্মীয় মূল্যবোধ, উত্তম চরিত্র এবং আধুনিক শিক্ষার মাধ্যমে এক আদর্শ সুনাগরিক হিসেবে গড়ে তোলা।"</p>
             <div style={{ marginTop: '20px', textAlign: 'center' }}>
               <button onClick={() => setCurrentView('home')} className="btn-primary" style={{ backgroundColor: '#64748b' }}>হোম পেজে ফিরে যান</button>
             </div>
@@ -753,30 +503,17 @@ export default function App() {
         </div>
       )}
 
-      {/* শিক্ষক পেজ */}
       {currentView === 'teachers' && (
         <div style={{ maxWidth: '1200px', margin: '40px auto', padding: '0 16px' }}>
           <div style={{ textAlign: 'center', marginBottom: '30px' }}>
             <span className="badge">সম্মানিত শিক্ষক মণ্ডলী</span>
-            <h2 style={{ color: '#14532d', margin: '10px 0 6px 0' }}>মাদ্রাসার শিক্ষক-শিক্ষিকাবৃন্দ</h2>
+            <h2 style={{ color: '#14532d' }}>মাদ্রাসার শিক্ষক-শিক্ষিকাবৃন্দ</h2>
           </div>
-          
-          {teachersLoading ? (
-            <p style={{ textAlign: 'center' }}>⏳ লোড হচ্ছে...</p>
-          ) : (
-            <div style={{ 
-              display: 'grid', 
-              gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', 
-              gap: '24px',
-              justifyItems: 'center'
-            }}>
+          {teachersLoading ? <p>⏳ লোড হচ্ছে...</p> : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '24px', justifyItems: 'center' }}>
               {teachers.map((teacher, index) => (
                 <div key={index} className="teacher-card">
-                  <img 
-                    src={teacher.photo || 'https://i.postimg.cc/gjktXPpH/1786523361131.jpg'} 
-                    alt={teacher.name} 
-                    className="teacher-photo"
-                  />
+                  <img src={teacher.photo || 'https://i.postimg.cc/gjktXPpH/1786523361131.jpg'} alt={teacher.name} className="teacher-photo" />
                   <h3 className="teacher-name">{teacher.name}</h3>
                   <div className="teacher-designation">{teacher.designation || 'শিক্ষক'}</div>
                   <div className="teacher-details">
@@ -788,48 +525,38 @@ export default function App() {
               ))}
             </div>
           )}
-
           <div style={{ marginTop: '30px', textAlign: 'center' }}>
             <button onClick={() => setCurrentView('home')} className="btn-primary" style={{ backgroundColor: '#64748b' }}>হোম পেজে ফিরে যান</button>
           </div>
         </div>
       )}
 
-      {/* ছাত্র-ছাত্রী পেজ */}
       {currentView === 'students' && (
         <div style={{ maxWidth: '1100px', margin: '40px auto', padding: '0 16px' }}>
           <div style={{ textAlign: 'center', marginBottom: '30px' }}>
             <span className="badge">মেধাবী মুখসমূহ</span>
-            <h2 style={{ color: '#14532d', margin: '10px 0 10px 0' }}>ছাত্র-ছাত্রী ও ক্লাসের শীর্ষ স্থানাধিকারীগণ</h2>
+            <h2 style={{ color: '#14532d' }}>ছাত্র-ছাত্রী</h2>
             <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', flexWrap: 'wrap', marginTop: '10px' }}>
               <div className="card" style={{ padding: '12px 24px', background: '#dcfce7', color: '#14532d', fontWeight: 'bold' }}>👦 মোট ছাত্র: {siteData.totalMaleStudents} জন</div>
               <div className="card" style={{ padding: '12px 24px', background: '#e0f2fe', color: '#0369a1', fontWeight: 'bold' }}>👧 মোট ছাত্রী: {siteData.totalFemaleStudents} জন</div>
             </div>
           </div>
-          
           <StudentList />
-          
           <div style={{ marginTop: '30px', textAlign: 'center' }}>
             <button onClick={() => setCurrentView('home')} className="btn-primary" style={{ backgroundColor: '#64748b' }}>হোম পেজে ফিরে যান</button>
           </div>
         </div>
       )}
 
-      {/* গ্যালারি ভিউ */}
       {currentView === 'gallery' && <Gallery />}
-
-      {/* যোগাযোগ পেজ */}
       {currentView === 'contact' && <ContactPage />}
-
-      {/* নোটিফিকেশন সিস্টেম */}
       {currentView === 'notifications' && <NotificationSystem />}
 
-      {/* টিচার প্যানেল */}
       {currentView === 'teacherPanel' && (
         <div style={{ maxWidth: '800px', margin: '40px auto', padding: '0 16px' }}>
           <div className="card">
-            <h2 style={{ color: '#166534', borderBottom: '2px solid #f1f5f9', paddingBottom: '10px', marginTop: 0 }}>👨‍🏫 টিচার প্যানেল</h2>
-            <p style={{ color: '#334155', fontSize: '15px' }}>স্বাগতম! শিক্ষক হিসেবে আপনার প্যানেল এটি।</p>
+            <h2 style={{ color: '#166534', borderBottom: '2px solid #f1f5f9', paddingBottom: '10px' }}>👨‍🏫 টিচার প্যানেল</h2>
+            <p style={{ color: '#334155' }}>স্বাগতম! শিক্ষক হিসেবে আপনার প্যানেল এটি।</p>
             <div style={{ marginTop: '20px', textAlign: 'center' }}>
               <button onClick={() => setCurrentView('home')} className="btn-primary" style={{ backgroundColor: '#64748b' }}>হোম পেজে ফিরে যান</button>
             </div>
@@ -837,12 +564,11 @@ export default function App() {
         </div>
       )}
 
-      {/* এডমিন প্যানেল */}
       {currentView === 'adminPanel' && (
         <div style={{ maxWidth: '1200px', margin: '40px auto', padding: '0 16px' }}>
           <div className="card">
-            <h2 style={{ color: '#0369a1', borderBottom: '2px solid #f1f5f9', paddingBottom: '10px', marginTop: 0 }}>🛠️ এডমিন প্যানেল</h2>
-            <p style={{ color: '#334155', fontSize: '15px' }}>শিক্ষক ও শিক্ষার্থীদের পারমিশন ম্যানেজ করুন।</p>
+            <h2 style={{ color: '#0369a1', borderBottom: '2px solid #f1f5f9', paddingBottom: '10px' }}>🛠️ এডমিন প্যানেল</h2>
+            <p style={{ color: '#334155' }}>শিক্ষক ও শিক্ষার্থীদের পারমিশন ম্যানেজ করুন।</p>
             <div style={{ marginTop: '20px' }}>
               <TeacherManagement />
             </div>
@@ -850,29 +576,11 @@ export default function App() {
         </div>
       )}
 
-      {/* সুপার এডমিন প্যানেল */}
-      {currentView === 'superAdminPanel' && (
-        <SuperAdminDashboard />
-      )}
+      {currentView === 'superAdminPanel' && <SuperAdminDashboard />}
+      {currentView === 'adminPermissionManager' && <AdminPermissionManager />}
 
-      {/* এডমিন পারমিশন ম্যানেজার */}
-      {currentView === 'adminPermissionManager' && (
-        <AdminPermissionManager />
-      )}
-
-      {/* সাইন ইন মোডাল */}
-      <SignInModal 
-        isOpen={isSignInModalOpen} 
-        onClose={() => setIsSignInModalOpen(false)} 
-      />
-
-      {/* অ্যাডমিশন মোডাল */}
-      {isAdmissionModalOpen && (
-        <AdmissionForm 
-          isOpen={isAdmissionModalOpen} 
-          onClose={() => setIsAdmissionModalOpen(false)} 
-        />
-      )}
+      <SignInModal isOpen={isSignInModalOpen} onClose={() => setIsSignInModalOpen(false)} />
+      {isAdmissionModalOpen && <AdmissionForm isOpen={isAdmissionModalOpen} onClose={() => setIsAdmissionModalOpen(false)} />}
 
       <a href={`https://wa.me/${whatsappNumber}?text=${encodeURIComponent('হ্যালো ফিরোজ ভাই, সাহায্য প্রয়োজন।')}`} target="_blank" rel="noopener noreferrer" className="live-chat-btn">
         <span>💬</span><span>লাইভ চ্যাট</span>
