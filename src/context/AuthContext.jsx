@@ -17,18 +17,26 @@ export function AuthProvider({ children }) {
 
   const loadUserData = async (userId) => {
     try {
+      console.log('🔄 Loading user data for:', userId);
+      
       // 1. প্রোফাইল লোড
-      const { data: profileData } = await supabase
+      const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
         .single();
 
-      setProfile(profileData);
+      if (profileError) {
+        console.error('Profile error:', profileError);
+      } else {
+        setProfile(profileData);
+        console.log('✅ Profile loaded:', profileData);
+      }
 
       // 2. রোল লোড
       const userRoles = await getUserRoles(userId);
       setRoles(userRoles);
+      console.log('✅ Roles loaded:', userRoles);
 
       // 3. পারমিশন লোড
       const userPermissions = await getUserPermissions(userId);
@@ -39,14 +47,20 @@ export function AuthProvider({ children }) {
       setHighestRole(highest);
       
       // সঠিকভাবে রোল সেট করুন
-      setIsSuperAdmin(highest === 'super_admin');
-      setIsAdmin(highest === 'admin' || highest === 'super_admin');
-      setIsTeacher(highest === 'teacher' || highest === 'admin' || highest === 'super_admin');
+      const superAdmin = highest === 'super_admin';
+      const admin = highest === 'admin' || highest === 'super_admin';
+      const teacher = highest === 'teacher' || highest === 'admin' || highest === 'super_admin';
+      
+      setIsSuperAdmin(superAdmin);
+      setIsAdmin(admin);
+      setIsTeacher(teacher);
 
       console.log('✅ Auth loaded:', { 
         userId, 
         highest, 
-        isSuperAdmin: highest === 'super_admin',
+        isSuperAdmin: superAdmin,
+        isAdmin: admin,
+        isTeacher: teacher,
         userRoles
       });
 
