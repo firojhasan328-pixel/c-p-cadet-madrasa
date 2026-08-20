@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
+import { getUserRoles, getUserPermissions, getHighestRole } from '../utils/permissionService';
 
 const AuthContext = createContext();
 
@@ -25,50 +26,29 @@ export function AuthProvider({ children }) {
 
       setProfile(profileData);
 
-      // 2. রোল লোড - Super Admin চেক
-      const { data: userRoles } = await supabase
-        .from('user_roles')
-        .select(`
-          roles:role_id (
-            name
-          )
-        `)
-        .eq('user_id', userId);
+      // 2. রোল লোড
+      const userRoles = await getUserRoles(userId);
+      setRoles(userRoles);
 
-      const roleNames = userRoles?.map(r => r.roles?.name).filter(Boolean) || [];
-      setRoles(roleNames);
+      // 3. পারমিশন লোড
+      const userPermissions = await getUserPermissions(userId);
+      setPermissions(userPermissions);
 
-      // 3. হাইয়েস্ট রোল নির্ধারণ
-      const hasSuperAdmin = roleNames.includes('super_admin');
-      const hasAdmin = roleNames.includes('admin');
-      const hasTeacher = roleNames.includes('teacher');
-
-      setIsSuperAdmin(hasSuperAdmin);
-      setIsAdmin(hasAdmin || hasSuperAdmin);
-      setIsTeacher(hasTeacher || hasAdmin || hasSuperAdmin);
-
-      if (hasSuperAdmin) setHighestRole('super_admin');
-      else if (hasAdmin) setHighestRole('admin');
-      else if (hasTeacher) setHighestRole('teacher');
-      else setHighestRole('user');
-
-      // 4. পারমিশন লোড
-      const { data: userPerms } = await supabase
-        .from('user_permissions')
-        .select(`
-          is_allowed,
-          permissions:permission_id (
-            name
-          )
-        `)
-        .eq('user_id', userId);
-
-      const permData = userPerms?.map(p => ({
-        name: p.permissions?.name,
-        is_allowed: p.is_allowed
-      })).filter(Boolean) || [];
+      // 4. হাইয়েস্ট রোল
+      const highest = getHighestRole(userRoles);
+      setHighestRole(highest);
       
-      setPermissions(permData);
+      // সঠিকভাবে রোল সেট করুন
+      setIsSuperAdmin(highest === 'super_admin');
+      setIsAdmin(highest === 'admin' || highest === 'super_admin');
+      setIsTeacher(highest === 'teacher' || highest === 'admin' || highest === 'super_admin');
+
+      console.log('✅ Auth loaded:', { 
+        userId, 
+        highest, 
+        isSuperAdmin: highest === 'super_admin',
+        userRoles
+      });
 
       return true;
     } catch (error) {
@@ -85,6 +65,15 @@ export function AuthProvider({ children }) {
       if (session) {
         setUser(session.user);
         await loadUserData(session.user.id);
+      } else {
+        setUser(null);
+        setProfile(null);
+        setRoles([]);
+        setPermissions([]);
+        setHighestRole('user');
+        setIsSuperAdmin(false);
+        setIsAdmin(false);
+        setIsTeacher(false);
       }
       setLoading(false);
     };
@@ -93,6 +82,8 @@ export function AuthProvider({ children }) {
 
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        console.log('🔐 Auth State Change:', event, session?.user?.email);
+        
         if (event === 'SIGNED_IN' && session) {
           setUser(session.user);
           await loadUserData(session.user.id);
@@ -122,10 +113,19 @@ export function AuthProvider({ children }) {
     return perm ? perm.is_allowed : false;
   };
 
+  const hasRole = (roleName) => {
+    if (!roleName) return false;
+    if (isSuperAdmin && roleName !== 'super_admin') return true;
+    return roles.some(r => r.name === roleName);
+  };
+
   const refreshUser = async () => {
+    console.log('🔄 Refreshing user data...');
     if (user) {
       await loadUserData(user.id);
+      return true;
     }
+    return false;
   };
 
   return (
@@ -140,6 +140,7 @@ export function AuthProvider({ children }) {
       isAdmin,
       isTeacher,
       hasPermission,
+      hasRole,
       refreshUser,
       isAuthenticated: !!user
     }}>
