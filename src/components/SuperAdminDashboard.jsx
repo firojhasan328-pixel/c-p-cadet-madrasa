@@ -320,6 +320,22 @@ export default function SuperAdminDashboard() {
         <div style={{ fontSize: '48px', marginBottom: '16px' }}>🚫</div>
         <h2 style={{ color: '#dc2626' }}>অ্যাক্সেস অস্বীকৃত!</h2>
         <p style={{ color: '#64748b' }}>আপনার এই পেজে প্রবেশের অনুমতি নেই।</p>
+        <p style={{ color: '#64748b', fontSize: '13px' }}>আপনার রোল: {user?.email || 'লগইন নেই'}</p>
+        <button 
+          onClick={() => window.location.reload()}
+          style={{
+            marginTop: '16px',
+            padding: '10px 24px',
+            background: '#2563eb',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            fontWeight: '600'
+          }}
+        >
+          🔄 পেজ রিলোড করুন
+        </button>
       </div>
     );
   }
