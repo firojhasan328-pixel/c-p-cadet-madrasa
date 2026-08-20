@@ -37,9 +37,6 @@ export default function App() {
     refreshUser
   } = useAuth();
 
-  // =============================================
-  // ✅ এডমিন লগইন স্টেট
-  // =============================================
   const [adminEmail, setAdminEmail] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
   const [adminLoginError, setAdminLoginError] = useState('');
@@ -167,9 +164,6 @@ export default function App() {
     }
   };
 
-  // =============================================
-  // ✅ এডমিন লগইন ফাংশন (নতুন)
-  // =============================================
   const handleAdminLogin = async (e) => {
     e.preventDefault();
     setAdminLoginError('');
@@ -188,10 +182,8 @@ export default function App() {
       }
 
       if (data.user) {
-        // AuthContext রিফ্রেশ করুন
         await refreshUser();
         
-        // প্রোফাইল লোড করুন
         const { data: profileData } = await supabase
           .from('profiles')
           .select('*')
@@ -221,9 +213,6 @@ export default function App() {
     }
   };
 
-  // =============================================
-  // ✅ লগআউট ফাংশন (আপডেট)
-  // =============================================
   const handleLogout = async () => {
     await supabase.auth.signOut();
     setCurrentUser(null);
@@ -440,16 +429,12 @@ export default function App() {
             <span className="nav-link" onClick={() => { setCurrentView('gallery'); setMobileMenuOpen(false); }}>গ্যালারি</span>
             <span className="nav-link" onClick={() => { setCurrentView('contact'); setMobileMenuOpen(false); }}>যোগাযোগ</span>
             
-            {/* ============================================= */}
-            {/* ✅ ছাত্র/শিক্ষক সাইন ইন বাটন */}
-            {/* ============================================= */}
+            {/* ছাত্র/শিক্ষক সাইন ইন */}
             <span className="nav-link" style={{ color: '#2563eb', fontWeight: 'bold' }} onClick={() => { setMobileMenuOpen(false); setIsSignInModalOpen(true); }}>
               📝 ছাত্র/শিক্ষক সাইন ইন
             </span>
 
-            {/* ============================================= */}
-            {/* ✅ এডমিন লগইন বক্স (নতুন) */}
-            {/* ============================================= */}
+            {/* এডমিন লগইন বক্স */}
             {!user ? (
               <div className="admin-login-box">
                 <div style={{ fontWeight: 'bold', color: '#166534', marginBottom: '8px', fontSize: '14px' }}>
@@ -479,9 +464,7 @@ export default function App() {
                 </form>
               </div>
             ) : (
-              /* ============================================= */
-              /* ✅ লগইন থাকলে দেখাবে */
-              /* ============================================= */
+              /* লগইন থাকলে দেখাবে */
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', borderTop: '1px solid #e2e8f0', paddingTop: '10px' }}>
                 <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#16a34a' }}>
                   👤 {profile?.name || user.email} 
@@ -490,12 +473,12 @@ export default function App() {
                     padding: '2px 10px',
                     borderRadius: '12px',
                     fontSize: '11px',
-                    background: highestRole === 'super_admin' ? '#fef3c7' : '#dcfce7',
-                    color: highestRole === 'super_admin' ? '#b45309' : '#15803d'
+                    background: isSuperAdmin ? '#fef3c7' : '#dcfce7',
+                    color: isSuperAdmin ? '#b45309' : '#15803d'
                   }}>
-                    {highestRole === 'super_admin' ? 'সুপার এডমিন' : 
-                     highestRole === 'admin' ? 'এডমিন' : 
-                     highestRole === 'teacher' ? 'টিচার' : 'ইউজার'}
+                    {isSuperAdmin ? 'সুপার এডমিন' : 
+                     isAdmin ? 'এডমিন' : 
+                     isTeacher ? 'টিচার' : 'ইউজার'}
                   </span>
                 </span>
                 
@@ -503,7 +486,6 @@ export default function App() {
                   🔔 নোটিফিকেশন
                 </span>
                 
-                {/* পারমিশন ভিত্তিক মেনু */}
                 {(isTeacher || isAdmin || isSuperAdmin) && (
                   <span className="nav-link" style={{ color: '#16a34a', fontWeight: 'bold' }} onClick={() => { setCurrentView('teacherPanel'); setMobileMenuOpen(false); }}>
                     👨‍🏫 টিচার প্যানেল
@@ -524,6 +506,12 @@ export default function App() {
                     <span className="nav-link" style={{ color: '#7c3aed', fontWeight: 'bold' }} onClick={() => { setCurrentView('adminPermissionManager'); setMobileMenuOpen(false); }}>
                       🛡️ এডমিন পারমিশন
                     </span>
+                    <button 
+                      onClick={() => setIsAdminMode(!isAdminMode)} 
+                      style={{ background: '#0f172a', color: '#f8fafc', border: 'none', padding: '8px 12px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', width: '100%', fontWeight: '600', marginTop: '4px' }}
+                    >
+                      {isAdminMode ? '🔒 সুপার এডমিন সেটিংস বন্ধ করুন' : '⚙️ সুপার এডমিন সেটিংস (খুলুন)'}
+                    </button>
                   </>
                 )}
                 
@@ -534,16 +522,6 @@ export default function App() {
             )}
 
             <button onClick={() => { setMobileMenuOpen(false); setIsAdmissionModalOpen(true); }} className="btn-primary" style={{ width: '100%', textAlign: 'center', marginTop: '6px' }}>অনলাইন ভর্তি</button>
-            
-            {/* সুপার এডমিন সেটিংস টগল */}
-            {isSuperAdmin && (
-              <button 
-                onClick={() => setIsAdminMode(!isAdminMode)} 
-                style={{ background: '#0f172a', color: '#f8fafc', border: 'none', padding: '8px 12px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', width: '100%', fontWeight: '600', marginTop: '4px' }}
-              >
-                {isAdminMode ? '🔒 সুপার এডমিন সেটিংস বন্ধ করুন' : '⚙️ সুপার এডমিন সেটিংস (খুলুন)'}
-              </button>
-            )}
           </div>
         )}
       </nav>
