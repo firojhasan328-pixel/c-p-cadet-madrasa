@@ -354,9 +354,12 @@ export function getHighestRole(roles) {
 
   if (!roles || roles.length === 0) return 'user';
   
-  return roles.reduce((highest, current) => {
+  const highest = roles.reduce((highest, current) => {
     const currentPriority = rolePriority[current.name] || 0;
     const highestPriority = rolePriority[highest] || 0;
     return currentPriority > highestPriority ? current.name : highest;
   }, roles[0]?.name || 'user');
+  
+  console.log('📊 getHighestRole:', { roles, highest });
+  return highest;
 }
