@@ -342,7 +342,7 @@ export function groupPermissionsByCategory(permissions) {
 }
 
 // =============================================
-// ১৫. ইউজারের রোল নাম পাওয়া
+// ১৫. ইউজারের রোল নাম পাওয়া (সবচেয়ে গুরুত্বপূর্ণ)
 // =============================================
 export function getHighestRole(roles) {
   const rolePriority = {
