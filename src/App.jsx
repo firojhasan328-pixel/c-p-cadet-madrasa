@@ -298,14 +298,61 @@ export default function App() {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&display=swap');
         * { box-sizing: border-box; scroll-behavior: smooth; }
-        .nav-link { color: #334155; text-decoration: none; font-weight: 600; transition: color 0.2s; cursor: pointer; display: block; padding: 6px 0; }
+        
+        .nav-link { 
+          color: #334155; 
+          text-decoration: none; 
+          font-weight: 600; 
+          transition: color 0.2s; 
+          cursor: pointer; 
+          display: block; 
+          padding: 8px 0; 
+          background: transparent !important;
+        }
         .nav-link:hover { color: #15803d; }
-        .btn-primary { background: linear-gradient(135deg, #16a34a 0%, #15803d 100%); color: white; border: none; padding: 12px 24px; border-radius: 10px; font-weight: 600; cursor: pointer; transition: all 0.3s ease; display: inline-flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none; }
+        
+        .btn-primary { 
+          background: linear-gradient(135deg, #16a34a 0%, #15803d 100%); 
+          color: white; 
+          border: none; 
+          padding: 12px 24px; 
+          border-radius: 10px; 
+          font-weight: 600; 
+          cursor: pointer; 
+          transition: all 0.3s ease; 
+          display: inline-flex; 
+          align-items: center; 
+          justify-content: center; 
+          gap: 8px; 
+          text-decoration: none; 
+          width: 100%;
+          text-align: center;
+        }
         .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(22, 163, 74, 0.35); }
+        
         .card { background: #ffffff; border-radius: 18px; padding: 24px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01); border: 1px solid #e2e8f0; }
         .badge { background: #dcfce7; color: #15803d; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; display: inline-block; }
-        .live-chat-btn { position: fixed; bottom: 25px; right: 25px; background-color: #25D366; color: white; border-radius: 50px; padding: 12px 20px; display: flex; align-items: center; gap: 10px; box-shadow: 0 10px 20px rgba(37, 211, 102, 0.4); text-decoration: none; font-weight: bold; font-size: 14px; z-index: 1000; transition: all 0.3s ease; }
+        
+        .live-chat-btn { 
+          position: fixed; 
+          bottom: 25px; 
+          right: 25px; 
+          background-color: #25D366; 
+          color: white; 
+          border-radius: 50px; 
+          padding: 12px 20px; 
+          display: flex; 
+          align-items: center; 
+          gap: 10px; 
+          box-shadow: 0 10px 20px rgba(37, 211, 102, 0.4); 
+          text-decoration: none; 
+          font-weight: bold; 
+          font-size: 14px; 
+          z-index: 1000; 
+          transition: all 0.3s ease; 
+        }
         .live-chat-btn:hover { transform: scale(1.05); box-shadow: 0 12px 25px rgba(37, 211, 102, 0.6); }
+        
         .teacher-card {
           background: white;
           border-radius: 16px;
@@ -332,33 +379,45 @@ export default function App() {
         .teacher-designation { color: #15803d; font-weight: 600; font-size: 14px; margin-bottom: 8px; }
         .teacher-details { font-size: 13px; color: #334155; border-top: 1px solid #f1f5f9; padding-top: 10px; margin-top: 8px; }
         .teacher-details div { margin: 2px 0; }
-        /* 🔥 মোবাইল মেনু ঠিক করার জন্য CSS */
+
+        /* 🔥 মোবাইল মেনু CSS - ঠিক করা হয়েছে */
         .mobile-menu-container {
           background: #ffffff !important;
           border-top: 1px solid #f1f5f9;
-          padding: 16px 20px;
+          padding: 16px 20px 20px 20px;
           display: flex;
           flex-direction: column;
-          gap: 12px;
+          gap: 4px;
           box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
           position: relative;
           z-index: 999;
-          max-height: 80vh;
+          max-height: 70vh;
           overflow-y: auto;
           width: 100%;
+          border-radius: 0 0 12px 12px;
         }
         .mobile-menu-container .nav-link {
           color: #334155;
           text-decoration: none;
-          font-weight: 600;
+          font-weight: 500;
           transition: color 0.2s;
           cursor: pointer;
           display: block;
-          padding: 6px 0;
+          padding: 10px 14px;
           background: transparent !important;
+          border-radius: 8px;
+          margin: 0;
         }
         .mobile-menu-container .nav-link:hover {
+          background: #f1f5f9 !important;
           color: #15803d;
+        }
+        .mobile-menu-container .nav-link.admin-link {
+          color: #1d4ed8;
+          font-weight: 600;
+        }
+        .mobile-menu-container .nav-link.admin-link:hover {
+          background: #dbeafe !important;
         }
         .mobile-menu-container .btn-primary {
           background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
@@ -376,11 +435,92 @@ export default function App() {
           text-decoration: none;
           width: 100%;
           text-align: center;
-          margin-top: 6px;
+          margin-top: 4px;
         }
         .mobile-menu-container .btn-primary:hover {
           transform: translateY(-2px);
           box-shadow: 0 6px 16px rgba(22, 163, 74, 0.35);
+        }
+        .mobile-menu-container .divider {
+          border: none;
+          border-top: 1px solid #e2e8f0;
+          margin: 4px 0;
+        }
+        .mobile-menu-container .user-section {
+          border-top: 1px dashed #cbd5e1;
+          padding-top: 10px;
+          margin-top: 4px;
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        }
+        .mobile-menu-container .logout-btn {
+          background: #dc2626;
+          color: white;
+          border: none;
+          padding: 8px;
+          border-radius: 8px;
+          cursor: pointer;
+          font-size: 13px;
+          font-weight: 600;
+          width: 100%;
+        }
+        .mobile-menu-container .logout-btn:hover {
+          background: #b91c1c;
+        }
+        .mobile-menu-container .login-input {
+          padding: 8px 12px;
+          border-radius: 8px;
+          border: 1px solid #cbd5e1;
+          font-size: 13px;
+          width: 100%;
+          outline: none;
+        }
+        .mobile-menu-container .login-input:focus {
+          border-color: #16a34a;
+        }
+        .mobile-menu-container .login-btn {
+          background: #16a34a;
+          color: white;
+          border: none;
+          padding: 8px;
+          border-radius: 8px;
+          font-size: 13px;
+          font-weight: 600;
+          cursor: pointer;
+          width: 100%;
+        }
+        .mobile-menu-container .login-btn:hover {
+          background: #15803d;
+        }
+        .mobile-menu-container .user-label {
+          font-size: 13px;
+          font-weight: 600;
+          color: #16a34a;
+        }
+        .mobile-menu-container .role-badge {
+          margin-left: 8px;
+          padding: 2px 10px;
+          border-radius: 12px;
+          font-size: 10px;
+          font-weight: 600;
+          display: inline-block;
+        }
+        .mobile-menu-container .role-badge.super {
+          background: #fef3c7;
+          color: #b45309;
+        }
+        .mobile-menu-container .role-badge.admin {
+          background: #dbeafe;
+          color: #1d4ed8;
+        }
+        .mobile-menu-container .role-badge.teacher {
+          background: #dcfce7;
+          color: #15803d;
+        }
+        .mobile-menu-container .role-badge.user {
+          background: #f1f5f9;
+          color: #64748b;
         }
       `}</style>
 
@@ -409,7 +549,7 @@ export default function App() {
 
           <button 
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)} 
-            style={{ background: '#f1f5f9', border: 'none', padding: '8px 12px', borderRadius: '8px', fontSize: '20px', cursor: 'pointer', color: '#1e293b' }}
+            style={{ background: '#f1f5f9', border: 'none', padding: '10px 14px', borderRadius: '10px', fontSize: '22px', cursor: 'pointer', color: '#1e293b' }}
           >
             {mobileMenuOpen ? '✕' : '☰'}
           </button>
@@ -417,30 +557,28 @@ export default function App() {
 
         {mobileMenuOpen && (
           <div className="mobile-menu-container">
-            <span className="nav-link" onClick={() => { setCurrentView('home'); setMobileMenuOpen(false); }}>হোম</span>
-            <span className="nav-link" onClick={() => { setCurrentView('about'); setMobileMenuOpen(false); }}>প্রধান শিক্ষকের বাণী</span>
-            <span className="nav-link" onClick={() => { setCurrentView('teachers'); setMobileMenuOpen(false); }}>শিক্ষকবৃন্দ</span>
-            <span className="nav-link" onClick={() => { setCurrentView('students'); setMobileMenuOpen(false); }}>ছাত্র-ছাত্রী</span>
-            <span className="nav-link" onClick={() => { setCurrentView('notice'); setMobileMenuOpen(false); }}>নোটিশ বোর্ড</span>
-            <span className="nav-link" onClick={() => { setCurrentView('gallery'); setMobileMenuOpen(false); }}>গ্যালারি</span>
-            <span className="nav-link" onClick={() => { setCurrentView('contact'); setMobileMenuOpen(false); }}>যোগাযোগ</span>
+            <span className="nav-link" onClick={() => { setCurrentView('home'); setMobileMenuOpen(false); }}>🏠 হোম</span>
+            <span className="nav-link" onClick={() => { setCurrentView('about'); setMobileMenuOpen(false); }}>📖 প্রধান শিক্ষকের বাণী</span>
+            <span className="nav-link" onClick={() => { setCurrentView('teachers'); setMobileMenuOpen(false); }}>👨‍🏫 শিক্ষকবৃন্দ</span>
+            <span className="nav-link" onClick={() => { setCurrentView('students'); setMobileMenuOpen(false); }}>🎓 ছাত্র-ছাত্রী</span>
+            <span className="nav-link" onClick={() => { setCurrentView('notice'); setMobileMenuOpen(false); }}>📌 নোটিশ বোর্ড</span>
+            <span className="nav-link" onClick={() => { setCurrentView('gallery'); setMobileMenuOpen(false); }}>🖼️ গ্যালারি</span>
+            <span className="nav-link" onClick={() => { setCurrentView('contact'); setMobileMenuOpen(false); }}>📞 যোগাযোগ</span>
             
-            {/* সাইন ইন বাটন */}
-            <span className="nav-link" style={{ color: '#2563eb', fontWeight: 'bold' }} onClick={() => { setMobileMenuOpen(false); setIsSignInModalOpen(true); }}>
+            <hr className="divider" />
+            
+            <span className="nav-link admin-link" onClick={() => { setMobileMenuOpen(false); setIsSignInModalOpen(true); }}>
               🔑 সাইন ইন
             </span>
 
-            {/* এডমিন প্যানেল লিংক */}
-            <span className="nav-link" style={{ color: '#b45309', fontWeight: 'bold', borderTop: '1px dashed #e2e8f0', paddingTop: '8px' }} onClick={() => { window.location.href = '/admin'; setMobileMenuOpen(false); }}>
+            <span className="nav-link" style={{ color: '#b45309', fontWeight: 'bold' }} onClick={() => { window.location.href = '/admin'; setMobileMenuOpen(false); }}>
               ⚙️ এডমিন প্যানেল
             </span>
 
-            {/* নোটিফিকেশন */}
             {currentUser && (
-              <span className="nav-link" style={{ color: '#2563eb', fontWeight: 'bold' }} onClick={() => { setCurrentView('notifications'); setMobileMenuOpen(false); }}>🔔 নোটিফিকেশন</span>
+              <span className="nav-link admin-link" onClick={() => { setCurrentView('notifications'); setMobileMenuOpen(false); }}>🔔 নোটিফিকেশন</span>
             )}
             
-            {/* পারমিশন অনুযায়ী মেনু */}
             {(isTeacher || isAdmin || isSuperAdmin) && (
               <span className="nav-link" style={{ color: '#16a34a', fontWeight: 'bold' }} onClick={() => { setCurrentView('teacherPanel'); setMobileMenuOpen(false); }}>👨‍🏫 টিচার প্যানেল</span>
             )}
@@ -448,33 +586,37 @@ export default function App() {
               <span className="nav-link" style={{ color: '#0369a1', fontWeight: 'bold' }} onClick={() => { setCurrentView('adminPanel'); setMobileMenuOpen(false); }}>🛠️ এডমিন প্যানেল</span>
             )}
             {isSuperAdmin && (
-              <span className="nav-link" style={{ color: '#b45309', fontWeight: 'bold' }} onClick={() => { setCurrentView('superAdminPanel'); setMobileMenuOpen(false); }}>⚙️ সুপার এডমিন প্যানেল</span>
-            )}
-            {isSuperAdmin && (
-              <span className="nav-link" style={{ color: '#7c3aed', fontWeight: 'bold' }} onClick={() => { setCurrentView('adminPermissionManager'); setMobileMenuOpen(false); }}>🛡️ এডমিন পারমিশন</span>
+              <>
+                <span className="nav-link" style={{ color: '#b45309', fontWeight: 'bold' }} onClick={() => { setCurrentView('superAdminPanel'); setMobileMenuOpen(false); }}>⚙️ সুপার এডমিন প্যানেল</span>
+                <span className="nav-link" style={{ color: '#7c3aed', fontWeight: 'bold' }} onClick={() => { setCurrentView('adminPermissionManager'); setMobileMenuOpen(false); }}>🛡️ এডমিন পারমিশন</span>
+              </>
             )}
 
             <button onClick={() => { setMobileMenuOpen(false); setIsAdmissionModalOpen(true); }} className="btn-primary">🎓 অনলাইন ভর্তি</button>
             
-            <div style={{ borderTop: '1px dashed #cbd5e1', paddingTop: '10px', marginTop: '4px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <div className="user-section">
               {currentUser ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#16a34a' }}>লগইন আছেন: {currentUser.name} ({userRole})</span>
-                  <button onClick={handleLogout} style={{ background: '#dc2626', color: 'white', border: 'none', padding: '6px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' }}>লগআউট করুন</button>
-                </div>
+                <>
+                  <span className="user-label">
+                    👤 {currentUser.name} 
+                    <span className={`role-badge ${userRole === 'super_admin' ? 'super' : userRole === 'admin' ? 'admin' : userRole === 'teacher' ? 'teacher' : 'user'}`}>
+                      {userRole === 'super_admin' ? 'সুপার এডমিন' : userRole === 'admin' ? 'এডমিন' : userRole === 'teacher' ? 'শিক্ষক' : 'ইউজার'}
+                    </span>
+                  </span>
+                  <button onClick={handleLogout} className="logout-btn">লগআউট করুন</button>
+                </>
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#64748b' }}>প্যানেল লগইন:</span>
-                  <input type="email" placeholder="ইমেল" value={authEmail} onChange={(e) => setAuthEmail(e.target.value)} style={{ padding: '6px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '12px' }} />
-                  <input type="password" placeholder="পাসওয়ার্ড" value={authPassword} onChange={(e) => setAuthPassword(e.target.value)} style={{ padding: '6px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '12px' }} />
-                  <button onClick={handleLogin} className="btn-primary" style={{ padding: '6px', fontSize: '12px', justifyContent: 'center' }}>লগইন করুন</button>
-                </div>
+                <>
+                  <input type="email" className="login-input" placeholder="ইমেল" value={authEmail} onChange={(e) => setAuthEmail(e.target.value)} />
+                  <input type="password" className="login-input" placeholder="পাসওয়ার্ড" value={authPassword} onChange={(e) => setAuthPassword(e.target.value)} />
+                  <button onClick={handleLogin} className="login-btn">লগইন করুন</button>
+                </>
               )}
 
               {isSuperAdmin && (
                 <button 
                   onClick={() => setIsAdminMode(!isAdminMode)} 
-                  style={{ background: '#0f172a', color: '#f8fafc', border: 'none', padding: '8px 12px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', width: '100%', fontWeight: '600', marginTop: '4px' }}
+                  style={{ background: '#0f172a', color: '#f8fafc', border: 'none', padding: '8px 12px', borderRadius: '8px', fontSize: '12px', cursor: 'pointer', width: '100%', fontWeight: '600', marginTop: '4px' }}
                 >
                   {isAdminMode ? '🔒 সুপার এডমিন সেটিংস বন্ধ করুন' : '⚙️ সুপার এডমিন সেটিংস (খুলুন)'}
                 </button>
@@ -497,7 +639,7 @@ export default function App() {
                   onChange={(e) => setIsAdmissionOpen(e.target.checked)}
                   style={{ width: '18px', height: '18px' }}
                 />
-                ভর্তি ফরম অন রাখুন (Form Open/Close)
+                ভর্তি ফরম অন রাখুন
               </label>
             </div>
             
@@ -548,10 +690,10 @@ export default function App() {
                 আমরা দিচ্ছি আধুনিক ক্বওমী ও জেনারেল শিক্ষা ব্যবস্থার এক অনন্য সমন্বয়। অভিজ্ঞ শিক্ষক মণ্ডলীর তত্ত্বাবধানে আপনার সন্তানের দ্বীনি শিক্ষার পথ সুগম করুন।
               </p>
               <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
-                <button onClick={() => { resetForm(); setIsAdmissionModalOpen(true); }} className="btn-primary" style={{ backgroundColor: '#ffffff', color: '#14532d', fontWeight: 'bold' }}>
+                <button onClick={() => { resetForm(); setIsAdmissionModalOpen(true); }} className="btn-primary" style={{ backgroundColor: '#ffffff', color: '#14532d', fontWeight: 'bold', width: 'auto' }}>
                   ভর্তি আবেদন করুন
                 </button>
-                <a href={`tel:${siteData.contactNumber}`} className="btn-primary" style={{ backgroundColor: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)' }}>
+                <a href={`tel:${siteData.contactNumber}`} className="btn-primary" style={{ backgroundColor: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)', width: 'auto' }}>
                   📞 সরাসরি কল দিন
                 </a>
               </div>
@@ -619,7 +761,7 @@ export default function App() {
               <button 
                 onClick={() => { resetForm(); setIsAdmissionModalOpen(true); }} 
                 className="btn-primary" 
-                style={{ fontSize: '16px', padding: '14px 28px', width: '100%', maxWidth: '300px', justifyContent: 'center' }}
+                style={{ fontSize: '16px', padding: '14px 28px', width: 'auto', maxWidth: '300px', justifyContent: 'center' }}
               >
                 🎓 ভর্তি আবেদন করুন
               </button>
@@ -642,7 +784,7 @@ export default function App() {
               "বিসমিল্লাহির রহমানির রহিম। চিলমারী প্রি ক্যাডেট মাদ্রাসায় আপনাকে জানাই আন্তরিক শুভেচ্ছা।"
             </p>
             <div style={{ marginTop: '20px', textAlign: 'center' }}>
-              <button onClick={() => setCurrentView('home')} className="btn-primary" style={{ backgroundColor: '#64748b' }}>হোম পেজে ফিরে যান</button>
+              <button onClick={() => setCurrentView('home')} className="btn-primary" style={{ backgroundColor: '#64748b', width: 'auto' }}>হোম পেজে ফিরে যান</button>
             </div>
           </div>
         </div>
@@ -685,7 +827,7 @@ export default function App() {
           )}
 
           <div style={{ marginTop: '30px', textAlign: 'center' }}>
-            <button onClick={() => setCurrentView('home')} className="btn-primary" style={{ backgroundColor: '#64748b' }}>হোম পেজে ফিরে যান</button>
+            <button onClick={() => setCurrentView('home')} className="btn-primary" style={{ backgroundColor: '#64748b', width: 'auto' }}>হোম পেজে ফিরে যান</button>
           </div>
         </div>
       )}
@@ -705,7 +847,7 @@ export default function App() {
           <StudentList />
           
           <div style={{ marginTop: '30px', textAlign: 'center' }}>
-            <button onClick={() => setCurrentView('home')} className="btn-primary" style={{ backgroundColor: '#64748b' }}>হোম পেজে ফিরে যান</button>
+            <button onClick={() => setCurrentView('home')} className="btn-primary" style={{ backgroundColor: '#64748b', width: 'auto' }}>হোম পেজে ফিরে যান</button>
           </div>
         </div>
       )}
@@ -726,13 +868,13 @@ export default function App() {
             <h2 style={{ color: '#166534', borderBottom: '2px solid #f1f5f9', paddingBottom: '10px', marginTop: 0 }}>👨‍🏫 টিচার প্যানেল</h2>
             <p style={{ color: '#334155', fontSize: '15px' }}>স্বাগতম! শিক্ষক হিসেবে আপনার প্যানেল এটি।</p>
             <div style={{ marginTop: '20px', textAlign: 'center' }}>
-              <button onClick={() => setCurrentView('home')} className="btn-primary" style={{ backgroundColor: '#64748b' }}>হোম পেজে ফিরে যান</button>
+              <button onClick={() => setCurrentView('home')} className="btn-primary" style={{ backgroundColor: '#64748b', width: 'auto' }}>হোম পেজে ফিরে যান</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* এডমিন প্যানেল - TeacherManagement যোগ করা হয়েছে */}
+      {/* এডমিন প্যানেল */}
       {currentView === 'adminPanel' && (
         <div style={{ maxWidth: '1200px', margin: '40px auto', padding: '0 16px' }}>
           <div className="card">
@@ -745,15 +887,11 @@ export default function App() {
         </div>
       )}
 
-      {/* সুপার এডমিন প্যানেল - SuperAdminDashboard কম্পোনেন্ট ব্যবহার করা হয়েছে */}
-      {currentView === 'superAdminPanel' && (
-        <SuperAdminDashboard />
-      )}
+      {/* সুপার এডমিন প্যানেল */}
+      {currentView === 'superAdminPanel' && <SuperAdminDashboard />}
 
       {/* এডমিন পারমিশন ম্যানেজার */}
-      {currentView === 'adminPermissionManager' && (
-        <AdminPermissionManager />
-      )}
+      {currentView === 'adminPermissionManager' && <AdminPermissionManager />}
 
       {/* সাইন ইন মোডাল */}
       <SignInModal 
