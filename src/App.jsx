@@ -19,14 +19,8 @@ import AdminLogin from './components/AdminLogin';
 import AdminDashboard from './components/AdminDashboard';
 
 export default function App() {
-  // =============================================
-  // এডমিন অথ চেক
-  // =============================================
   const { isAuthenticated, loading } = useAuth();
 
-  // =============================================
-  // হোমপেজের স্টেট (আগের মতো)
-  // =============================================
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isAdmissionModalOpen, setIsAdmissionModalOpen] = useState(false);
   const [isSignInModalOpen, setIsSignInModalOpen] = useState(false);
@@ -259,9 +253,6 @@ export default function App() {
 
   const whatsappNumber = "8801918568313";
 
-  // =============================================
-  // অথ লোডিং স্টেট
-  // =============================================
   if (loading) {
     return (
       <div style={{
@@ -293,9 +284,6 @@ export default function App() {
     );
   }
 
-  // =============================================
-  // এডমিন লগইন থাকলে ড্যাশবোর্ড দেখাবে
-  // =============================================
   if (isAuthenticated) {
     return (
       <>
@@ -305,9 +293,6 @@ export default function App() {
     );
   }
 
-  // =============================================
-  // হোমপেজ (আগের মতো)
-  // =============================================
   return (
     <div style={{ fontFamily: "'Hind Siliguri', 'Segoe UI', sans-serif", backgroundColor: '#f8fafc', color: '#0f172a', minHeight: '100vh', margin: 0, padding: 0, position: 'relative' }}>
       <style>{`
@@ -347,6 +332,56 @@ export default function App() {
         .teacher-designation { color: #15803d; font-weight: 600; font-size: 14px; margin-bottom: 8px; }
         .teacher-details { font-size: 13px; color: #334155; border-top: 1px solid #f1f5f9; padding-top: 10px; margin-top: 8px; }
         .teacher-details div { margin: 2px 0; }
+        /* 🔥 মোবাইল মেনু ঠিক করার জন্য CSS */
+        .mobile-menu-container {
+          background: #ffffff !important;
+          border-top: 1px solid #f1f5f9;
+          padding: 16px 20px;
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+          box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
+          position: relative;
+          z-index: 999;
+          max-height: 80vh;
+          overflow-y: auto;
+          width: 100%;
+        }
+        .mobile-menu-container .nav-link {
+          color: #334155;
+          text-decoration: none;
+          font-weight: 600;
+          transition: color 0.2s;
+          cursor: pointer;
+          display: block;
+          padding: 6px 0;
+          background: transparent !important;
+        }
+        .mobile-menu-container .nav-link:hover {
+          color: #15803d;
+        }
+        .mobile-menu-container .btn-primary {
+          background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+          color: white;
+          border: none;
+          padding: 12px 24px;
+          border-radius: 10px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          text-decoration: none;
+          width: 100%;
+          text-align: center;
+          margin-top: 6px;
+        }
+        .mobile-menu-container .btn-primary:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 6px 16px rgba(22, 163, 74, 0.35);
+        }
       `}</style>
 
       {/* টপ কন্টাক্ট বার */}
@@ -381,7 +416,7 @@ export default function App() {
         </div>
 
         {mobileMenuOpen && (
-          <div style={{ backgroundColor: '#ffffff', borderTop: '1px solid #f1f5f9', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '12px', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}>
+          <div className="mobile-menu-container">
             <span className="nav-link" onClick={() => { setCurrentView('home'); setMobileMenuOpen(false); }}>হোম</span>
             <span className="nav-link" onClick={() => { setCurrentView('about'); setMobileMenuOpen(false); }}>প্রধান শিক্ষকের বাণী</span>
             <span className="nav-link" onClick={() => { setCurrentView('teachers'); setMobileMenuOpen(false); }}>শিক্ষকবৃন্দ</span>
@@ -419,7 +454,7 @@ export default function App() {
               <span className="nav-link" style={{ color: '#7c3aed', fontWeight: 'bold' }} onClick={() => { setCurrentView('adminPermissionManager'); setMobileMenuOpen(false); }}>🛡️ এডমিন পারমিশন</span>
             )}
 
-            <button onClick={() => { setMobileMenuOpen(false); setIsAdmissionModalOpen(true); }} className="btn-primary" style={{ width: '100%', textAlign: 'center', marginTop: '6px' }}>অনলাইন ভর্তি</button>
+            <button onClick={() => { setMobileMenuOpen(false); setIsAdmissionModalOpen(true); }} className="btn-primary">🎓 অনলাইন ভর্তি</button>
             
             <div style={{ borderTop: '1px dashed #cbd5e1', paddingTop: '10px', marginTop: '4px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {currentUser ? (
