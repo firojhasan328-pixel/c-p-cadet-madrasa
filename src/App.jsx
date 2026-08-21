@@ -29,12 +29,9 @@ export default function App() {
     isSuperAdmin, 
     isAdmin, 
     isTeacher, 
-    hasPermission, 
     user, 
     loading,
     profile,
-    roles,
-    highestRole,
     refreshUser
   } = useAuth();
 
@@ -125,7 +122,7 @@ export default function App() {
   };
 
   // =============================================
-  // লগইন ফাংশন - রিফ্রেশ যোগ করা হয়েছে
+  // লগইন ফাংশন
   // =============================================
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -139,11 +136,11 @@ export default function App() {
     } else {
       // 🔥 গুরুত্বপূর্ণ: লগইনের পর AuthContext রিফ্রেশ করুন
       await refreshUser();
-      alert("সফলভাবে লগইন হয়েছে! সিস্টেম আপনার রোল স্বয়ংক্রিয়ভাবে নির্ধারণ করেছে।");
+      alert("সফলভাবে লগইন হয়েছে!");
       setCurrentView('home');
       setAuthEmail('');
       setAuthPassword('');
-      setMobileMenuOpen(false); // মোবাইল মেনু বন্ধ করুন
+      setMobileMenuOpen(false);
     }
   };
 
@@ -257,6 +254,11 @@ export default function App() {
 
   const isLoggedIn = !!user;
 
+  // =============================================
+  // DEBUG: কনসোলে দেখুন
+  // =============================================
+  console.log('🔍 App.jsx - Auth State:', { isSuperAdmin, isAdmin, isTeacher, isLoggedIn, user: user?.email });
+
   return (
     <div style={{ fontFamily: "'Hind Siliguri', 'Segoe UI', sans-serif", backgroundColor: '#f8fafc', color: '#0f172a', minHeight: '100vh', margin: 0, padding: 0, position: 'relative' }}>
       <style>{`
@@ -312,7 +314,7 @@ export default function App() {
         }
       `}</style>
 
-      {/* টপ কন্টাক্ট বার - অপরিবর্তিত */}
+      {/* টপ কন্টাক্ট বার */}
       <div style={{ backgroundColor: '#14532d', color: '#f0fdf4', padding: '8px 20px', fontSize: '13px' }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
           <div>📍 চিলমারী, কুড়িগ্রাম, বাংলাদেশ</div>
@@ -353,49 +355,38 @@ export default function App() {
             <span className="nav-link" onClick={() => { setCurrentView('gallery'); setMobileMenuOpen(false); }}>গ্যালারি</span>
             <span className="nav-link" onClick={() => { setCurrentView('contact'); setMobileMenuOpen(false); }}>যোগাযোগ</span>
             
-            {/* সাইন ইন বাটন */}
             <span className="nav-link" style={{ color: '#2563eb', fontWeight: 'bold' }} onClick={() => { setMobileMenuOpen(false); setIsSignInModalOpen(true); }}>
               🔑 সাইন ইন
             </span>
 
-            {/* নোটিফিকেশন - শুধু লগইন থাকলে */}
             {isLoggedIn && (
               <span className="nav-link" style={{ color: '#2563eb', fontWeight: 'bold' }} onClick={() => { setCurrentView('notifications'); setMobileMenuOpen(false); }}>🔔 নোটিফিকেশন</span>
             )}
             
             {/* =============================================
-                🔥 এখানে মূল পরিবর্তন - AuthContext থেকে সরাসরি ব্যবহার
+                🔥 এডমিন মেনু - সরাসরি AuthContext থেকে
                 ============================================= */}
-            {/* টিচার প্যানেল - শিক্ষক, এডমিন বা সুপার এডমিন দেখতে পাবে */}
             {(isTeacher || isAdmin || isSuperAdmin) && (
               <span className="nav-link" style={{ color: '#16a34a', fontWeight: 'bold' }} onClick={() => { setCurrentView('teacherPanel'); setMobileMenuOpen(false); }}>👨‍🏫 টিচার প্যানেল</span>
             )}
             
-            {/* এডমিন প্যানেল - শুধু এডমিন বা সুপার এডমিন */}
             {(isAdmin || isSuperAdmin) && (
               <span className="nav-link" style={{ color: '#0369a1', fontWeight: 'bold' }} onClick={() => { setCurrentView('adminPanel'); setMobileMenuOpen(false); }}>🛠️ এডমিন প্যানেল</span>
             )}
             
-            {/* সুপার এডমিন প্যানেল - শুধু সুপার এডমিন */}
             {isSuperAdmin && (
-              <span className="nav-link" style={{ color: '#b45309', fontWeight: 'bold' }} onClick={() => { setCurrentView('superAdminPanel'); setMobileMenuOpen(false); }}>⚙️ সুপার এডমিন প্যানেল</span>
-            )}
-            
-            {/* এডমিন পারমিশন ম্যানেজার - শুধু সুপার এডমিন */}
-            {isSuperAdmin && (
-              <span className="nav-link" style={{ color: '#7c3aed', fontWeight: 'bold' }} onClick={() => { setCurrentView('adminPermissionManager'); setMobileMenuOpen(false); }}>🛡️ এডমিন পারমিশন</span>
+              <>
+                <span className="nav-link" style={{ color: '#b45309', fontWeight: 'bold' }} onClick={() => { setCurrentView('superAdminPanel'); setMobileMenuOpen(false); }}>⚙️ সুপার এডমিন প্যানেল</span>
+                <span className="nav-link" style={{ color: '#7c3aed', fontWeight: 'bold' }} onClick={() => { setCurrentView('adminPermissionManager'); setMobileMenuOpen(false); }}>🛡️ এডমিন পারমিশন</span>
+              </>
             )}
 
-            {/* অডিট লগ - শুধু এডমিন বা সুপার এডমিন */}
             {(isAdmin || isSuperAdmin) && (
               <span className="nav-link" style={{ color: '#64748b', fontWeight: 'bold' }} onClick={() => { setCurrentView('auditLog'); setMobileMenuOpen(false); }}>📋 অডিট লগ</span>
             )}
 
             <button onClick={() => { setMobileMenuOpen(false); setIsAdmissionModalOpen(true); }} className="btn-primary" style={{ width: '100%', textAlign: 'center', marginTop: '6px' }}>অনলাইন ভর্তি</button>
             
-            {/* =============================================
-                ইউজার স্টেটাস এলাকা - আপডেটেড
-                ============================================= */}
             <div style={{ borderTop: '1px dashed #cbd5e1', paddingTop: '10px', marginTop: '4px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {loading ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 0' }}>
@@ -441,7 +432,7 @@ export default function App() {
         )}
       </nav>
 
-      {/* সুপার এডমিন লাইভ কন্ট্রোল প্যানেল - অপরিবর্তিত */}
+      {/* সুপার এডমিন লাইভ কন্ট্রোল প্যানেল */}
       {isAdminMode && isSuperAdmin && (
         <div style={{ background: '#fef3c7', borderBottom: '2px solid #f59e0b', padding: '16px 20px', fontSize: '14px', zIndex: 100, position: 'relative' }}>
           <div style={{ maxWidth: '800px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -454,7 +445,7 @@ export default function App() {
                   onChange={(e) => setIsAdmissionOpen(e.target.checked)}
                   style={{ width: '18px', height: '18px' }}
                 />
-                ভর্তি ফরম অন রাখুন (Form Open/Close)
+                ভর্তি ফরম অন রাখুন
               </label>
             </div>
             
@@ -490,7 +481,7 @@ export default function App() {
         </div>
       )}
 
-      {/* পেজ ভিউ - অপরিবর্তিত */}
+      {/* পেজ ভিউ */}
       {currentView === 'home' && (
         <>
           <header id="home" style={{ background: 'linear-gradient(135deg, #064e3b 0%, #14532d 50%, #166534 100%)', color: 'white', padding: '50px 20px 70px 20px', textAlign: 'center', position: 'relative' }}>
@@ -585,7 +576,6 @@ export default function App() {
         </>
       )}
 
-      {/* অন্যান্য পেজ ভিউ - অপরিবর্তিত */}
       {currentView === 'about' && (
         <div style={{ maxWidth: '800px', margin: '40px auto', padding: '0 16px' }}>
           <div className="card">
