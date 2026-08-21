@@ -23,17 +23,19 @@ export default function App() {
   const [currentView, setCurrentView] = useState('home');
 
   // =============================================
-  // AUTH CONTEXT - এখান থেকে সব অথ তথ্য নিন
+  // AUTH CONTEXT থেকে নিন
   // =============================================
   const { 
-    isSuperAdmin, 
-    isAdmin, 
-    isTeacher, 
     user, 
     loading,
     profile,
     refreshUser
   } = useAuth();
+
+  // 🔥 সরাসরি profile.role চেক করুন
+  const isSuperAdmin = profile?.role === 'superadmin';
+  const isAdmin = profile?.role === 'admin' || isSuperAdmin;
+  const isTeacher = profile?.role === 'teacher' || isAdmin;
 
   const [authEmail, setAuthEmail] = useState('');
   const [authPassword, setAuthPassword] = useState('');
@@ -122,7 +124,7 @@ export default function App() {
   };
 
   // =============================================
-  // লগইন ফাংশন
+  // লগইন ফাংশন – এলার্ট যোগ করা হয়েছে
   // =============================================
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -134,8 +136,15 @@ export default function App() {
     if (error) {
       alert("লগইন ব্যর্থ হয়েছে: " + error.message);
     } else {
-      // 🔥 গুরুত্বপূর্ণ: লগইনের পর AuthContext রিফ্রেশ করুন
+      // AuthContext রিফ্রেশ করুন
       await refreshUser();
+      
+      // ১ সেকেন্ড পর profile দেখান
+      setTimeout(() => {
+        const role = profile?.role || 'ইউজার';
+        alert(`✅ লগইন সফল! আপনার রোল: ${role}`);
+      }, 500);
+      
       alert("সফলভাবে লগইন হয়েছে!");
       setCurrentView('home');
       setAuthEmail('');
@@ -254,11 +263,6 @@ export default function App() {
 
   const isLoggedIn = !!user;
 
-  // =============================================
-  // DEBUG: কনসোলে দেখুন
-  // =============================================
-  console.log('🔍 App.jsx - Auth State:', { isSuperAdmin, isAdmin, isTeacher, isLoggedIn, user: user?.email });
-
   return (
     <div style={{ fontFamily: "'Hind Siliguri', 'Segoe UI', sans-serif", backgroundColor: '#f8fafc', color: '#0f172a', minHeight: '100vh', margin: 0, padding: 0, position: 'relative' }}>
       <style>{`
@@ -364,7 +368,7 @@ export default function App() {
             )}
             
             {/* =============================================
-                🔥 এডমিন মেনু - সরাসরি AuthContext থেকে
+                🔥 এখানে profile.role ব্যবহার করা হয়েছে
                 ============================================= */}
             {(isTeacher || isAdmin || isSuperAdmin) && (
               <span className="nav-link" style={{ color: '#16a34a', fontWeight: 'bold' }} onClick={() => { setCurrentView('teacherPanel'); setMobileMenuOpen(false); }}>👨‍🏫 টিচার প্যানেল</span>
