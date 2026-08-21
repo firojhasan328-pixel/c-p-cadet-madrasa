@@ -15,9 +15,12 @@ export function AuthProvider({ children }) {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isTeacher, setIsTeacher] = useState(false);
 
+  // =============================================
+  // ইউজার ডেটা লোড করার ফাংশন
+  // =============================================
   const loadUserData = async (userId) => {
     try {
-      console.log('🔄 Loading user data for:', userId);
+      console.log('🔍 লোড হচ্ছে ইউজার ডেটা:', userId);
       
       // 1. প্রোফাইল লোড
       const { data: profileData, error: profileError } = await supabase
@@ -27,50 +30,69 @@ export function AuthProvider({ children }) {
         .single();
 
       if (profileError) {
-        console.error('Profile error:', profileError);
-      } else {
-        setProfile(profileData);
-        console.log('✅ Profile loaded:', profileData);
+        console.error('❌ প্রোফাইল লোডে সমস্যা:', profileError);
+        return false;
       }
+
+      console.log('✅ প্রোফাইল পাওয়া গেছে:', profileData);
+      setProfile(profileData);
 
       // 2. রোল লোড
       const userRoles = await getUserRoles(userId);
+      console.log('✅ রোল পাওয়া গেছে:', userRoles);
       setRoles(userRoles);
-      console.log('✅ Roles loaded:', userRoles);
 
       // 3. পারমিশন লোড
       const userPermissions = await getUserPermissions(userId);
       setPermissions(userPermissions);
 
-      // 4. হাইয়েস্ট রোল
+      // 4. হাইয়েস্ট রোল নির্ধারণ
       const highest = getHighestRole(userRoles);
+      console.log('✅ হাইয়েস্ট রোল:', highest);
       setHighestRole(highest);
       
-      // সঠিকভাবে রোল সেট করুন
-      const superAdmin = highest === 'super_admin';
-      const admin = highest === 'admin' || highest === 'super_admin';
-      const teacher = highest === 'teacher' || highest === 'admin' || highest === 'super_admin';
+      // 5. বুলিয়ান স্টেট আপডেট
+      const isSuper = highest === 'super_admin';
+      const isAdm = highest === 'admin' || highest === 'super_admin';
+      const isTch = highest === 'teacher' || highest === 'admin' || highest === 'super_admin';
       
-      setIsSuperAdmin(superAdmin);
-      setIsAdmin(admin);
-      setIsTeacher(teacher);
-
-      console.log('✅ Auth loaded:', { 
-        userId, 
-        highest, 
-        isSuperAdmin: superAdmin,
-        isAdmin: admin,
-        isTeacher: teacher,
-        userRoles
-      });
+      setIsSuperAdmin(isSuper);
+      setIsAdmin(isAdm);
+      setIsTeacher(isTch);
+      
+      console.log('✅ অথ স্টেট আপডেট:', { isSuper, isAdm, isTch });
 
       return true;
     } catch (error) {
-      console.error('Error loading user data:', error);
+      console.error('❌ ইউজার ডেটা লোডে সমস্যা:', error);
       return false;
     }
   };
 
+  // =============================================
+  // অথ স্টেট রিফ্রেশ (লগইনের পর কল করুন)
+  // =============================================
+  const refreshUser = async () => {
+    const { data: { user: currentUser } } = await supabase.auth.getUser();
+    
+    if (currentUser) {
+      setUser(currentUser);
+      await loadUserData(currentUser.id);
+    } else {
+      setUser(null);
+      setProfile(null);
+      setRoles([]);
+      setPermissions([]);
+      setHighestRole('user');
+      setIsSuperAdmin(false);
+      setIsAdmin(false);
+      setIsTeacher(false);
+    }
+  };
+
+  // =============================================
+  // অথ লিসেনার সেটআপ
+  // =============================================
   useEffect(() => {
     const initAuth = async () => {
       setLoading(true);
@@ -94,14 +116,22 @@ export function AuthProvider({ children }) {
 
     initAuth();
 
+    // অথ স্টেট চেঞ্জ লিসেনার
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('🔐 Auth State Change:', event, session?.user?.email);
+        console.log('🔄 অথ ইভেন্ট:', event);
         
         if (event === 'SIGNED_IN' && session) {
+          console.log('✅ লগইন সফল:', session.user.email);
           setUser(session.user);
           await loadUserData(session.user.id);
+        } else if (event === 'TOKEN_REFRESHED') {
+          // টোকেন রিফ্রেশ হলে ডেটা রিলোড
+          if (session) {
+            await loadUserData(session.user.id);
+          }
         } else if (event === 'SIGNED_OUT') {
+          console.log('🚪 লগআউট হয়েছে');
           setUser(null);
           setProfile(null);
           setRoles([]);
@@ -120,6 +150,9 @@ export function AuthProvider({ children }) {
     };
   }, []);
 
+  // =============================================
+  // হেল্পার ফাংশন
+  // =============================================
   const hasPermission = (permissionName) => {
     if (!permissionName) return false;
     if (isSuperAdmin) return true;
@@ -131,15 +164,6 @@ export function AuthProvider({ children }) {
     if (!roleName) return false;
     if (isSuperAdmin && roleName !== 'super_admin') return true;
     return roles.some(r => r.name === roleName);
-  };
-
-  const refreshUser = async () => {
-    console.log('🔄 Refreshing user data...');
-    if (user) {
-      await loadUserData(user.id);
-      return true;
-    }
-    return false;
   };
 
   return (
