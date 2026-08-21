@@ -11,6 +11,7 @@ import ContactPage from './components/ContactPage';
 import NotificationSystem from './components/NotificationSystem';
 import AuditLog from './components/AuditLog';
 import ContentManager from './components/ContentManager';
+import AdminAdmissions from './components/AdminAdmissions';
 
 export default function App() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -18,7 +19,7 @@ export default function App() {
   const [currentView, setCurrentView] = useState('superAdminPanel');
 
   // =============================================
-  // বাকি স্টেট
+  // সাইট কন্টেন্ট স্টেট
   // =============================================
   const [isAdmissionOpen, setIsAdmissionOpen] = useState(true);
   const [closedMessage, setClosedMessage] = useState("পর্যাপ্ত পরিমাণ ছাত্র-ছাত্রী বুকিং হওয়ায় আর কোনো সিট খালি নাই।");
@@ -162,14 +163,14 @@ export default function App() {
         .admin-menu-item:hover {
           color: #1e40af;
         }
-        .super-admin-badge {
-          background: linear-gradient(135deg, #fef3c7, #fde68a);
-          color: #b45309;
+        .open-badge {
+          background: linear-gradient(135deg, #dcfce7, #bbf7d0);
+          color: #15803d;
           padding: 4px 14px;
           border-radius: 20px;
           font-size: 11px;
           font-weight: 700;
-          border: 1px solid #f59e0b;
+          border: 1px solid #16a34a;
         }
       `}</style>
 
@@ -179,13 +180,13 @@ export default function App() {
           <div>📍 চিলমারী, কুড়িগ্রাম, বাংলাদেশ</div>
           <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
             <span>📞 যোগাযোগ: <a href={`tel:${siteData.contactNumber}`} style={{ color: '#ffffff', fontWeight: 'bold', textDecoration: 'none' }}>{siteData.contactNumber}</a></span>
-            <span className="super-admin-badge">⭐ সুপার এডমিন মোড</span>
+            <span className="open-badge">🔓 উন্মুক্ত</span>
           </div>
         </div>
       </div>
 
       {/* =============================================
-          নেভিগেশন বার - সব অপশন সহ
+          নেভিগেশন বার - সব অপশন
           ============================================= */}
       <nav style={{ backgroundColor: '#ffffff', position: 'sticky', top: 0, zIndex: 50, boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -210,9 +211,7 @@ export default function App() {
         {mobileMenuOpen && (
           <div style={{ backgroundColor: '#ffffff', borderTop: '1px solid #f1f5f9', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '12px', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}>
             
-            {/* =============================================
-                🔥 সব মেনু অপশন
-                ============================================= */}
+            {/* 🔥 সব মেনু অপশন - উন্মুক্ত */}
             <span className="nav-link" onClick={() => { setCurrentView('superAdminPanel'); setMobileMenuOpen(false); }}>⭐ সুপার এডমিন ড্যাশবোর্ড</span>
             
             <span className="nav-link" onClick={() => { setCurrentView('home'); setMobileMenuOpen(false); }}>🏠 হোম</span>
@@ -231,9 +230,8 @@ export default function App() {
             
             <hr style={{ border: 'none', borderTop: '1px solid #e2e8f0', margin: '4px 0' }} />
             
-            {/* =============================================
-                🔥 এডমিন অপশন
-                ============================================= */}
+            <span className="nav-link admin-menu-item" onClick={() => { setCurrentView('adminAdmissions'); setMobileMenuOpen(false); }}>📝 ভর্তি আবেদন সমূহ</span>
+            
             <span className="nav-link admin-menu-item" onClick={() => { setCurrentView('adminPermissionManager'); setMobileMenuOpen(false); }}>🛡️ এডমিন পারমিশন</span>
             
             <span className="nav-link admin-menu-item" onClick={() => { setCurrentView('adminPanel'); setMobileMenuOpen(false); }}>🛠️ এডমিন প্যানেল</span>
@@ -241,6 +239,8 @@ export default function App() {
             <span className="nav-link admin-menu-item" onClick={() => { setCurrentView('teacherPanel'); setMobileMenuOpen(false); }}>👨‍🏫 টিচার প্যানেল</span>
             
             <span className="nav-link admin-menu-item" onClick={() => { setCurrentView('auditLog'); setMobileMenuOpen(false); }}>📋 অডিট লগ</span>
+            
+            <span className="nav-link admin-menu-item" onClick={() => { setCurrentView('notifications'); setMobileMenuOpen(false); }}>🔔 নোটিফিকেশন</span>
             
             <hr style={{ border: 'none', borderTop: '1px solid #e2e8f0', margin: '4px 0' }} />
             
@@ -250,11 +250,14 @@ export default function App() {
       </nav>
 
       {/* =============================================
-          পেজ ভিউ
+          পেজ ভিউ - সব উন্মুক্ত
           ============================================= */}
       
       {/* সুপার এডমিন ড্যাশবোর্ড - ডিফল্ট */}
       {currentView === 'superAdminPanel' && <SuperAdminDashboard />}
+
+      {/* ভর্তি আবেদন সমূহ */}
+      {currentView === 'adminAdmissions' && <AdminAdmissions />}
 
       {/* হোম পেজ */}
       {currentView === 'home' && (
@@ -452,6 +455,9 @@ export default function App() {
 
       {/* যোগাযোগ */}
       {currentView === 'contact' && <ContactPage />}
+
+      {/* নোটিফিকেশন */}
+      {currentView === 'notifications' && <NotificationSystem />}
 
       {/* এডমিন পারমিশন */}
       {currentView === 'adminPermissionManager' && <AdminPermissionManager />}
