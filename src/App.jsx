@@ -16,11 +16,6 @@ import ContactPage from './components/ContactPage';
 import NotificationSystem from './components/NotificationSystem';
 import AuditLog from './components/AuditLog';
 
-// 🔥 এখানে ৪ লাইন যোগ করুন
-const isSuperAdmin = true;
-const isAdmin = true;
-const isTeacher = true;
-
 export default function App() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isAdmissionModalOpen, setIsAdmissionModalOpen] = useState(false);
@@ -29,9 +24,9 @@ export default function App() {
   const [currentView, setCurrentView] = useState('home');
 
   // =============================================
-  // AUTH CONTEXT (Phase 2) - COMMENT OUT / BAD DIYECHI
+  // AUTH CONTEXT (Phase 2)
   // =============================================
-  // const { isSuperAdmin, isAdmin, isTeacher, hasPermission, user, loading } = useAuth();
+  const { isSuperAdmin, isAdmin, isTeacher, hasPermission, user, loading } = useAuth();
 
   const [authEmail, setAuthEmail] = useState('');
   const [authPassword, setAuthPassword] = useState('');
@@ -92,7 +87,7 @@ export default function App() {
   useEffect(() => {
     fetchSiteContents();
     fetchManagedUsers();
-    // checkUserSession(); // COMMENT OUT
+    checkUserSession();
     fetchTeachers();
 
     const channel = supabase
@@ -124,52 +119,48 @@ export default function App() {
     if (data) setManagedUsers(data);
   };
 
-  // BAD DIYECHI
-  // const checkUserSession = async () => {
-  //   const { data: { session } } = await supabase.auth.getSession();
-  //   if (session) {
-  //     fetchUserProfile(session.user.id);
-  //   }
-  // };
+  const checkUserSession = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session) {
+      fetchUserProfile(session.user.id);
+    }
+  };
 
-  // const fetchUserProfile = async (userId) => {
-  //   const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).single();
-  //   if (data) {
-  //     setCurrentUser(data);
-  //     setUserRole(data.role);
-  //     setUserPermissions({ canEdit: data.can_edit, canManageAdmission: data.can_manage_admission });
-  //     window.userRole = data.role;
-  //   }
-  // };
+  const fetchUserProfile = async (userId) => {
+    const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).single();
+    if (data) {
+      setCurrentUser(data);
+      setUserRole(data.role);
+      setUserPermissions({ canEdit: data.can_edit, canManageAdmission: data.can_manage_admission });
+      window.userRole = data.role;
+    }
+  };
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    alert("🔓 লগইন সিস্টেম বন্ধ আছে - সবাই সুপার এডমিন!");
-    return;
-    // const { data, error } = await supabase.auth.signInWithPassword({
-    //   email: authEmail,
-    //   password: authPassword,
-    // });
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: authEmail,
+      password: authPassword,
+    });
 
-    // if (error) {
-    //   alert("লগইন ব্যর্থ হয়েছে: " + error.message);
-    // } else {
-    //   await fetchUserProfile(data.user.id);
-    //   alert("সফলভাবে লগইন হয়েছে! সিস্টেম আপনার রোল স্বয়ংক্রিয়ভাবে নির্ধারণ করেছে।");
-    //   setCurrentView('home');
-    //   setAuthEmail('');
-    //   setAuthPassword('');
-    // }
+    if (error) {
+      alert("লগইন ব্যর্থ হয়েছে: " + error.message);
+    } else {
+      await fetchUserProfile(data.user.id);
+      alert("সফলভাবে লগইন হয়েছে! সিস্টেম আপনার রোল স্বয়ংক্রিয়ভাবে নির্ধারণ করেছে।");
+      setCurrentView('home');
+      setAuthEmail('');
+      setAuthPassword('');
+    }
   };
 
   const handleLogout = async () => {
-    // await supabase.auth.signOut();
-    // setCurrentUser(null);
-    // setUserRole(null);
-    // window.userRole = null;
-    // setCurrentView('home');
-    // alert("লগআউট সফল হয়েছে।");
-    alert("🔓 লগআউট সিস্টেম বন্ধ আছে");
+    await supabase.auth.signOut();
+    setCurrentUser(null);
+    setUserRole(null);
+    window.userRole = null;
+    setCurrentView('home');
+    alert("লগআউট সফল হয়েছে।");
   };
 
   const handleUpdateSiteContent = async (key, value) => {
@@ -303,15 +294,6 @@ export default function App() {
         .teacher-designation { color: #15803d; font-weight: 600; font-size: 14px; margin-bottom: 8px; }
         .teacher-details { font-size: 13px; color: #334155; border-top: 1px solid #f1f5f9; padding-top: 10px; margin-top: 8px; }
         .teacher-details div { margin: 2px 0; }
-        .open-badge {
-          background: linear-gradient(135deg, #dcfce7, #bbf7d0);
-          color: #15803d;
-          padding: 4px 14px;
-          border-radius: 20px;
-          font-size: 11px;
-          font-weight: 700;
-          border: 1px solid #16a34a;
-        }
       `}</style>
 
       {/* টপ কন্টাক্ট বার */}
@@ -320,7 +302,6 @@ export default function App() {
           <div>📍 চিলমারী, কুড়িগ্রাম, বাংলাদেশ</div>
           <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
             <span>📞 যোগাযোগ: <a href={`tel:${siteData.contactNumber}`} style={{ color: '#ffffff', fontWeight: 'bold', textDecoration: 'none' }}>{siteData.contactNumber}</a></span>
-            <span className="open-badge">🔓 উন্মুক্ত</span>
           </div>
         </div>
       </div>
@@ -356,15 +337,17 @@ export default function App() {
             <span className="nav-link" onClick={() => { setCurrentView('gallery'); setMobileMenuOpen(false); }}>গ্যালারি</span>
             <span className="nav-link" onClick={() => { setCurrentView('contact'); setMobileMenuOpen(false); }}>যোগাযোগ</span>
             
-            {/* 🔑 সাইন ইন বাটন - এখন শুধু মেসেজ দেখাবে */}
-            <span className="nav-link" style={{ color: '#2563eb', fontWeight: 'bold' }} onClick={() => { setMobileMenuOpen(false); alert('🔓 লগইন সিস্টেম বন্ধ আছে - সবাই সুপার এডমিন!'); }}>
-              🔓 লগইন (উন্মুক্ত)
+            {/* 🔑 সাইন ইন বাটন */}
+            <span className="nav-link" style={{ color: '#2563eb', fontWeight: 'bold' }} onClick={() => { setMobileMenuOpen(false); setIsSignInModalOpen(true); }}>
+              🔑 সাইন ইন
             </span>
 
-            {/* নোটিফিকেশন (সবাই দেখতে পাবে) */}
-            <span className="nav-link" style={{ color: '#2563eb', fontWeight: 'bold' }} onClick={() => { setCurrentView('notifications'); setMobileMenuOpen(false); }}>🔔 নোটিফিকেশন</span>
+            {/* নোটিফিকেশন (শুধু লগইন থাকলে) */}
+            {currentUser && (
+              <span className="nav-link" style={{ color: '#2563eb', fontWeight: 'bold' }} onClick={() => { setCurrentView('notifications'); setMobileMenuOpen(false); }}>🔔 নোটিফিকেশন</span>
+            )}
             
-            {/* ব্যবহার পারমিশন - এখন সবাই দেখতে পাবে */}
+            {/* ব্যবহার পারমিশন অনুযায়ী মেনু দেখানো */}
             {(isTeacher || isAdmin || isSuperAdmin) && (
               <span className="nav-link" style={{ color: '#16a34a', fontWeight: 'bold' }} onClick={() => { setCurrentView('teacherPanel'); setMobileMenuOpen(false); }}>👨‍🏫 টিচার প্যানেল</span>
             )}
@@ -377,18 +360,32 @@ export default function App() {
             {isSuperAdmin && (
               <span className="nav-link" style={{ color: '#7c3aed', fontWeight: 'bold' }} onClick={() => { setCurrentView('adminPermissionManager'); setMobileMenuOpen(false); }}>🛡️ এডমিন পারমিশন</span>
             )}
-            {(isAdmin || isSuperAdmin) && (
-              <span className="nav-link" style={{ color: '#64748b', fontWeight: 'bold' }} onClick={() => { setCurrentView('auditLog'); setMobileMenuOpen(false); }}>📋 অডিট লগ</span>
-            )}
-            {isSuperAdmin && (
-              <span className="nav-link" style={{ color: '#b45309', fontWeight: 'bold' }} onClick={() => { setCurrentView('adminAdmissions'); setMobileMenuOpen(false); }}>📝 ভর্তি আবেদন</span>
-            )}
 
             <button onClick={() => { setMobileMenuOpen(false); setIsAdmissionModalOpen(true); }} className="btn-primary" style={{ width: '100%', textAlign: 'center', marginTop: '6px' }}>অনলাইন ভর্তি</button>
             
             <div style={{ borderTop: '1px dashed #cbd5e1', paddingTop: '10px', marginTop: '4px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#16a34a' }}>🔓 উন্মুক্ত - কোনো লগইন প্রয়োজন নেই</span>
-              <span style={{ fontSize: '11px', color: '#64748b' }}>⭐ আপনি সুপার এডমিন হিসেবে দেখছেন</span>
+              {currentUser ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#16a34a' }}>লগইন আছেন: {currentUser.name} ({userRole})</span>
+                  <button onClick={handleLogout} style={{ background: '#dc2626', color: 'white', border: 'none', padding: '6px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' }}>লগআউট করুন</button>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#64748b' }}>প্যানেল লগইন:</span>
+                  <input type="email" placeholder="ইমেল" value={authEmail} onChange={(e) => setAuthEmail(e.target.value)} style={{ padding: '6px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '12px' }} />
+                  <input type="password" placeholder="পাসওয়ার্ড" value={authPassword} onChange={(e) => setAuthPassword(e.target.value)} style={{ padding: '6px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '12px' }} />
+                  <button onClick={handleLogin} className="btn-primary" style={{ padding: '6px', fontSize: '12px', justifyContent: 'center' }}>লগইন করুন</button>
+                </div>
+              )}
+
+              {isSuperAdmin && (
+                <button 
+                  onClick={() => setIsAdminMode(!isAdminMode)} 
+                  style={{ background: '#0f172a', color: '#f8fafc', border: 'none', padding: '8px 12px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', width: '100%', fontWeight: '600', marginTop: '4px' }}
+                >
+                  {isAdminMode ? '🔒 সুপার এডমিন সেটিংস বন্ধ করুন' : '⚙️ সুপার এডমিন সেটিংস (খুলুন)'}
+                </button>
+              )}
             </div>
           </div>
         )}
@@ -629,9 +626,6 @@ export default function App() {
       {/* নোটিফিকেশন সিস্টেম */}
       {currentView === 'notifications' && <NotificationSystem />}
 
-      {/* ভর্তি আবেদন সমূহ */}
-      {currentView === 'adminAdmissions' && <AdminAdmissions />}
-
       {/* টিচার প্যানেল */}
       {currentView === 'teacherPanel' && (
         <div style={{ maxWidth: '800px', margin: '40px auto', padding: '0 16px' }}>
@@ -653,23 +647,26 @@ export default function App() {
             <p style={{ color: '#334155', fontSize: '15px' }}>শিক্ষক ও শিক্ষার্থীদের পারমিশন ম্যানেজ করুন।</p>
             <div style={{ marginTop: '20px' }}>
               <TeacherManagement />
-              <ContentManager />
-            </div>
-            <div style={{ marginTop: '20px', textAlign: 'center' }}>
-              <button onClick={() => setCurrentView('home')} className="btn-primary" style={{ backgroundColor: '#64748b' }}>হোম পেজে ফিরে যান</button>
             </div>
           </div>
         </div>
       )}
 
       {/* সুপার এডমিন প্যানেল - SuperAdminDashboard কম্পোনেন্ট ব্যবহার করা হয়েছে */}
-      {currentView === 'superAdminPanel' && <SuperAdminDashboard />}
+      {currentView === 'superAdminPanel' && (
+        <SuperAdminDashboard />
+      )}
 
       {/* এডমিন পারমিশন ম্যানেজার */}
-      {currentView === 'adminPermissionManager' && <AdminPermissionManager />}
+      {currentView === 'adminPermissionManager' && (
+        <AdminPermissionManager />
+      )}
 
-      {/* অডিট লগ */}
-      {currentView === 'auditLog' && <AuditLog />}
+      {/* সাইন ইন মোডাল */}
+      <SignInModal 
+        isOpen={isSignInModalOpen} 
+        onClose={() => setIsSignInModalOpen(false)} 
+      />
 
       {/* অ্যাডমিশন মোডাল */}
       {isAdmissionModalOpen && (
