@@ -391,9 +391,12 @@ export default function App() {
             <span className="nav-link" onClick={() => { setCurrentView('gallery'); setMobileMenuOpen(false); }}>গ্যালারি</span>
             <span className="nav-link" onClick={() => { setCurrentView('contact'); setMobileMenuOpen(false); }}>যোগাযোগ</span>
             
-            {/* 🔥 এডমিন প্যানেল বাটন - লগইন ফর্মের জায়গায় */}
+            {/* 🔥 এডমিন প্যানেল বাটন - এখন ঠিক কাজ করবে */}
             <button 
-              onClick={() => { window.location.href = '/admin'; setMobileMenuOpen(false); }} 
+              onClick={() => { 
+                setCurrentView('adminDashboard'); 
+                setMobileMenuOpen(false); 
+              }} 
               style={{
                 background: 'linear-gradient(135deg, #1d4ed8, #1e40af)',
                 color: 'white',
@@ -749,6 +752,13 @@ export default function App() {
               <TeacherManagement />
             </div>
           </div>
+        </div>
+      )}
+
+      {/* 🟢🟢🟢 এডমিন ড্যাশবোর্ড ভিউ - নতুন যোগ করা হয়েছে 🟢🟢🟢 */}
+      {currentView === 'adminDashboard' && (
+        <div style={{ maxWidth: '1200px', margin: '40px auto', padding: '0 16px' }}>
+          <AdminDashboard />
         </div>
       )}
 
