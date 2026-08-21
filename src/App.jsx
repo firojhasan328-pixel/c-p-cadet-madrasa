@@ -17,6 +17,7 @@ import NotificationSystem from './components/NotificationSystem';
 import AuditLog from './components/AuditLog';
 import AdminLogin from './components/AdminLogin';
 import AdminDashboard from './components/AdminDashboard';
+import AdvancedCMS from './components/AdvancedCMS'; // 🔥 নতুন যোগ করা হয়েছে
 
 export default function App() {
   // 🔥 সব ভ্যালু ডিসট্রাকচার করা হয়েছে
@@ -391,7 +392,7 @@ export default function App() {
             <span className="nav-link" onClick={() => { setCurrentView('gallery'); setMobileMenuOpen(false); }}>গ্যালারি</span>
             <span className="nav-link" onClick={() => { setCurrentView('contact'); setMobileMenuOpen(false); }}>যোগাযোগ</span>
             
-            {/* 🔥 এডমিন প্যানেল বাটন - এখন ঠিক কাজ করবে */}
+            {/* এডমিন প্যানেল বাটন */}
             <button 
               onClick={() => { 
                 setCurrentView('adminDashboard'); 
@@ -419,23 +420,27 @@ export default function App() {
               <span className="nav-link" style={{ color: '#2563eb', fontWeight: 'bold' }} onClick={() => { setCurrentView('notifications'); setMobileMenuOpen(false); }}>🔔 নোটিফিকেশন</span>
             )}
             
-            {/* 🔥 ব্যবহার পারমিশন অনুযায়ী মেনু দেখানো - এখন ঠিক কাজ করবে */}
+            {/* ব্যবহার পারমিশন অনুযায়ী মেনু দেখানো */}
             {(isTeacher || isAdmin || isSuperAdmin) && (
               <span className="nav-link" style={{ color: '#16a34a', fontWeight: 'bold' }} onClick={() => { setCurrentView('teacherPanel'); setMobileMenuOpen(false); }}>👨‍🏫 টিচার প্যানেল</span>
             )}
             {(isAdmin || isSuperAdmin) && (
               <span className="nav-link" style={{ color: '#0369a1', fontWeight: 'bold' }} onClick={() => { setCurrentView('adminPanel'); setMobileMenuOpen(false); }}>🛠️ এডমিন প্যানেল</span>
             )}
+            
+            {/* 🔥 সুপার এডমিন মেনু - এখানে CMS যোগ করা হয়েছে */}
             {isSuperAdmin && (
-              <span className="nav-link" style={{ color: '#b45309', fontWeight: 'bold' }} onClick={() => { setCurrentView('superAdminPanel'); setMobileMenuOpen(false); }}>⚙️ সুপার এডমিন প্যানেল</span>
-            )}
-            {isSuperAdmin && (
-              <span className="nav-link" style={{ color: '#7c3aed', fontWeight: 'bold' }} onClick={() => { setCurrentView('adminPermissionManager'); setMobileMenuOpen(false); }}>🛡️ এডমিন পারমিশন</span>
+              <>
+                <span className="nav-link" style={{ color: '#b45309', fontWeight: 'bold' }} onClick={() => { setCurrentView('superAdminPanel'); setMobileMenuOpen(false); }}>⚙️ সুপার এডমিন প্যানেল</span>
+                <span className="nav-link" style={{ color: '#7c3aed', fontWeight: 'bold' }} onClick={() => { setCurrentView('adminPermissionManager'); setMobileMenuOpen(false); }}>🛡️ এডমিন পারমিশন</span>
+                {/* 🔥🔥🔥 নতুন CMS মেনু আইটেম */}
+                <span className="nav-link" style={{ color: '#8b5cf6', fontWeight: 'bold' }} onClick={() => { setCurrentView('advancedCms'); setMobileMenuOpen(false); }}>📝 সম্পূর্ণ CMS</span>
+              </>
             )}
 
             <button onClick={() => { setMobileMenuOpen(false); setIsAdmissionModalOpen(true); }} className="btn-primary" style={{ width: '100%', textAlign: 'center', marginTop: '6px' }}>অনলাইন ভর্তি</button>
             
-            {/* 🔥 লগইন/লগআউট সেকশন - আপডেট করা হয়েছে */}
+            {/* লগইন/লগআউট সেকশন */}
             {currentUser ? (
               <div style={{ borderTop: '1px dashed #cbd5e1', paddingTop: '10px', marginTop: '4px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -742,7 +747,7 @@ export default function App() {
         </div>
       )}
 
-      {/* এডমিন প্যানেল - TeacherManagement যোগ করা হয়েছে */}
+      {/* এডমিন প্যানেল */}
       {currentView === 'adminPanel' && (
         <div style={{ maxWidth: '1200px', margin: '40px auto', padding: '0 16px' }}>
           <div className="card">
@@ -755,14 +760,21 @@ export default function App() {
         </div>
       )}
 
-      {/* 🟢🟢🟢 এডমিন ড্যাশবোর্ড ভিউ - নতুন যোগ করা হয়েছে 🟢🟢🟢 */}
+      {/* এডমিন ড্যাশবোর্ড ভিউ */}
       {currentView === 'adminDashboard' && (
         <div style={{ maxWidth: '1200px', margin: '40px auto', padding: '0 16px' }}>
           <AdminDashboard />
         </div>
       )}
 
-      {/* সুপার এডমিন প্যানেল - SuperAdminDashboard কম্পোনেন্ট ব্যবহার করা হয়েছে */}
+      {/* 🔥🔥🔥 সম্পূর্ণ CMS ভিউ - নতুন যোগ করা হয়েছে */}
+      {currentView === 'advancedCms' && (
+        <div style={{ maxWidth: '1200px', margin: '40px auto', padding: '0 16px' }}>
+          <AdvancedCMS />
+        </div>
+      )}
+
+      {/* সুপার এডমিন প্যানেল */}
       {currentView === 'superAdminPanel' && (
         <SuperAdminDashboard />
       )}
