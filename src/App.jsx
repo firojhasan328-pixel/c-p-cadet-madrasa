@@ -2,9 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from './supabaseClient';
 import Footer from './components/Footer';
 import AdmissionForm from './components/AdmissionForm';
-import AdminAdmissions from './components/AdminAdmissions';
-import ContentManager from './components/ContentManager';
-import TeacherManager from './components/TeacherManager';
 import Gallery from './components/Gallery';
 import SignInModal from './components/SignInModal';
 import StudentList from './components/StudentList';
@@ -22,39 +19,64 @@ export default function App() {
   const [currentView, setCurrentView] = useState('home');
 
   // =============================================
-  // সরাসরি স্টেট
+  // স্টেট
   // =============================================
   const [user, setUser] = useState(null);
-  const [profile, setProfile] = useState(null);
+  const [userRole, setUserRole] = useState('ইউজার');
+  const [userName, setUserName] = useState('');
   const [loading, setLoading] = useState(true);
   const [authEmail, setAuthEmail] = useState('');
   const [authPassword, setAuthPassword] = useState('');
 
   // =============================================
-  // প্রোফাইল ফেচ
+  // 🔥 SQL দিয়ে প্রোফাইল ফেচ (নিশ্চিত)
   // =============================================
-  const fetchProfile = async (userId) => {
+  const fetchUserProfile = async (userId) => {
     if (!userId) {
-      setProfile(null);
+      setUserRole('ইউজার');
+      setUserName('');
       return;
     }
+
     try {
+      console.log('🔍 SQL ফেচ করছি ইউজার:', userId);
+      
+      // 🔥 সরাসরি SQL Query
       const { data, error } = await supabase
         .from('profiles')
-        .select('*')
+        .select('name, role')
         .eq('id', userId)
         .single();
-      
+
       if (error) {
-        console.error('Profile error:', error);
-        setProfile(null);
+        console.error('❌ SQL Error:', error);
+        setUserRole('ইউজার');
+        setUserName('');
+        return;
+      }
+
+      console.log('✅ SQL Result:', data);
+
+      if (data) {
+        setUserName(data.name || '');
+        // 🔥 রোল চেক - superadmin / super_admin দুটোই চেক করি
+        if (data.role === 'superadmin' || data.role === 'super_admin') {
+          setUserRole('সুপার এডমিন');
+        } else if (data.role === 'admin') {
+          setUserRole('এডমিন');
+        } else if (data.role === 'teacher') {
+          setUserRole('শিক্ষক');
+        } else {
+          setUserRole('ইউজার');
+        }
       } else {
-        console.log('Profile loaded:', data);
-        setProfile(data);
+        setUserRole('ইউজার');
+        setUserName('');
       }
     } catch (err) {
-      console.error('Fetch error:', err);
-      setProfile(null);
+      console.error('❌ Fetch Error:', err);
+      setUserRole('ইউজার');
+      setUserName('');
     }
   };
 
@@ -68,10 +90,11 @@ export default function App() {
       
       if (session?.user) {
         setUser(session.user);
-        await fetchProfile(session.user.id);
+        await fetchUserProfile(session.user.id);
       } else {
         setUser(null);
-        setProfile(null);
+        setUserRole('ইউজার');
+        setUserName('');
       }
       setLoading(false);
     };
@@ -81,12 +104,13 @@ export default function App() {
     const { data: listener } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session?.user) {
         setUser(session.user);
-        await fetchProfile(session.user.id);
+        await fetchUserProfile(session.user.id);
         setLoading(false);
         alert('✅ লগইন সফল!');
       } else if (event === 'SIGNED_OUT') {
         setUser(null);
-        setProfile(null);
+        setUserRole('ইউজার');
+        setUserName('');
         setLoading(false);
       }
     });
@@ -95,11 +119,11 @@ export default function App() {
   }, []);
 
   // =============================================
-  // রোল নির্ধারণ
+  // রোল চেক (সরাসরি userRole স্টেট থেকে)
   // =============================================
-  const isSuperAdmin = profile?.role === 'superadmin';
-  const isAdmin = profile?.role === 'admin' || isSuperAdmin;
-  const isTeacher = profile?.role === 'teacher' || isAdmin;
+  const isSuperAdmin = userRole === 'সুপার এডমিন';
+  const isAdmin = userRole === 'এডমিন' || userRole === 'সুপার এডমিন';
+  const isTeacher = userRole === 'শিক্ষক' || isAdmin;
 
   // =============================================
   // লগইন
@@ -121,14 +145,14 @@ export default function App() {
       setAuthPassword('');
       setMobileMenuOpen(false);
       setCurrentView('home');
-      // প্রোফাইল useEffect এ লোড হবে
     }
   };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
     setUser(null);
-    setProfile(null);
+    setUserRole('ইউজার');
+    setUserName('');
     setCurrentView('home');
     alert("লগআউট সফল");
   };
@@ -313,16 +337,13 @@ export default function App() {
   const whatsappNumber = "8801918568313";
 
   const getUserDisplayRole = () => {
-    if (isSuperAdmin) return 'সুপার এডমিন';
-    if (isAdmin) return 'এডমিন';
-    if (isTeacher) return 'শিক্ষক';
-    return 'ইউজার';
+    return userRole;
   };
 
   const isLoggedIn = !!user;
 
   // ডিবাগ
-  console.log('🔍 State:', { user: user?.email, profile, isSuperAdmin });
+  console.log('🔍 State:', { user: user?.email, userRole, isSuperAdmin });
 
   return (
     <div style={{ fontFamily: "'Hind Siliguri', 'Segoe UI', sans-serif", backgroundColor: '#f8fafc', color: '#0f172a', minHeight: '100vh', margin: 0, padding: 0, position: 'relative' }}>
@@ -458,7 +479,7 @@ export default function App() {
               ) : isLoggedIn ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#16a34a' }}>
-                    লগইন আছেন: {profile?.name || user?.email || 'ইউজার'} 
+                    লগইন আছেন: {userName || user?.email || 'ইউজার'} 
                     <span style={{ 
                       marginLeft: '8px',
                       padding: '2px 10px',
