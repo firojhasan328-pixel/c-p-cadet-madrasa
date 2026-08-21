@@ -27,7 +27,7 @@ export default function App() {
   
   // লগইন মোডাল
   const [showLoginModal, setShowLoginModal] = useState(false);
-  const [loginRole, setLoginRole] = useState(null);
+  const [loginRole, setLoginRole] = useState(null); // 'super_admin', 'admin', 'teacher'
   const [authEmail, setAuthEmail] = useState('');
   const [authPassword, setAuthPassword] = useState('');
   const [loginError, setLoginError] = useState('');
@@ -59,12 +59,15 @@ export default function App() {
       if (data) {
         setUserName(data.name || '');
         setUserRole(data.role || null);
+        console.log('✅ প্রোফাইল পাওয়া গেছে:', data);
+        return data.role;
       }
     } catch (err) {
       console.error('Fetch Error:', err);
       setUserRole(null);
       setUserName('');
     }
+    return null;
   };
 
   // =============================================
@@ -89,13 +92,28 @@ export default function App() {
     checkAuth();
 
     const { data: listener } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('🔄 অথ ইভেন্ট:', event);
       if (event === 'SIGNED_IN' && session?.user) {
         setUser(session.user);
-        await fetchUserProfile(session.user.id);
+        const role = await fetchUserProfile(session.user.id);
         setLoading(false);
         setShowLoginModal(false);
+        
+        // 🔥 লগইনের পর রোল চেক করে পেজ রিডাইরেক্ট
+        if (role === 'super_admin' || role === 'superadmin') {
+          setCurrentView('superAdminPanel');
+          alert('✅ সুপার এডমিন হিসেবে লগইন সফল!');
+        } else if (role === 'admin') {
+          setCurrentView('adminPanel');
+          alert('✅ এডমিন হিসেবে লগইন সফল!');
+        } else if (role === 'teacher') {
+          setCurrentView('teacherPanel');
+          alert('✅ টিচার হিসেবে লগইন সফল!');
+        } else {
+          setCurrentView('home');
+          alert('✅ লগইন সফল! কিন্তু আপনার কোনো এডমিন রোল নেই।');
+        }
         setLoginRole(null);
-        alert('✅ লগইন সফল!');
       } else if (event === 'SIGNED_OUT') {
         setUser(null);
         setUserRole(null);
@@ -116,25 +134,87 @@ export default function App() {
   const isTeacher = userRole === 'teacher' || isAdmin;
 
   // =============================================
-  // লগইন ফাংশন
+  // লগইন ফাংশন - রোল ম্যাচ চেক সহ
   // =============================================
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoginError('');
     setLoading(true);
     
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: authEmail,
-      password: authPassword,
-    });
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: authEmail,
+        password: authPassword,
+      });
 
-    if (error) {
-      setLoginError(error.message);
+      if (error) {
+        setLoginError(error.message);
+        setLoading(false);
+        return;
+      }
+
+      if (data?.user) {
+        // প্রোফাইল ফেচ
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', data.user.id)
+          .single();
+
+        if (profileError) {
+          setLoginError('প্রোফাইল লোড করতে সমস্যা');
+          setLoading(false);
+          return;
+        }
+
+        const actualRole = profileData?.role || '';
+        console.log('🔍 লগইন রোল চেক:', { loginRole, actualRole });
+
+        // 🔥 চেক করুন: ইউজারের আসল রোল কি সিলেক্ট করা রোলের সাথে ম্যাচ করে?
+        let roleMatched = false;
+        if (loginRole === 'super_admin' && (actualRole === 'super_admin' || actualRole === 'superadmin')) {
+          roleMatched = true;
+        } else if (loginRole === 'admin' && actualRole === 'admin') {
+          roleMatched = true;
+        } else if (loginRole === 'teacher' && actualRole === 'teacher') {
+          roleMatched = true;
+        }
+
+        if (!roleMatched) {
+          setLoginError(`❌ আপনি ${loginRole} নন! আপনার রোল: ${actualRole}`);
+          setLoading(false);
+          await supabase.auth.signOut();
+          return;
+        }
+
+        // সব ঠিক থাকলে সেটআপ করুন
+        setUser(data.user);
+        setUserRole(actualRole);
+        setUserName(profileData.name || '');
+        setLoading(false);
+        setShowLoginModal(false);
+        setLoginRole(null);
+        setAuthEmail('');
+        setAuthPassword('');
+
+        // রোল অনুযায়ী পেজ রিডাইরেক্ট
+        if (actualRole === 'super_admin' || actualRole === 'superadmin') {
+          setCurrentView('superAdminPanel');
+          alert('✅ সুপার এডমিন হিসেবে লগইন সফল!');
+        } else if (actualRole === 'admin') {
+          setCurrentView('adminPanel');
+          alert('✅ এডমিন হিসেবে লগইন সফল!');
+        } else if (actualRole === 'teacher') {
+          setCurrentView('teacherPanel');
+          alert('✅ টিচার হিসেবে লগইন সফল!');
+        } else {
+          setCurrentView('home');
+          alert('✅ লগইন সফল! কিন্তু আপনার কোনো এডমিন রোল নেই।');
+        }
+      }
+    } catch (err) {
+      setLoginError('লগইন করতে সমস্যা: ' + err.message);
       setLoading(false);
-    } else {
-      setAuthEmail('');
-      setAuthPassword('');
-      setLoginError('');
     }
   };
 
@@ -266,7 +346,7 @@ export default function App() {
 
   const isLoggedIn = !!user;
 
-  console.log('🔍 App State:', { user: user?.email, userRole, isSuperAdmin, isAdmin, isTeacher });
+  console.log('🔍 App State:', { user: user?.email, userRole, isSuperAdmin, isAdmin, isTeacher, currentView });
 
   return (
     <div style={{ fontFamily: "'Hind Siliguri', 'Segoe UI', sans-serif", backgroundColor: '#f8fafc', color: '#0f172a', minHeight: '100vh', margin: 0, padding: 0, position: 'relative' }}>
@@ -452,9 +532,7 @@ export default function App() {
         </div>
       </div>
 
-      {/* =============================================
-          নেভিগেশন বার - এডমিন প্যানেল মেনুতে
-          ============================================= */}
+      {/* নেভিগেশন বার */}
       <nav style={{ backgroundColor: '#ffffff', position: 'sticky', top: 0, zIndex: 50, boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }} onClick={() => setCurrentView('home')}>
@@ -485,9 +563,7 @@ export default function App() {
             <span className="nav-link" onClick={() => { setCurrentView('gallery'); setMobileMenuOpen(false); }}>গ্যালারি</span>
             <span className="nav-link" onClick={() => { setCurrentView('contact'); setMobileMenuOpen(false); }}>যোগাযোগ</span>
             
-            {/* =============================================
-                🔥 এডমিন প্যানেল - মেনুতে
-                ============================================= */}
+            {/* এডমিন প্যানেল */}
             <span className="nav-link admin-menu-item" onClick={handleAdminSelect}>
               ⚙️ এডমিন প্যানেল
             </span>
@@ -698,7 +774,11 @@ export default function App() {
               <h3 style={{ margin: '8px 0 4px 0', color: '#0f172a' }}>
                 {loginRole === 'super_admin' ? 'সুপার এডমিন' : loginRole === 'admin' ? 'এডমিন' : 'টিচার'} লগইন
               </h3>
-              <p style={{ fontSize: '13px', color: '#64748b' }}>আপনার অ্যাকাউন্ট দিয়ে লগইন করুন</p>
+              <p style={{ fontSize: '13px', color: '#64748b' }}>
+                {loginRole === 'super_admin' ? 'সুপার এডমিন অ্যাকাউন্ট দিয়ে লগইন করুন' : 
+                 loginRole === 'admin' ? 'এডমিন অ্যাকাউন্ট দিয়ে লগইন করুন' : 
+                 'টিচার অ্যাকাউন্ট দিয়ে লগইন করুন'}
+              </p>
             </div>
 
             {loginError && <div className="login-error">{loginError}</div>}
@@ -830,7 +910,9 @@ export default function App() {
       {currentView === 'notifications' && <NotificationSystem />}
       {currentView === 'auditLog' && <AuditLog />}
 
-      {/* প্যানেল ভিউ - শুধুমাত্র পারমিশন থাকলে */}
+      {/* =============================================
+          প্যানেল ভিউ - শুধুমাত্র পারমিশন থাকলে
+          ============================================= */}
       {currentView === 'teacherPanel' && isTeacher && (
         <div style={{ maxWidth: '800px', margin: '40px auto', padding: '0 16px' }}>
           <div className="card">
