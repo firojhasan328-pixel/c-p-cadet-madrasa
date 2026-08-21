@@ -13,7 +13,7 @@ import AdminPermissionManager from './AdminPermissionManager';
 import AdvancedCMS from './AdvancedCMS';
 
 export default function SuperAdminDashboard() {
-  const { user, isSuperAdmin, refreshUser } = useAuth();
+  // 🚫 সব অথ চেক বাদ - সরাসরি ড্যাশবোর্ড দেখান
   const [activeTab, setActiveTab] = useState('dashboard');
   const [loading, setLoading] = useState(true);
   
@@ -52,23 +52,19 @@ export default function SuperAdminDashboard() {
   const [showNotificationModal, setShowNotificationModal] = useState(false);
 
   useEffect(() => {
-    if (isSuperAdmin) {
-      loadDashboardData();
-      loadAllUsers();
-      loadAllPermissions();
-      loadActivityLogs();
-    }
-  }, [isSuperAdmin]);
+    loadDashboardData();
+    loadAllUsers();
+    loadAllPermissions();
+    loadActivityLogs();
+  }, []);
 
   const loadDashboardData = async () => {
     setLoading(true);
     try {
-      // মোট ইউজার
       const { count: userCount } = await supabase
         .from('profiles')
         .select('*', { count: 'exact', head: true });
 
-      // মোট এডমিন
       const { data: adminRole } = await supabase
         .from('roles')
         .select('id')
@@ -80,22 +76,18 @@ export default function SuperAdminDashboard() {
         .select('*', { count: 'exact', head: true })
         .eq('role_id', adminRole?.id);
 
-      // মোট শিক্ষক
       const { count: teacherCount } = await supabase
         .from('teachers')
         .select('*', { count: 'exact', head: true });
 
-      // মোট ছাত্র
       const { count: studentCount } = await supabase
         .from('students')
         .select('*', { count: 'exact', head: true });
 
-      // মোট ভর্তি আবেদন
       const { count: admissionCount } = await supabase
         .from('admissions')
         .select('*', { count: 'exact', head: true });
 
-      // মোট নোটিশ
       const { count: noticeCount } = await supabase
         .from('site_contents')
         .select('*', { count: 'exact', head: true })
@@ -117,13 +109,11 @@ export default function SuperAdminDashboard() {
 
   const loadAllUsers = async () => {
     try {
-      // সব ইউজার প্রোফাইল
       const { data: profiles } = await supabase
         .from('profiles')
         .select('*')
         .order('created_at', { ascending: false });
 
-      // প্রতিটি ইউজারের রোল
       const usersWithRoles = await Promise.all((profiles || []).map(async (profile) => {
         const { data: roles } = await supabase
           .from('user_roles')
@@ -177,7 +167,7 @@ export default function SuperAdminDashboard() {
     if (!userId) return;
     
     try {
-      const result = await assignRoleToUser(userId, roleName, user?.id);
+      const result = await assignRoleToUser(userId, roleName);
       if (result.success) {
         setSuccessMsg(`✅ ${roleName} রোল সফলভাবে অ্যাসাইন করা হয়েছে!`);
         await sendNotification(
@@ -186,7 +176,7 @@ export default function SuperAdminDashboard() {
           `আপনাকে ${roleName} রোল দেওয়া হয়েছে।`,
           'success'
         );
-        await logActivity(user?.id, 'ASSIGN_ROLE', 'user_roles', userId, { role: roleName });
+        await logActivity(userId, 'ASSIGN_ROLE', 'user_roles', userId, { role: roleName });
         loadAllUsers();
         setTimeout(() => setSuccessMsg(''), 3000);
       } else {
@@ -199,7 +189,7 @@ export default function SuperAdminDashboard() {
 
   const handleUpdatePermission = async (userId, permissionName, isAllowed) => {
     try {
-      const result = await updateUserPermission(userId, permissionName, isAllowed, user?.id);
+      const result = await updateUserPermission(userId, permissionName, isAllowed);
       if (result.success) {
         setSuccessMsg(`✅ পারমিশন আপডেট করা হয়েছে!`);
         await sendNotification(
@@ -208,7 +198,7 @@ export default function SuperAdminDashboard() {
           `${isAllowed ? '✅' : '❌'} ${permissionName} পারমিশন ${isAllowed ? 'দেওয়া' : 'বাতিল'} করা হয়েছে।`,
           isAllowed ? 'success' : 'warning'
         );
-        await logActivity(user?.id, 'UPDATE_PERMISSION', 'user_permissions', userId, { 
+        await logActivity(userId, 'UPDATE_PERMISSION', 'user_permissions', userId, { 
           permission: permissionName, 
           is_allowed: isAllowed 
         });
@@ -232,7 +222,6 @@ export default function SuperAdminDashboard() {
       const targetUserId = notificationUserId || 'all';
       
       if (targetUserId === 'all') {
-        // সবাইকে নোটিফিকেশন
         for (const user of allUsers) {
           await sendNotification(
             user.id,
@@ -252,7 +241,7 @@ export default function SuperAdminDashboard() {
         setSuccessMsg('✅ নোটিফিকেশন পাঠানো হয়েছে!');
       }
 
-      await logActivity(user?.id, 'SEND_NOTIFICATION', 'notifications', targetUserId, {
+      await logActivity('SYSTEM', 'SEND_NOTIFICATION', 'notifications', targetUserId, {
         title: notificationTitle,
         type: notificationType
       });
@@ -311,34 +300,8 @@ export default function SuperAdminDashboard() {
   );
 
   // =============================================
-  // Render
+  // Render - সবাই দেখতে পারবে
   // =============================================
-
-  if (!isSuperAdmin) {
-    return (
-      <div style={{ textAlign: 'center', padding: '50px 20px' }}>
-        <div style={{ fontSize: '48px', marginBottom: '16px' }}>🚫</div>
-        <h2 style={{ color: '#dc2626' }}>অ্যাক্সেস অস্বীকৃত!</h2>
-        <p style={{ color: '#64748b' }}>আপনার এই পেজে প্রবেশের অনুমতি নেই।</p>
-        <p style={{ color: '#64748b', fontSize: '13px' }}>আপনার রোল: {user?.email || 'লগইন নেই'}</p>
-        <button 
-          onClick={() => window.location.reload()}
-          style={{
-            marginTop: '16px',
-            padding: '10px 24px',
-            background: '#2563eb',
-            color: 'white',
-            border: 'none',
-            borderRadius: '8px',
-            cursor: 'pointer',
-            fontWeight: '600'
-          }}
-        >
-          🔄 পেজ রিলোড করুন
-        </button>
-      </div>
-    );
-  }
 
   return (
     <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px 16px' }}>
@@ -354,7 +317,7 @@ export default function SuperAdminDashboard() {
         <div>
           <h2 style={{ margin: 0, color: '#0f172a', fontSize: '24px' }}>⚙️ Super Admin Dashboard</h2>
           <p style={{ margin: '4px 0 0 0', color: '#64748b', fontSize: '14px' }}>
-            স্বাগতম, {user?.email || 'Admin'}!
+            🔓 সকলের জন্য উন্মুক্ত - কোনো লগইন প্রয়োজন নেই
           </p>
         </div>
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
@@ -374,7 +337,7 @@ export default function SuperAdminDashboard() {
             🔔 নোটিফিকেশন পাঠান
           </button>
           <button
-            onClick={refreshUser}
+            onClick={() => { loadDashboardData(); loadAllUsers(); loadActivityLogs(); }}
             style={{
               background: '#f1f5f9',
               color: '#334155',
@@ -559,13 +522,8 @@ export default function SuperAdminDashboard() {
         </div>
       )}
 
-      {activeTab === 'adminPermissions' && (
-        <AdminPermissionManager />
-      )}
-
-      {activeTab === 'cms' && (
-        <AdvancedCMS />
-      )}
+      {activeTab === 'adminPermissions' && <AdminPermissionManager />}
+      {activeTab === 'cms' && <AdvancedCMS />}
 
       {activeTab === 'permissions' && (
         <div>
