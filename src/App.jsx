@@ -15,7 +15,7 @@ import ContentManager from './components/ContentManager';
 export default function App() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isAdmissionModalOpen, setIsAdmissionModalOpen] = useState(false);
-  const [currentView, setCurrentView] = useState('superAdminPanel'); // 🔥 ডাইরেক্ট সুপার এডমিন প্যানেল
+  const [currentView, setCurrentView] = useState('superAdminPanel');
 
   // =============================================
   // বাকি স্টেট
@@ -185,7 +185,7 @@ export default function App() {
       </div>
 
       {/* =============================================
-          নেভিগেশন বার
+          নেভিগেশন বার - সব অপশন সহ
           ============================================= */}
       <nav style={{ backgroundColor: '#ffffff', position: 'sticky', top: 0, zIndex: 50, boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -209,28 +209,54 @@ export default function App() {
 
         {mobileMenuOpen && (
           <div style={{ backgroundColor: '#ffffff', borderTop: '1px solid #f1f5f9', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '12px', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}>
-            <span className="nav-link" onClick={() => { setCurrentView('superAdminPanel'); setMobileMenuOpen(false); }}>⭐ সুপার এডমিন ড্যাশবোর্ড</span>
-            <span className="nav-link" onClick={() => { setCurrentView('adminPermissionManager'); setMobileMenuOpen(false); }}>🛡️ এডমিন পারমিশন</span>
-            <span className="nav-link" onClick={() => { setCurrentView('adminPanel'); setMobileMenuOpen(false); }}>🛠️ এডমিন প্যানেল</span>
-            <span className="nav-link" onClick={() => { setCurrentView('teacherPanel'); setMobileMenuOpen(false); }}>👨‍🏫 টিচার প্যানেল</span>
-            <span className="nav-link" onClick={() => { setCurrentView('auditLog'); setMobileMenuOpen(false); }}>📋 অডিট লগ</span>
-            <span className="nav-link" onClick={() => { setCurrentView('home'); setMobileMenuOpen(false); }}>🏠 হোম পেজ</span>
             
-            <button onClick={() => { setMobileMenuOpen(false); setIsAdmissionModalOpen(true); }} className="btn-primary" style={{ width: '100%', textAlign: 'center', marginTop: '6px' }}>অনলাইন ভর্তি</button>
+            {/* =============================================
+                🔥 সব মেনু অপশন - আগের মতো
+                ============================================= */}
+            <span className="nav-link" onClick={() => { setCurrentView('superAdminPanel'); setMobileMenuOpen(false); }}>⭐ সুপার এডমিন ড্যাশবোর্ড</span>
+            
+            <span className="nav-link" onClick={() => { setCurrentView('home'); setMobileMenuOpen(false); }}>🏠 হোম</span>
+            
+            <span className="nav-link" onClick={() => { setCurrentView('about'); setMobileMenuOpen(false); }}>📖 প্রধান শিক্ষকের বাণী</span>
+            
+            <span className="nav-link" onClick={() => { setCurrentView('teachers'); setMobileMenuOpen(false); }}>👨‍🏫 শিক্ষকবৃন্দ</span>
+            
+            <span className="nav-link" onClick={() => { setCurrentView('students'); setMobileMenuOpen(false); }}>🎓 ছাত্র-ছাত্রী</span>
+            
+            <span className="nav-link" onClick={() => { setCurrentView('notice'); setMobileMenuOpen(false); }}>📌 নোটিশ বোর্ড</span>
+            
+            <span className="nav-link" onClick={() => { setCurrentView('gallery'); setMobileMenuOpen(false); }}>🖼️ গ্যালারি</span>
+            
+            <span className="nav-link" onClick={() => { setCurrentView('contact'); setMobileMenuOpen(false); }}>📞 যোগাযোগ</span>
+            
+            <hr style={{ border: 'none', borderTop: '1px solid #e2e8f0', margin: '4px 0' }} />
+            
+            {/* =============================================
+                🔥 এডমিন অপশন
+                ============================================= */}
+            <span className="nav-link admin-menu-item" onClick={() => { setCurrentView('adminPermissionManager'); setMobileMenuOpen(false); }}>🛡️ এডমিন পারমিশন</span>
+            
+            <span className="nav-link admin-menu-item" onClick={() => { setCurrentView('adminPanel'); setMobileMenuOpen(false); }}>🛠️ এডমিন প্যানেল</span>
+            
+            <span className="nav-link admin-menu-item" onClick={() => { setCurrentView('teacherPanel'); setMobileMenuOpen(false); }}>👨‍🏫 টিচার প্যানেল</span>
+            
+            <span className="nav-link admin-menu-item" onClick={() => { setCurrentView('auditLog'); setMobileMenuOpen(false); }}>📋 অডিট লগ</span>
+            
+            <hr style={{ border: 'none', borderTop: '1px solid #e2e8f0', margin: '4px 0' }} />
+            
+            <button onClick={() => { setMobileMenuOpen(false); setIsAdmissionModalOpen(true); }} className="btn-primary" style={{ width: '100%', textAlign: 'center' }}>🎓 অনলাইন ভর্তি</button>
           </div>
         )}
       </nav>
 
       {/* =============================================
-          সুপার এডমিন ড্যাশবোর্ড (ডাইরেক্ট)
+          পেজ ভিউ
           ============================================= */}
-      {currentView === 'superAdminPanel' && (
-        <SuperAdminDashboard />
-      )}
+      
+      {/* সুপার এডমিন ড্যাশবোর্ড - ডিফল্ট */}
+      {currentView === 'superAdminPanel' && <SuperAdminDashboard />}
 
-      {/* =============================================
-          অন্যান্য পেজ ভিউ
-          ============================================= */}
+      {/* হোম পেজ */}
       {currentView === 'home' && (
         <>
           <header id="home" style={{ background: 'linear-gradient(135deg, #064e3b 0%, #14532d 50%, #166534 100%)', color: 'white', padding: '50px 20px 70px 20px', textAlign: 'center', position: 'relative' }}>
@@ -325,30 +351,19 @@ export default function App() {
         </>
       )}
 
-      {currentView === 'adminPanel' && (
-        <div style={{ maxWidth: '1200px', margin: '40px auto', padding: '0 16px' }}>
-          <div className="card">
-            <h2 style={{ color: '#0369a1', borderBottom: '2px solid #f1f5f9', paddingBottom: '10px', marginTop: 0 }}>🛠️ এডমিন প্যানেল</h2>
-            <p style={{ color: '#334155', fontSize: '15px' }}>শিক্ষক ও শিক্ষার্থীদের পারমিশন ম্যানেজ করুন।</p>
-            <div style={{ marginTop: '20px' }}>
-              <TeacherManagement />
-              <ContentManager />
-            </div>
-            <div style={{ marginTop: '20px', textAlign: 'center' }}>
-              <button onClick={() => setCurrentView('superAdminPanel')} className="btn-primary" style={{ backgroundColor: '#64748b' }}>ড্যাশবোর্ডে ফিরে যান</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {currentView === 'teacherPanel' && (
+      {/* প্রধান শিক্ষকের বাণী */}
+      {currentView === 'about' && (
         <div style={{ maxWidth: '800px', margin: '40px auto', padding: '0 16px' }}>
           <div className="card">
-            <h2 style={{ color: '#166534', borderBottom: '2px solid #f1f5f9', paddingBottom: '10px', marginTop: 0 }}>👨‍🏫 টিচার প্যানেল</h2>
-            <p style={{ color: '#334155', fontSize: '15px' }}>শিক্ষক প্যানেল - কন্টেন্ট ম্যানেজ করুন।</p>
-            <div style={{ marginTop: '20px' }}>
-              <ContentManager />
+            <h2 style={{ color: '#14532d', borderBottom: '2px solid #f1f5f9', paddingBottom: '10px', marginTop: 0 }}>প্রধান শিক্ষকের বাণী</h2>
+            <div style={{ textAlign: 'center', margin: '20px 0' }}>
+              <img src="https://i.postimg.cc/xd8py0DW/1786523361131.jpg" alt={siteData.headmasterName} style={{ width: '140px', height: '140px', borderRadius: '50%', objectFit: 'cover', border: '4px solid #16a34a' }} />
+              <h3 style={{ margin: '10px 0 4px 0' }}>{siteData.headmasterName}</h3>
+              <span className="badge">প্রধান শিক্ষক ও পরিচালক</span>
             </div>
+            <p style={{ lineHeight: '1.8', color: '#334155', fontSize: '15px' }}>
+              "বিসমিল্লাহির রহমানির রহিম। চিলমারী প্রি ক্যাডেট মাদ্রাসায় আপনাকে জানাই আন্তরিক শুভেচ্ছা। আমাদের সুনির্দিষ্ট লক্ষ্য হলো কোমলমতি শিশুদের ধর্মীয় মূল্যবোধ, উত্তম চরিত্র এবং আধুনিক শিক্ষার মাধ্যমে এক আদর্শ সুনাগরিক হিসেবে গড়ে তোলা।"
+            </p>
             <div style={{ marginTop: '20px', textAlign: 'center' }}>
               <button onClick={() => setCurrentView('superAdminPanel')} className="btn-primary" style={{ backgroundColor: '#64748b' }}>ড্যাশবোর্ডে ফিরে যান</button>
             </div>
@@ -356,28 +371,7 @@ export default function App() {
         </div>
       )}
 
-      {currentView === 'adminPermissionManager' && <AdminPermissionManager />}
-      {currentView === 'auditLog' && <AuditLog />}
-      {currentView === 'gallery' && <Gallery />}
-      {currentView === 'contact' && <ContactPage />}
-      {currentView === 'notifications' && <NotificationSystem />}
-      {currentView === 'students' && (
-        <div style={{ maxWidth: '1100px', margin: '40px auto', padding: '0 16px' }}>
-          <div style={{ textAlign: 'center', marginBottom: '30px' }}>
-            <span className="badge">মেধাবী মুখসমূহ</span>
-            <h2 style={{ color: '#14532d', margin: '10px 0 10px 0' }}>ছাত্র-ছাত্রী ও ক্লাসের শীর্ষ স্থানাধিকারীগণ</h2>
-            <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', flexWrap: 'wrap', marginTop: '10px' }}>
-              <div className="card" style={{ padding: '12px 24px', background: '#dcfce7', color: '#14532d', fontWeight: 'bold' }}>👦 মোট ছাত্র: {siteData.totalMaleStudents} জন</div>
-              <div className="card" style={{ padding: '12px 24px', background: '#e0f2fe', color: '#0369a1', fontWeight: 'bold' }}>👧 মোট ছাত্রী: {siteData.totalFemaleStudents} জন</div>
-            </div>
-          </div>
-          <StudentList />
-          <div style={{ marginTop: '30px', textAlign: 'center' }}>
-            <button onClick={() => setCurrentView('superAdminPanel')} className="btn-primary" style={{ backgroundColor: '#64748b' }}>ড্যাশবোর্ডে ফিরে যান</button>
-          </div>
-        </div>
-      )}
-
+      {/* শিক্ষকবৃন্দ */}
       {currentView === 'teachers' && (
         <div style={{ maxWidth: '1200px', margin: '40px auto', padding: '0 16px' }}>
           <div style={{ textAlign: 'center', marginBottom: '30px' }}>
@@ -419,18 +413,33 @@ export default function App() {
         </div>
       )}
 
-      {currentView === 'about' && (
+      {/* ছাত্র-ছাত্রী */}
+      {currentView === 'students' && (
+        <div style={{ maxWidth: '1100px', margin: '40px auto', padding: '0 16px' }}>
+          <div style={{ textAlign: 'center', marginBottom: '30px' }}>
+            <span className="badge">মেধাবী মুখসমূহ</span>
+            <h2 style={{ color: '#14532d', margin: '10px 0 10px 0' }}>ছাত্র-ছাত্রী ও ক্লাসের শীর্ষ স্থানাধিকারীগণ</h2>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', flexWrap: 'wrap', marginTop: '10px' }}>
+              <div className="card" style={{ padding: '12px 24px', background: '#dcfce7', color: '#14532d', fontWeight: 'bold' }}>👦 মোট ছাত্র: {siteData.totalMaleStudents} জন</div>
+              <div className="card" style={{ padding: '12px 24px', background: '#e0f2fe', color: '#0369a1', fontWeight: 'bold' }}>👧 মোট ছাত্রী: {siteData.totalFemaleStudents} জন</div>
+            </div>
+          </div>
+          <StudentList />
+          <div style={{ marginTop: '30px', textAlign: 'center' }}>
+            <button onClick={() => setCurrentView('superAdminPanel')} className="btn-primary" style={{ backgroundColor: '#64748b' }}>ড্যাশবোর্ডে ফিরে যান</button>
+          </div>
+        </div>
+      )}
+
+      {/* নোটিশ বোর্ড */}
+      {currentView === 'notice' && (
         <div style={{ maxWidth: '800px', margin: '40px auto', padding: '0 16px' }}>
           <div className="card">
-            <h2 style={{ color: '#14532d', borderBottom: '2px solid #f1f5f9', paddingBottom: '10px', marginTop: 0 }}>প্রধান শিক্ষকের বাণী</h2>
-            <div style={{ textAlign: 'center', margin: '20px 0' }}>
-              <img src="https://i.postimg.cc/xd8py0DW/1786523361131.jpg" alt={siteData.headmasterName} style={{ width: '140px', height: '140px', borderRadius: '50%', objectFit: 'cover', border: '4px solid #16a34a' }} />
-              <h3 style={{ margin: '10px 0 4px 0' }}>{siteData.headmasterName}</h3>
-              <span className="badge">প্রধান শিক্ষক ও পরিচালক</span>
+            <h2 style={{ color: '#14532d', borderBottom: '2px solid #f1f5f9', paddingBottom: '10px', marginTop: 0 }}>📌 নোটিশ বোর্ড</h2>
+            <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', borderLeft: '4px solid #16a34a' }}>
+              <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 'bold' }}>আগামী ১ জানুয়ারি থেকে</span>
+              <p style={{ margin: '4px 0 0 0', fontSize: '16px', fontWeight: '600' }}>২০২৬-২৭ শিক্ষাবর্ষের নতুন ভর্তি ফরম অনলাইন ও অফিসে পাওয়া যাচ্ছে।</p>
             </div>
-            <p style={{ lineHeight: '1.8', color: '#334155', fontSize: '15px' }}>
-              "বিসমিল্লাহির রহমানির রহিম। চিলমারী প্রি ক্যাডেট মাদ্রাসায় আপনাকে জানাই আন্তরিক শুভেচ্ছা।"
-            </p>
             <div style={{ marginTop: '20px', textAlign: 'center' }}>
               <button onClick={() => setCurrentView('superAdminPanel')} className="btn-primary" style={{ backgroundColor: '#64748b' }}>ড্যাশবোর্ডে ফিরে যান</button>
             </div>
@@ -438,6 +447,52 @@ export default function App() {
         </div>
       )}
 
+      {/* গ্যালারি */}
+      {currentView === 'gallery' && <Gallery />}
+
+      {/* যোগাযোগ */}
+      {currentView === 'contact' && <ContactPage />}
+
+      {/* এডমিন পারমিশন */}
+      {currentView === 'adminPermissionManager' && <AdminPermissionManager />}
+
+      {/* এডমিন প্যানেল */}
+      {currentView === 'adminPanel' && (
+        <div style={{ maxWidth: '1200px', margin: '40px auto', padding: '0 16px' }}>
+          <div className="card">
+            <h2 style={{ color: '#0369a1', borderBottom: '2px solid #f1f5f9', paddingBottom: '10px', marginTop: 0 }}>🛠️ এডমিন প্যানেল</h2>
+            <p style={{ color: '#334155', fontSize: '15px' }}>শিক্ষক ও শিক্ষার্থীদের পারমিশন ম্যানেজ করুন।</p>
+            <div style={{ marginTop: '20px' }}>
+              <TeacherManagement />
+              <ContentManager />
+            </div>
+            <div style={{ marginTop: '20px', textAlign: 'center' }}>
+              <button onClick={() => setCurrentView('superAdminPanel')} className="btn-primary" style={{ backgroundColor: '#64748b' }}>ড্যাশবোর্ডে ফিরে যান</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* টিচার প্যানেল */}
+      {currentView === 'teacherPanel' && (
+        <div style={{ maxWidth: '800px', margin: '40px auto', padding: '0 16px' }}>
+          <div className="card">
+            <h2 style={{ color: '#166534', borderBottom: '2px solid #f1f5f9', paddingBottom: '10px', marginTop: 0 }}>👨‍🏫 টিচার প্যানেল</h2>
+            <p style={{ color: '#334155', fontSize: '15px' }}>শিক্ষক প্যানেল - কন্টেন্ট ম্যানেজ করুন।</p>
+            <div style={{ marginTop: '20px' }}>
+              <ContentManager />
+            </div>
+            <div style={{ marginTop: '20px', textAlign: 'center' }}>
+              <button onClick={() => setCurrentView('superAdminPanel')} className="btn-primary" style={{ backgroundColor: '#64748b' }}>ড্যাশবোর্ডে ফিরে যান</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* অডিট লগ */}
+      {currentView === 'auditLog' && <AuditLog />}
+
+      {/* ভর্তি ফরম */}
       {isAdmissionModalOpen && (
         <AdmissionForm 
           isOpen={isAdmissionModalOpen} 
