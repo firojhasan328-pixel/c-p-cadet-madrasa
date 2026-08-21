@@ -2,37 +2,25 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from './supabaseClient';
 import Footer from './components/Footer';
 import AdmissionForm from './components/AdmissionForm';
-import AdminAdmissions from './components/AdminAdmissions';
-import ContentManager from './components/ContentManager';
-import TeacherManager from './components/TeacherManager';
 import Gallery from './components/Gallery';
-import SignInModal from './components/SignInModal';
 import StudentList from './components/StudentList';
-import { useAuth } from './context/AuthContext';
-import SuperAdminDashboard from './components/SuperAdminDashboard';
-import AdminPermissionManager from './components/AdminPermissionManager';
-import TeacherManagement from './components/TeacherManagement';
 import ContactPage from './components/ContactPage';
 import NotificationSystem from './components/NotificationSystem';
-import AuditLog from './components/AuditLog';
+import StudentSignUp from './components/StudentSignUp';
+import TeacherSignUp from './components/TeacherSignUp';
 
 export default function App() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isAdmissionModalOpen, setIsAdmissionModalOpen] = useState(false);
-  const [isSignInModalOpen, setIsSignInModalOpen] = useState(false);
-  
   const [currentView, setCurrentView] = useState('home');
+  
+  // সাইন ইন মোডাল
+  const [showSignInModal, setShowSignInModal] = useState(false);
+  const [signInRole, setSignInRole] = useState(null); // 'student' বা 'teacher'
 
-  // =============================================
-  // AUTH CONTEXT (Phase 2)
-  // =============================================
-  const { isSuperAdmin, isAdmin, isTeacher, hasPermission, user, loading } = useAuth();
-
-  const [authEmail, setAuthEmail] = useState('');
-  const [authPassword, setAuthPassword] = useState('');
+  // ইউজার স্টেট
   const [currentUser, setCurrentUser] = useState(null);
   const [userRole, setUserRole] = useState(null);
-  const [userPermissions, setUserPermissions] = useState({ canEdit: false, canManageAdmission: false });
 
   const [isAdmissionOpen, setIsAdmissionOpen] = useState(true);
   const [closedMessage, setClosedMessage] = useState("পর্যাপ্ত পরিমাণ ছাত্র-ছাত্রী বুকিং হওয়ায় আর কোনো সিট খালি নাই।");
@@ -47,14 +35,6 @@ export default function App() {
 
   const [teachers, setTeachers] = useState([]);
   const [teachersLoading, setTeachersLoading] = useState(true);
-
-  const [managedUsers, setManagedUsers] = useState([]);
-  const [newUserName, setNewUserName] = useState('');
-  const [newUserEmail, setNewUserEmail] = useState('');
-  const [newUserPassword, setNewUserPassword] = useState('');
-  const [newUserRole, setNewUserRole] = useState('teacher');
-  const [newUserCanEdit, setNewUserCanEdit] = useState(false);
-  const [newUserCanAdmission, setNewUserCanAdmission] = useState(false);
 
   const [formStep, setFormStep] = useState(1);
   const [formData, setFormData] = useState({
@@ -86,9 +66,8 @@ export default function App() {
 
   useEffect(() => {
     fetchSiteContents();
-    fetchManagedUsers();
-    checkUserSession();
     fetchTeachers();
+    checkUserSession();
 
     const channel = supabase
       .channel('schema-db-changes')
@@ -114,11 +93,6 @@ export default function App() {
     }
   };
 
-  const fetchManagedUsers = async () => {
-    const { data, error } = await supabase.from('profiles').select('*');
-    if (data) setManagedUsers(data);
-  };
-
   const checkUserSession = async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (session) {
@@ -131,26 +105,6 @@ export default function App() {
     if (data) {
       setCurrentUser(data);
       setUserRole(data.role);
-      setUserPermissions({ canEdit: data.can_edit, canManageAdmission: data.can_manage_admission });
-      window.userRole = data.role;
-    }
-  };
-
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: authEmail,
-      password: authPassword,
-    });
-
-    if (error) {
-      alert("লগইন ব্যর্থ হয়েছে: " + error.message);
-    } else {
-      await fetchUserProfile(data.user.id);
-      alert("সফলভাবে লগইন হয়েছে! সিস্টেম আপনার রোল স্বয়ংক্রিয়ভাবে নির্ধারণ করেছে।");
-      setCurrentView('home');
-      setAuthEmail('');
-      setAuthPassword('');
     }
   };
 
@@ -158,7 +112,6 @@ export default function App() {
     await supabase.auth.signOut();
     setCurrentUser(null);
     setUserRole(null);
-    window.userRole = null;
     setCurrentView('home');
     alert("লগআউট সফল হয়েছে।");
   };
@@ -208,52 +161,22 @@ export default function App() {
     });
   };
 
-  const handleAddUser = async (e) => {
-    e.preventDefault();
-    if (!newUserEmail || !newUserPassword || !newUserName) return;
-
-    const { data, error } = await supabase.auth.signUp({
-      email: newUserEmail,
-      password: newUserPassword,
-    });
-
-    if (error) {
-      alert("ইউজার তৈরি করা সম্ভব হয়নি: " + error.message);
-      return;
-    }
-
-    if (data.user) {
-      const { error: profileError } = await supabase.from('profiles').insert([
-        {
-          id: data.user.id,
-          name: newUserName,
-          role: newUserRole,
-          can_edit: newUserCanEdit,
-          can_manage_admission: newUserCanAdmission
-        }
-      ]);
-
-      if (profileError) {
-        alert("প্রোফাইল তৈরি ত্রুটি: " + profileError.message);
-      } else {
-        alert("নতুন ব্যবহারকারী ও পারমিশন সফলভাবে যুক্ত হয়েছে!");
-        setNewUserName('');
-        setNewUserEmail('');
-        setNewUserPassword('');
-        fetchManagedUsers();
-      }
-    }
-  };
-
-  const handleUpdateUserPermission = async (id, field, value) => {
-    const updateField = field === 'canEdit' ? 'can_edit' : 'can_manage_admission';
-    const { error } = await supabase.from('profiles').update({ [updateField]: value }).eq('id', id);
-    if (!error) {
-      fetchManagedUsers();
-    }
-  };
-
   const whatsappNumber = "8801918568313";
+
+  // সাইন ইন মোডাল খোলা
+  const openSignInModal = (role) => {
+    setSignInRole(role);
+    setShowSignInModal(true);
+    setMobileMenuOpen(false);
+  };
+
+  // সাইন ইন মোডাল বন্ধ
+  const closeSignInModal = () => {
+    setShowSignInModal(false);
+    setSignInRole(null);
+  };
+
+  const isLoggedIn = !!currentUser;
 
   return (
     <div style={{ fontFamily: "'Hind Siliguri', 'Segoe UI', sans-serif", backgroundColor: '#f8fafc', color: '#0f172a', minHeight: '100vh', margin: 0, padding: 0, position: 'relative' }}>
@@ -294,6 +217,87 @@ export default function App() {
         .teacher-designation { color: #15803d; font-weight: 600; font-size: 14px; margin-bottom: 8px; }
         .teacher-details { font-size: 13px; color: #334155; border-top: 1px solid #f1f5f9; padding-top: 10px; margin-top: 8px; }
         .teacher-details div { margin: 2px 0; }
+        .signin-btn {
+          background: linear-gradient(135deg, #2563eb, #1d4ed8);
+          color: white;
+          border: none;
+          padding: 8px 18px;
+          border-radius: 8px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.3s ease;
+        }
+        .signin-btn:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 6px 20px rgba(37, 99, 235, 0.3);
+        }
+        .modal-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          background: rgba(0,0,0,0.6);
+          backdrop-filter: blur(4px);
+          z-index: 2000;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 20px;
+        }
+        .modal-box {
+          background: white;
+          border-radius: 28px;
+          padding: 24px;
+          max-width: 500px;
+          width: 100%;
+          max-height: 90vh;
+          overflow-y: auto;
+          position: relative;
+          box-shadow: 0 25px 50px rgba(0,0,0,0.25);
+        }
+        .modal-close {
+          position: absolute;
+          top: 12px;
+          right: 16px;
+          background: #f1f5f9;
+          border: none;
+          width: 36px;
+          height: 36px;
+          border-radius: 50%;
+          font-size: 18px;
+          cursor: pointer;
+        }
+        .role-select-btn {
+          background: white;
+          border: 2px solid #e2e8f0;
+          padding: 24px;
+          border-radius: 16px;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          text-align: center;
+          flex: 1;
+          min-width: 140px;
+        }
+        .role-select-btn:hover {
+          border-color: #2563eb;
+          transform: translateY(-4px);
+          box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+        }
+        .role-select-btn .icon {
+          font-size: 48px;
+          display: block;
+          margin-bottom: 8px;
+        }
+        .role-select-btn .title {
+          font-size: 18px;
+          font-weight: 700;
+          color: #0f172a;
+        }
+        .role-select-btn .sub {
+          font-size: 12px;
+          color: #64748b;
+        }
       `}</style>
 
       {/* টপ কন্টাক্ট বার */}
@@ -302,6 +306,11 @@ export default function App() {
           <div>📍 চিলমারী, কুড়িগ্রাম, বাংলাদেশ</div>
           <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
             <span>📞 যোগাযোগ: <a href={`tel:${siteData.contactNumber}`} style={{ color: '#ffffff', fontWeight: 'bold', textDecoration: 'none' }}>{siteData.contactNumber}</a></span>
+            {isLoggedIn && (
+              <button onClick={handleLogout} style={{ background: '#dc2626', color: 'white', border: 'none', padding: '4px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '11px', fontWeight: '600' }}>
+                লগআউট
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -329,118 +338,87 @@ export default function App() {
 
         {mobileMenuOpen && (
           <div style={{ backgroundColor: '#ffffff', borderTop: '1px solid #f1f5f9', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '12px', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}>
-            <span className="nav-link" onClick={() => { setCurrentView('home'); setMobileMenuOpen(false); }}>হোম</span>
-            <span className="nav-link" onClick={() => { setCurrentView('about'); setMobileMenuOpen(false); }}>প্রধান শিক্ষকের বাণী</span>
-            <span className="nav-link" onClick={() => { setCurrentView('teachers'); setMobileMenuOpen(false); }}>শিক্ষকবৃন্দ</span>
-            <span className="nav-link" onClick={() => { setCurrentView('students'); setMobileMenuOpen(false); }}>ছাত্র-ছাত্রী</span>
-            <span className="nav-link" onClick={() => { setCurrentView('notice'); setMobileMenuOpen(false); }}>নোটিশ বোর্ড</span>
-            <span className="nav-link" onClick={() => { setCurrentView('gallery'); setMobileMenuOpen(false); }}>গ্যালারি</span>
-            <span className="nav-link" onClick={() => { setCurrentView('contact'); setMobileMenuOpen(false); }}>যোগাযোগ</span>
+            <span className="nav-link" onClick={() => { setCurrentView('home'); setMobileMenuOpen(false); }}>🏠 হোম</span>
+            <span className="nav-link" onClick={() => { setCurrentView('about'); setMobileMenuOpen(false); }}>📖 প্রধান শিক্ষকের বাণী</span>
+            <span className="nav-link" onClick={() => { setCurrentView('teachers'); setMobileMenuOpen(false); }}>👨‍🏫 শিক্ষকবৃন্দ</span>
+            <span className="nav-link" onClick={() => { setCurrentView('students'); setMobileMenuOpen(false); }}>🎓 ছাত্র-ছাত্রী</span>
+            <span className="nav-link" onClick={() => { setCurrentView('notice'); setMobileMenuOpen(false); }}>📌 নোটিশ বোর্ড</span>
+            <span className="nav-link" onClick={() => { setCurrentView('gallery'); setMobileMenuOpen(false); }}>🖼️ গ্যালারি</span>
+            <span className="nav-link" onClick={() => { setCurrentView('contact'); setMobileMenuOpen(false); }}>📞 যোগাযোগ</span>
             
-            {/* 🔑 সাইন ইন বাটন */}
-            <span className="nav-link" style={{ color: '#2563eb', fontWeight: 'bold' }} onClick={() => { setMobileMenuOpen(false); setIsSignInModalOpen(true); }}>
-              🔑 সাইন ইন
+            {/* 🔥 সাইন ইন বাটন - ২টি অপশন */}
+            <span className="nav-link" style={{ color: '#2563eb', fontWeight: 'bold' }} onClick={() => openSignInModal('student')}>
+              🎓 ছাত্র সাইন ইন
+            </span>
+            <span className="nav-link" style={{ color: '#16a34a', fontWeight: 'bold' }} onClick={() => openSignInModal('teacher')}>
+              👨‍🏫 শিক্ষক সাইন ইন
             </span>
 
-            {/* নোটিফিকেশন (শুধু লগইন থাকলে) */}
-            {currentUser && (
+            {isLoggedIn && (
               <span className="nav-link" style={{ color: '#2563eb', fontWeight: 'bold' }} onClick={() => { setCurrentView('notifications'); setMobileMenuOpen(false); }}>🔔 নোটিফিকেশন</span>
             )}
-            
-            {/* ব্যবহার পারমিশন অনুযায়ী মেনু দেখানো */}
-            {(isTeacher || isAdmin || isSuperAdmin) && (
-              <span className="nav-link" style={{ color: '#16a34a', fontWeight: 'bold' }} onClick={() => { setCurrentView('teacherPanel'); setMobileMenuOpen(false); }}>👨‍🏫 টিচার প্যানেল</span>
-            )}
-            {(isAdmin || isSuperAdmin) && (
-              <span className="nav-link" style={{ color: '#0369a1', fontWeight: 'bold' }} onClick={() => { setCurrentView('adminPanel'); setMobileMenuOpen(false); }}>🛠️ এডমিন প্যানেল</span>
-            )}
-            {isSuperAdmin && (
-              <span className="nav-link" style={{ color: '#b45309', fontWeight: 'bold' }} onClick={() => { setCurrentView('superAdminPanel'); setMobileMenuOpen(false); }}>⚙️ সুপার এডমিন প্যানেল</span>
-            )}
-            {isSuperAdmin && (
-              <span className="nav-link" style={{ color: '#7c3aed', fontWeight: 'bold' }} onClick={() => { setCurrentView('adminPermissionManager'); setMobileMenuOpen(false); }}>🛡️ এডমিন পারমিশন</span>
-            )}
 
-            <button onClick={() => { setMobileMenuOpen(false); setIsAdmissionModalOpen(true); }} className="btn-primary" style={{ width: '100%', textAlign: 'center', marginTop: '6px' }}>অনলাইন ভর্তি</button>
+            <button onClick={() => { setMobileMenuOpen(false); setIsAdmissionModalOpen(true); }} className="btn-primary" style={{ width: '100%', textAlign: 'center', marginTop: '6px' }}>🎓 অনলাইন ভর্তি</button>
             
-            <div style={{ borderTop: '1px dashed #cbd5e1', paddingTop: '10px', marginTop: '4px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {currentUser ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#16a34a' }}>লগইন আছেন: {currentUser.name} ({userRole})</span>
+            <div style={{ borderTop: '1px dashed #cbd5e1', paddingTop: '10px', marginTop: '4px' }}>
+              {isLoggedIn ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#16a34a' }}>
+                    👤 {currentUser?.name || currentUser?.email || 'ইউজার'}
+                    <span style={{ 
+                      marginLeft: '8px',
+                      padding: '2px 10px',
+                      borderRadius: '12px',
+                      fontSize: '10px',
+                      background: userRole === 'student' ? '#dbeafe' : '#dcfce7',
+                      color: userRole === 'student' ? '#1d4ed8' : '#15803d'
+                    }}>
+                      {userRole === 'student' ? 'ছাত্র' : userRole === 'teacher' ? 'শিক্ষক' : 'ইউজার'}
+                    </span>
+                  </span>
                   <button onClick={handleLogout} style={{ background: '#dc2626', color: 'white', border: 'none', padding: '6px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' }}>লগআউট করুন</button>
                 </div>
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#64748b' }}>প্যানেল লগইন:</span>
-                  <input type="email" placeholder="ইমেল" value={authEmail} onChange={(e) => setAuthEmail(e.target.value)} style={{ padding: '6px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '12px' }} />
-                  <input type="password" placeholder="পাসওয়ার্ড" value={authPassword} onChange={(e) => setAuthPassword(e.target.value)} style={{ padding: '6px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '12px' }} />
-                  <button onClick={handleLogin} className="btn-primary" style={{ padding: '6px', fontSize: '12px', justifyContent: 'center' }}>লগইন করুন</button>
-                </div>
-              )}
-
-              {isSuperAdmin && (
-                <button 
-                  onClick={() => setIsAdminMode(!isAdminMode)} 
-                  style={{ background: '#0f172a', color: '#f8fafc', border: 'none', padding: '8px 12px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', width: '100%', fontWeight: '600', marginTop: '4px' }}
-                >
-                  {isAdminMode ? '🔒 সুপার এডমিন সেটিংস বন্ধ করুন' : '⚙️ সুপার এডমিন সেটিংস (খুলুন)'}
-                </button>
+                <span style={{ fontSize: '12px', color: '#64748b' }}>🔒 সাইন ইন করুন</span>
               )}
             </div>
           </div>
         )}
       </nav>
 
-      {/* সুপার এডমিন লাইভ কন্ট্রোল প্যানেল */}
-      {isAdminMode && isSuperAdmin && (
-        <div style={{ background: '#fef3c7', borderBottom: '2px solid #f59e0b', padding: '16px 20px', fontSize: '14px', zIndex: 100, position: 'relative' }}>
-          <div style={{ maxWidth: '800px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <strong>🛠️ সুপার এডমিন লাইভ কন্ট্রোল প্যানেল:</strong>
-            <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap', alignItems: 'center' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 'bold', cursor: 'pointer' }}>
-                <input 
-                  type="checkbox" 
-                  checked={isAdmissionOpen} 
-                  onChange={(e) => setIsAdmissionOpen(e.target.checked)}
-                  style={{ width: '18px', height: '18px' }}
-                />
-                ভর্তি ফরম অন রাখুন (Form Open/Close)
-              </label>
-            </div>
+      {/* =============================================
+          সাইন ইন মোডাল
+          ============================================= */}
+      {showSignInModal && (
+        <div className="modal-overlay" onClick={closeSignInModal}>
+          <div className="modal-box" onClick={(e) => e.stopPropagation()}>
+            <button className="modal-close" onClick={closeSignInModal}>✕</button>
             
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '10px' }}>
-              <div>
-                <span style={{ fontSize: '11px', fontWeight: 'bold' }}>প্রধান শিক্ষকের নাম:</span>
-                <input type="text" value={siteData.headmasterName || ""} onChange={(e) => handleUpdateSiteContent('headmaster_name', e.target.value)} style={{ width: '100%', padding: '6px', borderRadius: '6px', border: '1px solid #d97706' }} />
-              </div>
-              <div>
-                <span style={{ fontSize: '11px', fontWeight: 'bold' }}>যোগাযোগ নম্বর:</span>
-                <input type="text" value={siteData.contactNumber || ""} onChange={(e) => handleUpdateSiteContent('contact_number', e.target.value)} style={{ width: '100%', padding: '6px', borderRadius: '6px', border: '1px solid #d97706' }} />
-              </div>
-              <div>
-                <span style={{ fontSize: '11px', fontWeight: 'bold' }}>মোট ছাত্র সংখ্যা:</span>
-                <input type="text" value={siteData.totalMaleStudents || ""} onChange={(e) => handleUpdateSiteContent('total_male_students', e.target.value)} style={{ width: '100%', padding: '6px', borderRadius: '6px', border: '1px solid #d97706' }} />
-              </div>
-              <div>
-                <span style={{ fontSize: '11px', fontWeight: 'bold' }}>মোট ছাত্রী সংখ্যা:</span>
-                <input type="text" value={siteData.totalFemaleStudents || ""} onChange={(e) => handleUpdateSiteContent('total_female_students', e.target.value)} style={{ width: '100%', padding: '6px', borderRadius: '6px', border: '1px solid #d97706' }} />
-              </div>
+            <div style={{ textAlign: 'center', marginBottom: '16px' }}>
+              <span style={{ fontSize: '40px', display: 'block' }}>
+                {signInRole === 'student' ? '🎓' : '👨‍🏫'}
+              </span>
+              <h3 style={{ margin: '4px 0', color: '#0f172a' }}>
+                {signInRole === 'student' ? 'ছাত্র সাইন ইন' : 'শিক্ষক সাইন ইন'}
+              </h3>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <span style={{ fontSize: '12px', fontWeight: '600' }}>বন্ধকালীন নোটিশ মেসেজ:</span>
-              <input 
-                type="text" 
-                value={closedMessage} 
-                onChange={(e) => { setClosedMessage(e.target.value); handleUpdateSiteContent('closed_message', e.target.value); }}
-                style={{ padding: '8px', borderRadius: '6px', border: '1px solid #d97706', width: '100%' }}
-              />
-            </div>
+            {signInRole === 'student' && (
+              <StudentSignUp onBack={closeSignInModal} onClose={closeSignInModal} />
+            )}
+
+            {signInRole === 'teacher' && (
+              <TeacherSignUp onBack={closeSignInModal} onClose={closeSignInModal} />
+            )}
           </div>
         </div>
       )}
 
-      {/* হোমপেজ ভিউ */}
+      {/* =============================================
+          পেজ ভিউ
+          ============================================= */}
+      
+      {/* হোমপেজ */}
       {currentView === 'home' && (
         <>
           <header id="home" style={{ background: 'linear-gradient(135deg, #064e3b 0%, #14532d 50%, #166534 100%)', color: 'white', padding: '50px 20px 70px 20px', textAlign: 'center', position: 'relative' }}>
@@ -535,7 +513,7 @@ export default function App() {
         </>
       )}
 
-      {/* প্রধান শিক্ষকের বাণী পেজ */}
+      {/* প্রধান শিক্ষকের বাণী */}
       {currentView === 'about' && (
         <div style={{ maxWidth: '800px', margin: '40px auto', padding: '0 16px' }}>
           <div className="card">
@@ -555,7 +533,7 @@ export default function App() {
         </div>
       )}
 
-      {/* শিক্ষক পেজ */}
+      {/* শিক্ষকবৃন্দ */}
       {currentView === 'teachers' && (
         <div style={{ maxWidth: '1200px', margin: '40px auto', padding: '0 16px' }}>
           <div style={{ textAlign: 'center', marginBottom: '30px' }}>
@@ -597,7 +575,7 @@ export default function App() {
         </div>
       )}
 
-      {/* ছাত্র-ছাত্রী পেজ */}
+      {/* ছাত্র-ছাত্রী */}
       {currentView === 'students' && (
         <div style={{ maxWidth: '1100px', margin: '40px auto', padding: '0 16px' }}>
           <div style={{ textAlign: 'center', marginBottom: '30px' }}>
@@ -608,30 +586,22 @@ export default function App() {
               <div className="card" style={{ padding: '12px 24px', background: '#e0f2fe', color: '#0369a1', fontWeight: 'bold' }}>👧 মোট ছাত্রী: {siteData.totalFemaleStudents} জন</div>
             </div>
           </div>
-          
           <StudentList />
-          
           <div style={{ marginTop: '30px', textAlign: 'center' }}>
             <button onClick={() => setCurrentView('home')} className="btn-primary" style={{ backgroundColor: '#64748b' }}>হোম পেজে ফিরে যান</button>
           </div>
         </div>
       )}
 
-      {/* গ্যালারি ভিউ */}
-      {currentView === 'gallery' && <Gallery />}
-
-      {/* যোগাযোগ পেজ */}
-      {currentView === 'contact' && <ContactPage />}
-
-      {/* নোটিফিকেশন সিস্টেম */}
-      {currentView === 'notifications' && <NotificationSystem />}
-
-      {/* টিচার প্যানেল */}
-      {currentView === 'teacherPanel' && (
+      {/* নোটিশ বোর্ড */}
+      {currentView === 'notice' && (
         <div style={{ maxWidth: '800px', margin: '40px auto', padding: '0 16px' }}>
           <div className="card">
-            <h2 style={{ color: '#166534', borderBottom: '2px solid #f1f5f9', paddingBottom: '10px', marginTop: 0 }}>👨‍🏫 টিচার প্যানেল</h2>
-            <p style={{ color: '#334155', fontSize: '15px' }}>স্বাগতম! শিক্ষক হিসেবে আপনার প্যানেল এটি।</p>
+            <h2 style={{ color: '#14532d', borderBottom: '2px solid #f1f5f9', paddingBottom: '10px', marginTop: 0 }}>📌 নোটিশ বোর্ড</h2>
+            <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', borderLeft: '4px solid #16a34a' }}>
+              <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 'bold' }}>আগামী ১ জানুয়ারি থেকে</span>
+              <p style={{ margin: '4px 0 0 0', fontSize: '16px', fontWeight: '600' }}>২০২৬-২৭ শিক্ষাবর্ষের নতুন ভর্তি ফরম অনলাইন ও অফিসে পাওয়া যাচ্ছে।</p>
+            </div>
             <div style={{ marginTop: '20px', textAlign: 'center' }}>
               <button onClick={() => setCurrentView('home')} className="btn-primary" style={{ backgroundColor: '#64748b' }}>হোম পেজে ফিরে যান</button>
             </div>
@@ -639,36 +609,16 @@ export default function App() {
         </div>
       )}
 
-      {/* এডমিন প্যানেল - TeacherManagement যোগ করা হয়েছে */}
-      {currentView === 'adminPanel' && (
-        <div style={{ maxWidth: '1200px', margin: '40px auto', padding: '0 16px' }}>
-          <div className="card">
-            <h2 style={{ color: '#0369a1', borderBottom: '2px solid #f1f5f9', paddingBottom: '10px', marginTop: 0 }}>🛠️ এডমিন প্যানেল</h2>
-            <p style={{ color: '#334155', fontSize: '15px' }}>শিক্ষক ও শিক্ষার্থীদের পারমিশন ম্যানেজ করুন।</p>
-            <div style={{ marginTop: '20px' }}>
-              <TeacherManagement />
-            </div>
-          </div>
-        </div>
-      )}
+      {/* গ্যালারি */}
+      {currentView === 'gallery' && <Gallery />}
 
-      {/* সুপার এডমিন প্যানেল - SuperAdminDashboard কম্পোনেন্ট ব্যবহার করা হয়েছে */}
-      {currentView === 'superAdminPanel' && (
-        <SuperAdminDashboard />
-      )}
+      {/* যোগাযোগ */}
+      {currentView === 'contact' && <ContactPage />}
 
-      {/* এডমিন পারমিশন ম্যানেজার */}
-      {currentView === 'adminPermissionManager' && (
-        <AdminPermissionManager />
-      )}
+      {/* নোটিফিকেশন */}
+      {currentView === 'notifications' && <NotificationSystem />}
 
-      {/* সাইন ইন মোডাল */}
-      <SignInModal 
-        isOpen={isSignInModalOpen} 
-        onClose={() => setIsSignInModalOpen(false)} 
-      />
-
-      {/* অ্যাডমিশন মোডাল */}
+      {/* ভর্তি ফরম */}
       {isAdmissionModalOpen && (
         <AdmissionForm 
           isOpen={isAdmissionModalOpen} 
