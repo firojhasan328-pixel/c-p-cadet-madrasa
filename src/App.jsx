@@ -15,16 +15,18 @@ import TeacherManagement from './components/TeacherManagement';
 import ContactPage from './components/ContactPage';
 import NotificationSystem from './components/NotificationSystem';
 import AuditLog from './components/AuditLog';
-import AdminLogin from './components/AdminLogin';
-import AdminDashboard from './components/AdminDashboard';
 
 export default function App() {
-  const { isAuthenticated, loading } = useAuth();
-
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isAdmissionModalOpen, setIsAdmissionModalOpen] = useState(false);
   const [isSignInModalOpen, setIsSignInModalOpen] = useState(false);
+  
   const [currentView, setCurrentView] = useState('home');
+
+  // =============================================
+  // AUTH CONTEXT (Phase 2)
+  // =============================================
+  const { isSuperAdmin, isAdmin, isTeacher, hasPermission, user, loading } = useAuth();
 
   const [authEmail, setAuthEmail] = useState('');
   const [authPassword, setAuthPassword] = useState('');
@@ -253,46 +255,6 @@ export default function App() {
 
   const whatsappNumber = "8801918568313";
 
-  if (loading) {
-    return (
-      <div style={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: '#f8fafc'
-      }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{
-            width: '40px',
-            height: '40px',
-            border: '4px solid #e2e8f0',
-            borderTop: '4px solid #16a34a',
-            borderRadius: '50%',
-            animation: 'spin 0.8s linear infinite',
-            margin: '0 auto 16px auto'
-          }}></div>
-          <p style={{ color: '#64748b' }}>লোড হচ্ছে...</p>
-          <style>{`
-            @keyframes spin {
-              0% { transform: rotate(0deg); }
-              100% { transform: rotate(360deg); }
-            }
-          `}</style>
-        </div>
-      </div>
-    );
-  }
-
-  if (isAuthenticated) {
-    return (
-      <>
-        <AdminDashboard />
-        <Footer />
-      </>
-    );
-  }
-
   return (
     <div style={{ fontFamily: "'Hind Siliguri', 'Segoe UI', sans-serif", backgroundColor: '#f8fafc', color: '#0f172a', minHeight: '100vh', margin: 0, padding: 0, position: 'relative' }}>
       <style>{`
@@ -332,26 +294,6 @@ export default function App() {
         .teacher-designation { color: #15803d; font-weight: 600; font-size: 14px; margin-bottom: 8px; }
         .teacher-details { font-size: 13px; color: #334155; border-top: 1px solid #f1f5f9; padding-top: 10px; margin-top: 8px; }
         .teacher-details div { margin: 2px 0; }
-        .admin-hero-btn {
-          background: linear-gradient(135deg, #1d4ed8, #1e40af);
-          color: white;
-          border: none;
-          padding: 14px 28px;
-          border-radius: 12px;
-          font-size: 16px;
-          font-weight: 700;
-          cursor: pointer;
-          transition: all 0.3s ease;
-          box-shadow: 0 6px 20px rgba(29, 78, 216, 0.4);
-          display: inline-flex;
-          align-items: center;
-          gap: 10px;
-          text-decoration: none;
-        }
-        .admin-hero-btn:hover {
-          transform: translateY(-3px);
-          box-shadow: 0 10px 30px rgba(29, 78, 216, 0.5);
-        }
       `}</style>
 
       {/* টপ কন্টাক্ট বার */}
@@ -364,7 +306,7 @@ export default function App() {
         </div>
       </div>
 
-      {/* নেভিগেশন বার - অপরিবর্তিত (মেনুতে এডমিন প্যানেল নেই) */}
+      {/* নেভিগেশন বার */}
       <nav style={{ backgroundColor: '#ffffff', position: 'sticky', top: 0, zIndex: 50, boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }} onClick={() => setCurrentView('home')}>
@@ -519,16 +461,6 @@ export default function App() {
                 <a href={`tel:${siteData.contactNumber}`} className="btn-primary" style={{ backgroundColor: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)' }}>
                   📞 সরাসরি কল দিন
                 </a>
-              </div>
-
-              {/* 🔥 এডমিন প্যানেল বাটন - হোমপেজের হিরো সেকশনে যোগ করা হয়েছে */}
-              <div style={{ marginTop: '20px' }}>
-                <button 
-                  onClick={() => window.location.href = '/admin'} 
-                  className="admin-hero-btn"
-                >
-                  ⚙️ এডমিন প্যানেল
-                </button>
               </div>
             </div>
           </header>
