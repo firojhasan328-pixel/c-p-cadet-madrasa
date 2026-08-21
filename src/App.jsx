@@ -19,7 +19,15 @@ import AdminLogin from './components/AdminLogin';
 import AdminDashboard from './components/AdminDashboard';
 
 export default function App() {
-  const { isAuthenticated, loading } = useAuth();
+  // 🔥 সব ভ্যালু ডিসট্রাকচার করা হয়েছে
+  const { 
+    isAuthenticated, 
+    loading, 
+    isSuperAdmin,
+    isAdmin,
+    isTeacher,
+    user
+  } = useAuth();
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isAdmissionModalOpen, setIsAdmissionModalOpen] = useState(false);
@@ -408,7 +416,7 @@ export default function App() {
               <span className="nav-link" style={{ color: '#2563eb', fontWeight: 'bold' }} onClick={() => { setCurrentView('notifications'); setMobileMenuOpen(false); }}>🔔 নোটিফিকেশন</span>
             )}
             
-            {/* ব্যবহার পারমিশন অনুযায়ী মেনু দেখানো */}
+            {/* 🔥 ব্যবহার পারমিশন অনুযায়ী মেনু দেখানো - এখন ঠিক কাজ করবে */}
             {(isTeacher || isAdmin || isSuperAdmin) && (
               <span className="nav-link" style={{ color: '#16a34a', fontWeight: 'bold' }} onClick={() => { setCurrentView('teacherPanel'); setMobileMenuOpen(false); }}>👨‍🏫 টিচার প্যানেল</span>
             )}
@@ -424,30 +432,61 @@ export default function App() {
 
             <button onClick={() => { setMobileMenuOpen(false); setIsAdmissionModalOpen(true); }} className="btn-primary" style={{ width: '100%', textAlign: 'center', marginTop: '6px' }}>অনলাইন ভর্তি</button>
             
-            <div style={{ borderTop: '1px dashed #cbd5e1', paddingTop: '10px', marginTop: '4px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {currentUser ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#16a34a' }}>লগইন আছেন: {currentUser.name} ({userRole})</span>
-                  <button onClick={handleLogout} style={{ background: '#dc2626', color: 'white', border: 'none', padding: '6px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' }}>লগআউট করুন</button>
+            {/* 🔥 লগইন/লগআউট সেকশন - আপডেট করা হয়েছে */}
+            {currentUser ? (
+              <div style={{ borderTop: '1px dashed #cbd5e1', paddingTop: '10px', marginTop: '4px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#16a34a' }}>
+                    👤 {currentUser.name || 'Admin'} 
+                    <span style={{ fontSize: '10px', color: '#64748b', marginLeft: '4px' }}>
+                      ({isSuperAdmin ? 'Super Admin' : isAdmin ? 'Admin' : 'Teacher'})
+                    </span>
+                  </span>
+                  <button 
+                    onClick={handleLogout} 
+                    style={{ background: '#dc2626', color: 'white', border: 'none', padding: '4px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' }}
+                  >
+                    লগআউট
+                  </button>
                 </div>
-              ) : (
+              </div>
+            ) : (
+              <div style={{ borderTop: '1px dashed #cbd5e1', paddingTop: '10px', marginTop: '4px' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#64748b' }}>প্যানেল লগইন:</span>
-                  <input type="email" placeholder="ইমেল" value={authEmail} onChange={(e) => setAuthEmail(e.target.value)} style={{ padding: '6px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '12px' }} />
-                  <input type="password" placeholder="পাসওয়ার্ড" value={authPassword} onChange={(e) => setAuthPassword(e.target.value)} style={{ padding: '6px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '12px' }} />
-                  <button onClick={handleLogin} className="btn-primary" style={{ padding: '6px', fontSize: '12px', justifyContent: 'center' }}>লগইন করুন</button>
+                  <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#64748b' }}>🔑 অ্যাডমিন লগইন:</span>
+                  <input 
+                    type="email" 
+                    placeholder="ইমেইল" 
+                    value={authEmail} 
+                    onChange={(e) => setAuthEmail(e.target.value)} 
+                    style={{ padding: '6px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '12px' }} 
+                  />
+                  <input 
+                    type="password" 
+                    placeholder="পাসওয়ার্ড" 
+                    value={authPassword} 
+                    onChange={(e) => setAuthPassword(e.target.value)} 
+                    style={{ padding: '6px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '12px' }} 
+                  />
+                  <button 
+                    onClick={handleLogin} 
+                    className="btn-primary" 
+                    style={{ padding: '6px', fontSize: '12px', justifyContent: 'center' }}
+                  >
+                    লগইন করুন
+                  </button>
                 </div>
-              )}
+              </div>
+            )}
 
-              {isSuperAdmin && (
-                <button 
-                  onClick={() => setIsAdminMode(!isAdminMode)} 
-                  style={{ background: '#0f172a', color: '#f8fafc', border: 'none', padding: '8px 12px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', width: '100%', fontWeight: '600', marginTop: '4px' }}
-                >
-                  {isAdminMode ? '🔒 সুপার এডমিন সেটিংস বন্ধ করুন' : '⚙️ সুপার এডমিন সেটিংস (খুলুন)'}
-                </button>
-              )}
-            </div>
+            {isSuperAdmin && (
+              <button 
+                onClick={() => setIsAdminMode(!isAdminMode)} 
+                style={{ background: '#0f172a', color: '#f8fafc', border: 'none', padding: '8px 12px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', width: '100%', fontWeight: '600', marginTop: '4px' }}
+              >
+                {isAdminMode ? '🔒 সুপার এডমিন সেটিংস বন্ধ করুন' : '⚙️ সুপার এডমিন সেটিংস (খুলুন)'}
+              </button>
+            )}
           </div>
         )}
       </nav>
