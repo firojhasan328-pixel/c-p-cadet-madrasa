@@ -2,7 +2,6 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 
 const AuthContext = createContext();
 
-// 🔥 হার্ডকোডেড সুপার এডমিন
 const SUPER_ADMIN = {
   email: 'firojhasan328@gmail.com',
   password: 'firojhasan1234+',
@@ -18,7 +17,6 @@ export function AuthProvider({ children }) {
   const [isTeacher, setIsTeacher] = useState(false);
   const [permissions, setPermissions] = useState([]);
 
-  // লগইন চেক
   useEffect(() => {
     const savedUser = localStorage.getItem('admin_user');
     if (savedUser) {
@@ -58,7 +56,6 @@ export function AuthProvider({ children }) {
   };
 
   const login = (email, password) => {
-    // 🔥 সুপার এডমিন চেক - হার্ডকোডেড
     if (email === SUPER_ADMIN.email && password === SUPER_ADMIN.password) {
       const userData = {
         email: SUPER_ADMIN.email,
@@ -71,8 +68,6 @@ export function AuthProvider({ children }) {
       localStorage.setItem('admin_user', JSON.stringify(userData));
       return { success: true, user: userData };
     }
-
-    // ❌ ভুল ক্রেডেনশিয়াল
     return { success: false, error: 'ভুল ইমেইল বা পাসওয়ার্ড!' };
   };
 
