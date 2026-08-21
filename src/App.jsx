@@ -21,13 +21,13 @@ export default function App() {
   // অথ স্টেট
   // =============================================
   const [user, setUser] = useState(null);
-  const [userRole, setUserRole] = useState(null); // 'super_admin', 'admin', 'teacher'
+  const [userRole, setUserRole] = useState(null);
   const [userName, setUserName] = useState('');
   const [loading, setLoading] = useState(true);
   
   // লগইন মোডাল
   const [showLoginModal, setShowLoginModal] = useState(false);
-  const [loginRole, setLoginRole] = useState(null); // কোন রোলের জন্য লগইন
+  const [loginRole, setLoginRole] = useState(null);
   const [authEmail, setAuthEmail] = useState('');
   const [authPassword, setAuthPassword] = useState('');
   const [loginError, setLoginError] = useState('');
@@ -135,7 +135,6 @@ export default function App() {
       setAuthEmail('');
       setAuthPassword('');
       setLoginError('');
-      // প্রোফাইল useEffect এ লোড হবে
     }
   };
 
@@ -157,6 +156,15 @@ export default function App() {
     setAuthEmail('');
     setAuthPassword('');
     setLoginError('');
+    setMobileMenuOpen(false);
+  };
+
+  // =============================================
+  // এডমিন সিলেক্ট মেনু
+  // =============================================
+  const handleAdminSelect = () => {
+    setMobileMenuOpen(false);
+    setCurrentView('adminSelect');
   };
 
   // =============================================
@@ -258,7 +266,6 @@ export default function App() {
 
   const isLoggedIn = !!user;
 
-  // ডিবাগ
   console.log('🔍 App State:', { user: user?.email, userRole, isSuperAdmin, isAdmin, isTeacher });
 
   return (
@@ -313,25 +320,6 @@ export default function App() {
         @keyframes spin {
           0% { transform: rotate(0deg); }
           100% { transform: rotate(360deg); }
-        }
-        .admin-login-btn {
-          background: linear-gradient(135deg, #1e40af 0%, #1d4ed8 100%);
-          color: white;
-          border: none;
-          padding: 16px 40px;
-          border-radius: 14px;
-          font-size: 20px;
-          font-weight: 700;
-          cursor: pointer;
-          transition: all 0.3s ease;
-          box-shadow: 0 8px 25px rgba(29, 78, 216, 0.4);
-          display: inline-flex;
-          align-items: center;
-          gap: 12px;
-        }
-        .admin-login-btn:hover {
-          transform: translateY(-3px) scale(1.02);
-          box-shadow: 0 12px 35px rgba(29, 78, 216, 0.5);
         }
         .role-select-btn {
           background: white;
@@ -438,6 +426,15 @@ export default function App() {
           margin-bottom: 12px;
           border-left: 4px solid #dc2626;
         }
+        .admin-menu-item {
+          color: #1d4ed8;
+          font-weight: 700;
+          border-bottom: 2px solid #dbeafe;
+          padding-bottom: 4px;
+        }
+        .admin-menu-item:hover {
+          color: #1e40af;
+        }
       `}</style>
 
       {/* টপ কন্টাক্ট বার */}
@@ -455,7 +452,9 @@ export default function App() {
         </div>
       </div>
 
-      {/* নেভিগেশন বার - এডমিন প্যানেল সরানো হয়েছে */}
+      {/* =============================================
+          নেভিগেশন বার - এডমিন প্যানেল মেনুতে
+          ============================================= */}
       <nav style={{ backgroundColor: '#ffffff', position: 'sticky', top: 0, zIndex: 50, boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }} onClick={() => setCurrentView('home')}>
@@ -486,11 +485,18 @@ export default function App() {
             <span className="nav-link" onClick={() => { setCurrentView('gallery'); setMobileMenuOpen(false); }}>গ্যালারি</span>
             <span className="nav-link" onClick={() => { setCurrentView('contact'); setMobileMenuOpen(false); }}>যোগাযোগ</span>
             
+            {/* =============================================
+                🔥 এডমিন প্যানেল - মেনুতে
+                ============================================= */}
+            <span className="nav-link admin-menu-item" onClick={handleAdminSelect}>
+              ⚙️ এডমিন প্যানেল
+            </span>
+            
             {isLoggedIn && (
               <span className="nav-link" style={{ color: '#2563eb', fontWeight: 'bold' }} onClick={() => { setCurrentView('notifications'); setMobileMenuOpen(false); }}>🔔 নোটিফিকেশন</span>
             )}
 
-            {/* শুধুমাত্র লগইন থাকলে এবং পারমিশন থাকলে দেখাবে */}
+            {/* লগইন থাকলে এবং পারমিশন থাকলে প্যানেল দেখাবে */}
             {isSuperAdmin && (
               <>
                 <span className="nav-link" style={{ color: '#b45309', fontWeight: 'bold' }} onClick={() => { setCurrentView('superAdminPanel'); setMobileMenuOpen(false); }}>⚙️ সুপার এডমিন প্যানেল</span>
@@ -539,7 +545,7 @@ export default function App() {
       </nav>
 
       {/* =============================================
-          হোমপেজ - এডমিন প্যানেল বাটন এখানে
+          হোমপেজ
           ============================================= */}
       {currentView === 'home' && (
         <>
@@ -566,19 +572,6 @@ export default function App() {
           </header>
 
           <main style={{ maxWidth: '1200px', margin: '-30px auto 40px auto', padding: '0 16px', position: 'relative', zIndex: 10 }}>
-            
-            {/* =============================================
-                🔥 এডমিন প্যানেল বাটন - হোমপেজের মাঝখানে
-                ============================================= */}
-            <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-              <button 
-                onClick={() => setCurrentView('adminSelect')} 
-                className="admin-login-btn"
-              >
-                ⚙️ এডমিন প্যানেল
-              </button>
-            </div>
-
             <section id="about" style={{ marginBottom: '32px' }}>
               <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '20px', alignItems: 'center' }}>
                 <div style={{ textAlign: 'center', flexShrink: 0 }}>
