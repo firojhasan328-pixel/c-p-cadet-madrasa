@@ -332,27 +332,6 @@ export default function App() {
         .teacher-designation { color: #15803d; font-weight: 600; font-size: 14px; margin-bottom: 8px; }
         .teacher-details { font-size: 13px; color: #334155; border-top: 1px solid #f1f5f9; padding-top: 10px; margin-top: 8px; }
         .teacher-details div { margin: 2px 0; }
-        .admin-menu-btn {
-          background: linear-gradient(135deg, #1d4ed8, #1e40af);
-          color: white;
-          border: none;
-          padding: 8px 16px;
-          border-radius: 8px;
-          font-size: 13px;
-          font-weight: 600;
-          cursor: pointer;
-          transition: all 0.3s ease;
-          display: inline-flex;
-          align-items: center;
-          gap: 6px;
-          width: 100%;
-          justify-content: center;
-          margin-top: 4px;
-        }
-        .admin-menu-btn:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 4px 12px rgba(29, 78, 216, 0.3);
-        }
       `}</style>
 
       {/* টপ কন্টাক্ট বার */}
@@ -387,7 +366,15 @@ export default function App() {
         </div>
 
         {mobileMenuOpen && (
-          <div style={{ backgroundColor: '#ffffff', borderTop: '1px solid #f1f5f9', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '12px', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}>
+          <div style={{ 
+            backgroundColor: '#ffffff', 
+            borderTop: '1px solid #f1f5f9', 
+            padding: '16px 20px', 
+            display: 'flex', 
+            flexDirection: 'column', 
+            gap: '12px', 
+            boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' 
+          }}>
             <span className="nav-link" onClick={() => { setCurrentView('home'); setMobileMenuOpen(false); }}>হোম</span>
             <span className="nav-link" onClick={() => { setCurrentView('about'); setMobileMenuOpen(false); }}>প্রধান শিক্ষকের বাণী</span>
             <span className="nav-link" onClick={() => { setCurrentView('teachers'); setMobileMenuOpen(false); }}>শিক্ষকবৃন্দ</span>
@@ -399,7 +386,19 @@ export default function App() {
             {/* 🔥 এডমিন প্যানেল বাটন - লগইন ফর্মের জায়গায় */}
             <button 
               onClick={() => { window.location.href = '/admin'; setMobileMenuOpen(false); }} 
-              className="admin-menu-btn"
+              style={{
+                background: 'linear-gradient(135deg, #1d4ed8, #1e40af)',
+                color: 'white',
+                border: 'none',
+                padding: '10px 16px',
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                width: '100%',
+                textAlign: 'center',
+                marginTop: '4px'
+              }}
             >
               ⚙️ এডমিন প্যানেল
             </button>
