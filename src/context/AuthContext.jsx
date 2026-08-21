@@ -73,12 +73,15 @@ export function AuthProvider({ children }) {
   // অথ স্টেট রিফ্রেশ (লগইনের পর কল করুন)
   // =============================================
   const refreshUser = async () => {
+    console.log('🔄 refreshUser কল করা হয়েছে');
     const { data: { user: currentUser } } = await supabase.auth.getUser();
     
     if (currentUser) {
+      console.log('✅ বর্তমান ইউজার:', currentUser.email);
       setUser(currentUser);
       await loadUserData(currentUser.id);
     } else {
+      console.log('❌ কোনো ইউজার নেই');
       setUser(null);
       setProfile(null);
       setRoles([]);
@@ -99,9 +102,11 @@ export function AuthProvider({ children }) {
       const { data: { session } } = await supabase.auth.getSession();
 
       if (session) {
+        console.log('✅ সেশন পাওয়া গেছে:', session.user.email);
         setUser(session.user);
         await loadUserData(session.user.id);
       } else {
+        console.log('❌ কোনো সেশন নেই');
         setUser(null);
         setProfile(null);
         setRoles([]);
@@ -126,7 +131,7 @@ export function AuthProvider({ children }) {
           setUser(session.user);
           await loadUserData(session.user.id);
         } else if (event === 'TOKEN_REFRESHED') {
-          // টোকেন রিফ্রেশ হলে ডেটা রিলোড
+          console.log('🔄 টোকেন রিফ্রেশ হয়েছে');
           if (session) {
             await loadUserData(session.user.id);
           }
