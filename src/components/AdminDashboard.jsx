@@ -1,19 +1,30 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import PermissionManager from './PermissionManager';
+import TeacherManagement from './TeacherManagement';
+import ContentManager from './ContentManager';
+import Gallery from './Gallery';
+import StudentList from './StudentList';
 
 export default function AdminDashboard() {
   const { user, logout, hasPermission, isSuperAdmin } = useAuth();
   const [activeTab, setActiveTab] = useState('dashboard');
 
-  // মেনু আইটেম - পারমিশন অনুযায়ী দেখাবে
   const menuItems = [
     { id: 'dashboard', label: '📊 ড্যাশবোর্ড', permission: '*' },
-    { id: 'permissions', label: '🛡️ পারমিশন ম্যানেজ', permission: 'manage_permissions' },
+    { id: 'teachers', label: '👨‍🏫 শিক্ষক ম্যানেজ', permission: 'manage_teachers' },
+    { id: 'students', label: '🎓 ছাত্র ম্যানেজ', permission: 'manage_students' },
+    { id: 'homepage', label: '🏠 হোমপেজ এডিট', permission: 'edit_homepage' },
+    { id: 'principal', label: '👤 প্রধান শিক্ষক', permission: 'edit_principal' },
+    { id: 'pages', label: '📄 পেজ ম্যানেজ', permission: 'manage_pages' },
+    { id: 'notices', label: '📌 নোটিশ ম্যানেজ', permission: 'manage_notices' },
+    { id: 'gallery', label: '🖼️ গ্যালারি ম্যানেজ', permission: 'manage_gallery' },
+    { id: 'contact', label: '📞 যোগাযোগ কন্ট্রোল', permission: 'edit_contact' },
+    { id: 'footer', label: '📋 ফুটার কন্ট্রোল', permission: 'edit_footer' },
     { id: 'settings', label: '⚙️ সাইট সেটিংস', permission: 'edit_settings' },
+    { id: 'permissions', label: '🛡️ পারমিশন ম্যানেজ', permission: 'manage_permissions' },
   ];
 
-  // পারমিশন অনুযায়ী মেনু ফিল্টার
   const visibleMenu = menuItems.filter(item => {
     if (isSuperAdmin) return true;
     if (item.permission === '*') return true;
@@ -23,15 +34,23 @@ export default function AdminDashboard() {
   const renderContent = () => {
     switch (activeTab) {
       case 'dashboard': return <DashboardHome />;
-      case 'permissions': return <PermissionManager />;
+      case 'teachers': return <TeacherManagement />;
+      case 'students': return <StudentList />;
+      case 'homepage': return <ContentManager />;
+      case 'principal': return <PrincipalEditor />;
+      case 'pages': return <PageManager />;
+      case 'notices': return <NoticeManager />;
+      case 'gallery': return <Gallery />;
+      case 'contact': return <ContactManager />;
+      case 'footer': return <FooterManager />;
       case 'settings': return <SettingsManager />;
+      case 'permissions': return <PermissionManager />;
       default: return <DashboardHome />;
     }
   };
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: '#f1f5f9' }}>
-      {/* সাইডবার */}
       <div style={{
         width: '260px',
         background: '#0f172a',
@@ -121,7 +140,6 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* কন্টেন্ট এলাকা */}
       <div style={{ flex: 1, padding: '24px', overflow: 'auto' }}>
         {renderContent()}
       </div>
@@ -193,8 +211,68 @@ function StatCard({ icon, label, value, color }) {
 }
 
 // =============================================
-// সেটিংস ম্যানেজার
+// অস্থায়ী কম্পোনেন্ট (পরবর্তীতে পূর্ণাঙ্গ করা হবে)
 // =============================================
+function PrincipalEditor() {
+  return (
+    <div style={{ background: 'white', padding: '20px', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
+      <h3 style={{ marginTop: 0, color: '#0f172a' }}>👤 প্রধান শিক্ষক কন্ট্রোল</h3>
+      <p style={{ color: '#94a3b8' }}>প্রধান শিক্ষকের নাম, পদবী, বার্তা, ছবি পরিবর্তন করুন।</p>
+      <div style={{ padding: '20px', textAlign: 'center', color: '#94a3b8', background: '#f8fafc', borderRadius: '10px' }}>
+        🔄 শীঘ্রই আসছে...
+      </div>
+    </div>
+  );
+}
+
+function PageManager() {
+  return (
+    <div style={{ background: 'white', padding: '20px', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
+      <h3 style={{ marginTop: 0, color: '#0f172a' }}>📄 পেজ ম্যানেজমেন্ট</h3>
+      <p style={{ color: '#94a3b8' }}>সব পেজের টাইটেল, কন্টেন্ট, মেনু স্ট্যাটাস পরিবর্তন করুন।</p>
+      <div style={{ padding: '20px', textAlign: 'center', color: '#94a3b8', background: '#f8fafc', borderRadius: '10px' }}>
+        🔄 শীঘ্রই আসছে...
+      </div>
+    </div>
+  );
+}
+
+function NoticeManager() {
+  return (
+    <div style={{ background: 'white', padding: '20px', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
+      <h3 style={{ marginTop: 0, color: '#0f172a' }}>📌 নোটিশ ম্যানেজমেন্ট</h3>
+      <p style={{ color: '#94a3b8' }}>নতুন নোটিশ যোগ, এডিট, ডিলিট করুন।</p>
+      <div style={{ padding: '20px', textAlign: 'center', color: '#94a3b8', background: '#f8fafc', borderRadius: '10px' }}>
+        🔄 শীঘ্রই আসছে...
+      </div>
+    </div>
+  );
+}
+
+function ContactManager() {
+  return (
+    <div style={{ background: 'white', padding: '20px', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
+      <h3 style={{ marginTop: 0, color: '#0f172a' }}>📞 যোগাযোগ কন্ট্রোল</h3>
+      <p style={{ color: '#94a3b8' }}>ফোন, ইমেইল, ঠিকানা, সোশ্যাল লিংক পরিবর্তন করুন।</p>
+      <div style={{ padding: '20px', textAlign: 'center', color: '#94a3b8', background: '#f8fafc', borderRadius: '10px' }}>
+        🔄 শীঘ্রই আসছে...
+      </div>
+    </div>
+  );
+}
+
+function FooterManager() {
+  return (
+    <div style={{ background: 'white', padding: '20px', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
+      <h3 style={{ marginTop: 0, color: '#0f172a' }}>📋 ফুটার কন্ট্রোল</h3>
+      <p style={{ color: '#94a3b8' }}>কপিরাইট, ডেভেলপারের নাম, ঠিকানা পরিবর্তন করুন।</p>
+      <div style={{ padding: '20px', textAlign: 'center', color: '#94a3b8', background: '#f8fafc', borderRadius: '10px' }}>
+        🔄 শীঘ্রই আসছে...
+      </div>
+    </div>
+  );
+}
+
 function SettingsManager() {
   return (
     <div style={{ background: 'white', padding: '20px', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
