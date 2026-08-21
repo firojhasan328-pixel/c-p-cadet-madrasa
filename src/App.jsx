@@ -23,16 +23,58 @@ export default function App() {
   const [currentView, setCurrentView] = useState('home');
 
   // =============================================
-  // AUTH CONTEXT থেকে নিন
+  // Auth থেকে শুধু user এবং loading নিন
   // =============================================
-  const { 
-    user, 
-    loading,
-    profile,
-    refreshUser
-  } = useAuth();
+  const { user, loading } = useAuth();
 
-  // 🔥 সরাসরি profile.role চেক করুন
+  // =============================================
+  // সরাসরি Supabase থেকে প্রোফাইল ফেচ করুন
+  // =============================================
+  const [profile, setProfile] = useState(null);
+  const [profileLoading, setProfileLoading] = useState(true);
+
+  const fetchProfile = async (userId) => {
+    if (!userId) {
+      setProfile(null);
+      setProfileLoading(false);
+      return;
+    }
+
+    try {
+      console.log('🔍 ফেচ করছি প্রোফাইল:', userId);
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      if (error) {
+        console.error('❌ প্রোফাইল ফেচে সমস্যা:', error);
+        setProfile(null);
+      } else {
+        console.log('✅ প্রোফাইল পাওয়া গেছে:', data);
+        setProfile(data);
+      }
+    } catch (err) {
+      console.error('❌ ফেচ ইরর:', err);
+      setProfile(null);
+    }
+    setProfileLoading(false);
+  };
+
+  // ইউজার পরিবর্তন হলে প্রোফাইল ফেচ করুন
+  useEffect(() => {
+    if (user) {
+      fetchProfile(user.id);
+    } else {
+      setProfile(null);
+      setProfileLoading(false);
+    }
+  }, [user]);
+
+  // =============================================
+  // প্রোফাইল থেকে রোল নির্ধারণ
+  // =============================================
   const isSuperAdmin = profile?.role === 'superadmin';
   const isAdmin = profile?.role === 'admin' || isSuperAdmin;
   const isTeacher = profile?.role === 'teacher' || isAdmin;
@@ -124,7 +166,7 @@ export default function App() {
   };
 
   // =============================================
-  // লগইন ফাংশন – এলার্ট যোগ করা হয়েছে
+  // লগইন ফাংশন
   // =============================================
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -136,25 +178,19 @@ export default function App() {
     if (error) {
       alert("লগইন ব্যর্থ হয়েছে: " + error.message);
     } else {
-      // AuthContext রিফ্রেশ করুন
-      await refreshUser();
-      
-      // ১ সেকেন্ড পর profile দেখান
-      setTimeout(() => {
-        const role = profile?.role || 'ইউজার';
-        alert(`✅ লগইন সফল! আপনার রোল: ${role}`);
-      }, 500);
-      
       alert("সফলভাবে লগইন হয়েছে!");
       setCurrentView('home');
       setAuthEmail('');
       setAuthPassword('');
       setMobileMenuOpen(false);
+      
+      // প্রোফাইল রিলোড (useEffect auto-trigger হবে)
     }
   };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
+    setProfile(null);
     setCurrentView('home');
     alert("লগআউট সফল হয়েছে।");
   };
@@ -251,9 +287,6 @@ export default function App() {
 
   const whatsappNumber = "8801918568313";
 
-  // =============================================
-  // ইউজারের রোল ডিসপ্লে নাম
-  // =============================================
   const getUserDisplayRole = () => {
     if (isSuperAdmin) return 'সুপার এডমিন';
     if (isAdmin) return 'এডমিন';
@@ -262,6 +295,12 @@ export default function App() {
   };
 
   const isLoggedIn = !!user;
+  const isLoading = loading || profileLoading;
+
+  // =============================================
+  // DEBUG
+  // =============================================
+  console.log('🔍 App State:', { user: user?.email, profile, isSuperAdmin, isAdmin, isTeacher });
 
   return (
     <div style={{ fontFamily: "'Hind Siliguri', 'Segoe UI', sans-serif", backgroundColor: '#f8fafc', color: '#0f172a', minHeight: '100vh', margin: 0, padding: 0, position: 'relative' }}>
@@ -392,7 +431,7 @@ export default function App() {
             <button onClick={() => { setMobileMenuOpen(false); setIsAdmissionModalOpen(true); }} className="btn-primary" style={{ width: '100%', textAlign: 'center', marginTop: '6px' }}>অনলাইন ভর্তি</button>
             
             <div style={{ borderTop: '1px dashed #cbd5e1', paddingTop: '10px', marginTop: '4px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {loading ? (
+              {isLoading ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 0' }}>
                   <span className="auth-loading"></span>
                   <span style={{ fontSize: '12px', color: '#64748b' }}>লোড হচ্ছে...</span>
