@@ -20,7 +20,7 @@ import AdminDashboard from './components/AdminDashboard';
 
 export default function App() {
   // =============================================
-  // 🔥 এডমিন অথ চেক
+  // এডমিন অথ চেক
   // =============================================
   const { isAuthenticated, loading } = useAuth();
 
@@ -260,7 +260,7 @@ export default function App() {
   const whatsappNumber = "8801918568313";
 
   // =============================================
-  // 🔥 অথ লোডিং স্টেট
+  // অথ লোডিং স্টেট
   // =============================================
   if (loading) {
     return (
@@ -294,7 +294,7 @@ export default function App() {
   }
 
   // =============================================
-  // 🔥 এডমিন লগইন থাকলে ড্যাশবোর্ড দেখাবে
+  // এডমিন লগইন থাকলে ড্যাশবোর্ড দেখাবে
   // =============================================
   if (isAuthenticated) {
     return (
@@ -306,7 +306,7 @@ export default function App() {
   }
 
   // =============================================
-  // 🔥 হোমপেজ (আগের মতো - অপরিবর্তিত)
+  // হোমপেজ (আগের মতো)
   // =============================================
   return (
     <div style={{ fontFamily: "'Hind Siliguri', 'Segoe UI', sans-serif", backgroundColor: '#f8fafc', color: '#0f172a', minHeight: '100vh', margin: 0, padding: 0, position: 'relative' }}>
@@ -390,22 +390,22 @@ export default function App() {
             <span className="nav-link" onClick={() => { setCurrentView('gallery'); setMobileMenuOpen(false); }}>গ্যালারি</span>
             <span className="nav-link" onClick={() => { setCurrentView('contact'); setMobileMenuOpen(false); }}>যোগাযোগ</span>
             
-            {/* 🔑 সাইন ইন বাটন */}
+            {/* সাইন ইন বাটন */}
             <span className="nav-link" style={{ color: '#2563eb', fontWeight: 'bold' }} onClick={() => { setMobileMenuOpen(false); setIsSignInModalOpen(true); }}>
               🔑 সাইন ইন
             </span>
 
-            {/* 🔥 এডমিন প্যানেল লিংক - নতুন */}
+            {/* এডমিন প্যানেল লিংক */}
             <span className="nav-link" style={{ color: '#b45309', fontWeight: 'bold', borderTop: '1px dashed #e2e8f0', paddingTop: '8px' }} onClick={() => { window.location.href = '/admin'; setMobileMenuOpen(false); }}>
               ⚙️ এডমিন প্যানেল
             </span>
 
-            {/* নোটিফিকেশন (শুধু লগইন থাকলে) */}
+            {/* নোটিফিকেশন */}
             {currentUser && (
               <span className="nav-link" style={{ color: '#2563eb', fontWeight: 'bold' }} onClick={() => { setCurrentView('notifications'); setMobileMenuOpen(false); }}>🔔 নোটিফিকেশন</span>
             )}
             
-            {/* ব্যবহার পারমিশন অনুযায়ী মেনু দেখানো */}
+            {/* পারমিশন অনুযায়ী মেনু */}
             {(isTeacher || isAdmin || isSuperAdmin) && (
               <span className="nav-link" style={{ color: '#16a34a', fontWeight: 'bold' }} onClick={() => { setCurrentView('teacherPanel'); setMobileMenuOpen(false); }}>👨‍🏫 টিচার প্যানেল</span>
             )}
