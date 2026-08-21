@@ -211,7 +211,7 @@ export default function App() {
           <div style={{ backgroundColor: '#ffffff', borderTop: '1px solid #f1f5f9', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '12px', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}>
             
             {/* =============================================
-                🔥 সব মেনু অপশন - আগের মতো
+                🔥 সব মেনু অপশন
                 ============================================= */}
             <span className="nav-link" onClick={() => { setCurrentView('superAdminPanel'); setMobileMenuOpen(false); }}>⭐ সুপার এডমিন ড্যাশবোর্ড</span>
             
