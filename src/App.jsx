@@ -8,7 +8,6 @@ import TeacherManager from './components/TeacherManager';
 import Gallery from './components/Gallery';
 import SignInModal from './components/SignInModal';
 import StudentList from './components/StudentList';
-import { useAuth } from './context/AuthContext';
 import SuperAdminDashboard from './components/SuperAdminDashboard';
 import AdminPermissionManager from './components/AdminPermissionManager';
 import TeacherManagement from './components/TeacherManagement';
@@ -23,64 +22,120 @@ export default function App() {
   const [currentView, setCurrentView] = useState('home');
 
   // =============================================
-  // Auth থেকে শুধু user এবং loading নিন
+  // সরাসরি স্টেট
   // =============================================
-  const { user, loading } = useAuth();
-
-  // =============================================
-  // সরাসরি Supabase থেকে প্রোফাইল ফেচ করুন
-  // =============================================
+  const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
-  const [profileLoading, setProfileLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
+  const [authEmail, setAuthEmail] = useState('');
+  const [authPassword, setAuthPassword] = useState('');
 
+  // =============================================
+  // প্রোফাইল ফেচ
+  // =============================================
   const fetchProfile = async (userId) => {
     if (!userId) {
       setProfile(null);
-      setProfileLoading(false);
       return;
     }
-
     try {
-      console.log('🔍 ফেচ করছি প্রোফাইল:', userId);
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
         .single();
-
+      
       if (error) {
-        console.error('❌ প্রোফাইল ফেচে সমস্যা:', error);
+        console.error('Profile error:', error);
         setProfile(null);
       } else {
-        console.log('✅ প্রোফাইল পাওয়া গেছে:', data);
+        console.log('Profile loaded:', data);
         setProfile(data);
       }
     } catch (err) {
-      console.error('❌ ফেচ ইরর:', err);
+      console.error('Fetch error:', err);
       setProfile(null);
     }
-    setProfileLoading(false);
   };
 
-  // ইউজার পরিবর্তন হলে প্রোফাইল ফেচ করুন
+  // =============================================
+  // অথ চেক
+  // =============================================
   useEffect(() => {
-    if (user) {
-      fetchProfile(user.id);
-    } else {
-      setProfile(null);
-      setProfileLoading(false);
-    }
-  }, [user]);
+    const checkAuth = async () => {
+      setLoading(true);
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session?.user) {
+        setUser(session.user);
+        await fetchProfile(session.user.id);
+      } else {
+        setUser(null);
+        setProfile(null);
+      }
+      setLoading(false);
+    };
+    
+    checkAuth();
+
+    const { data: listener } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session?.user) {
+        setUser(session.user);
+        await fetchProfile(session.user.id);
+        setLoading(false);
+        alert('✅ লগইন সফল!');
+      } else if (event === 'SIGNED_OUT') {
+        setUser(null);
+        setProfile(null);
+        setLoading(false);
+      }
+    });
+
+    return () => listener?.subscription?.unsubscribe();
+  }, []);
 
   // =============================================
-  // প্রোফাইল থেকে রোল নির্ধারণ
+  // রোল নির্ধারণ
   // =============================================
   const isSuperAdmin = profile?.role === 'superadmin';
   const isAdmin = profile?.role === 'admin' || isSuperAdmin;
   const isTeacher = profile?.role === 'teacher' || isAdmin;
 
-  const [authEmail, setAuthEmail] = useState('');
-  const [authPassword, setAuthPassword] = useState('');
+  // =============================================
+  // লগইন
+  // =============================================
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: authEmail,
+      password: authPassword,
+    });
+
+    if (error) {
+      alert("লগইন ব্যর্থ: " + error.message);
+      setLoading(false);
+    } else {
+      setAuthEmail('');
+      setAuthPassword('');
+      setMobileMenuOpen(false);
+      setCurrentView('home');
+      // প্রোফাইল useEffect এ লোড হবে
+    }
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    setUser(null);
+    setProfile(null);
+    setCurrentView('home');
+    alert("লগআউট সফল");
+  };
+
+  // =============================================
+  // বাকি স্টেট
+  // =============================================
   const [isAdmissionOpen, setIsAdmissionOpen] = useState(true);
   const [closedMessage, setClosedMessage] = useState("পর্যাপ্ত পরিমাণ ছাত্র-ছাত্রী বুকিং হওয়ায় আর কোনো সিট খালি নাই।");
   const [isAdminMode, setIsAdminMode] = useState(false);
@@ -163,36 +218,6 @@ export default function App() {
   const fetchManagedUsers = async () => {
     const { data, error } = await supabase.from('profiles').select('*');
     if (data) setManagedUsers(data);
-  };
-
-  // =============================================
-  // লগইন ফাংশন
-  // =============================================
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: authEmail,
-      password: authPassword,
-    });
-
-    if (error) {
-      alert("লগইন ব্যর্থ হয়েছে: " + error.message);
-    } else {
-      alert("সফলভাবে লগইন হয়েছে!");
-      setCurrentView('home');
-      setAuthEmail('');
-      setAuthPassword('');
-      setMobileMenuOpen(false);
-      
-      // প্রোফাইল রিলোড (useEffect auto-trigger হবে)
-    }
-  };
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    setProfile(null);
-    setCurrentView('home');
-    alert("লগআউট সফল হয়েছে।");
   };
 
   const handleUpdateSiteContent = async (key, value) => {
@@ -295,12 +320,9 @@ export default function App() {
   };
 
   const isLoggedIn = !!user;
-  const isLoading = loading || profileLoading;
 
-  // =============================================
-  // DEBUG
-  // =============================================
-  console.log('🔍 App State:', { user: user?.email, profile, isSuperAdmin, isAdmin, isTeacher });
+  // ডিবাগ
+  console.log('🔍 State:', { user: user?.email, profile, isSuperAdmin });
 
   return (
     <div style={{ fontFamily: "'Hind Siliguri', 'Segoe UI', sans-serif", backgroundColor: '#f8fafc', color: '#0f172a', minHeight: '100vh', margin: 0, padding: 0, position: 'relative' }}>
@@ -406,9 +428,6 @@ export default function App() {
               <span className="nav-link" style={{ color: '#2563eb', fontWeight: 'bold' }} onClick={() => { setCurrentView('notifications'); setMobileMenuOpen(false); }}>🔔 নোটিফিকেশন</span>
             )}
             
-            {/* =============================================
-                🔥 এখানে profile.role ব্যবহার করা হয়েছে
-                ============================================= */}
             {(isTeacher || isAdmin || isSuperAdmin) && (
               <span className="nav-link" style={{ color: '#16a34a', fontWeight: 'bold' }} onClick={() => { setCurrentView('teacherPanel'); setMobileMenuOpen(false); }}>👨‍🏫 টিচার প্যানেল</span>
             )}
@@ -431,7 +450,7 @@ export default function App() {
             <button onClick={() => { setMobileMenuOpen(false); setIsAdmissionModalOpen(true); }} className="btn-primary" style={{ width: '100%', textAlign: 'center', marginTop: '6px' }}>অনলাইন ভর্তি</button>
             
             <div style={{ borderTop: '1px dashed #cbd5e1', paddingTop: '10px', marginTop: '4px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {isLoading ? (
+              {loading ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 0' }}>
                   <span className="auth-loading"></span>
                   <span style={{ fontSize: '12px', color: '#64748b' }}>লোড হচ্ছে...</span>
