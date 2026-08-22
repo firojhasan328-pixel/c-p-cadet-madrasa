@@ -2,13 +2,6 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 
 const AuthContext = createContext();
 
-const SUPER_ADMIN = {
-  email: 'firojhasan328@gmail.com',
-  password: 'firojhasan1234+',
-  name: 'Super Admin',
-  role: 'super_admin'
-};
-
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -55,22 +48,6 @@ export function AuthProvider({ children }) {
     }
   };
 
-  const login = (email, password) => {
-    if (email === SUPER_ADMIN.email && password === SUPER_ADMIN.password) {
-      const userData = {
-        email: SUPER_ADMIN.email,
-        name: SUPER_ADMIN.name,
-        role: SUPER_ADMIN.role,
-        permissions: ['*']
-      };
-      setUser(userData);
-      updateRoles(userData);
-      localStorage.setItem('admin_user', JSON.stringify(userData));
-      return { success: true, user: userData };
-    }
-    return { success: false, error: 'ভুল ইমেইল বা পাসওয়ার্ড!' };
-  };
-
   const logout = () => {
     setUser(null);
     setIsSuperAdmin(false);
@@ -78,11 +55,7 @@ export function AuthProvider({ children }) {
     setIsTeacher(false);
     setPermissions([]);
     localStorage.removeItem('admin_user');
-  };
-
-  const hasPermission = (permissionKey) => {
-    if (isSuperAdmin) return true;
-    return permissions.includes(permissionKey);
+    window.location.href = '/';
   };
 
   return (
@@ -93,9 +66,7 @@ export function AuthProvider({ children }) {
       isAdmin,
       isTeacher,
       permissions,
-      login,
       logout,
-      hasPermission,
       isAuthenticated: !!user
     }}>
       {children}
