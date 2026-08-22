@@ -134,6 +134,13 @@ export default function App() {
 
   const whatsappNumber = "8801918568313";
 
+  // =============================================
+  // 🔥 SUPER ADMIN DIRECT ACCESS - DEVELOPMENT ONLY
+  // =============================================
+  // এই কোডটি শুধুমাত্র ডেভেলপমেন্টের জন্য। 
+  // প্রোডাকশনে যাওয়ার আগে এই অংশটি সরিয়ে ফেলবেন।
+  const isDevMode = true; // true = Super Admin Dashboard সরাসরি দেখাবে
+
   if (loading) {
     return (
       <div style={{
@@ -165,6 +172,28 @@ export default function App() {
     );
   }
 
+  // 🔥 SUPER ADMIN DIRECT ACCESS
+  if (isDevMode) {
+    return (
+      <>
+        <div style={{
+          background: '#fef3c7',
+          padding: '8px 16px',
+          textAlign: 'center',
+          fontSize: '13px',
+          fontWeight: '600',
+          color: '#b45309',
+          borderBottom: '2px solid #f59e0b'
+        }}>
+          ⚡ ডেভেলপমেন্ট মোড: সুপার এডমিন ড্যাশবোর্ড সরাসরি খোলা হয়েছে
+        </div>
+        <SuperAdminDashboard />
+        <Footer />
+      </>
+    );
+  }
+
+  // Normal Authentication Check
   if (isAuthenticated) {
     return (
       <>
