@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 
 export default function AdminLogin() {
@@ -8,15 +8,36 @@ export default function AdminLogin() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
+  // ইতিমধ্যে লগইন থাকলে ড্যাশবোর্ডে পাঠাও
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', session.user.id)
+          .single();
+        
+        if (profile?.role === 'super_admin' || profile?.role === 'admin') {
+          window.location.href = '/admin-dashboard';
+        }
+      }
+    };
+    checkAuth();
+  }, []);
+
   const handleLogin = async (e) => {
     e.preventDefault();
     setError('');
+    setSuccess('');
     setLoading(true);
 
     try {
+      // Supabase Auth লগইন
       const { data, error: loginError } = await supabase.auth.signInWithPassword({
-        email: email,
-        password: password,
+        email: email.trim(),
+        password: password.trim(),
       });
 
       if (loginError) {
@@ -25,15 +46,34 @@ export default function AdminLogin() {
         return;
       }
 
-      if (data.user) {
-        const { data: profile } = await supabase
+      if (data?.user) {
+        // প্রোফাইল চেক
+        const { data: profile, error: profileError } = await supabase
           .from('profiles')
-          .select('role')
+          .select('*')
           .eq('id', data.user.id)
           .single();
 
-        if (profile?.role === 'super_admin' || profile?.role === 'admin') {
-          setSuccess('✅ লগইন সফল! রিডাইরেক্ট হচ্ছে...');
+        if (profileError) {
+          setError('❌ প্রোফাইল পাওয়া যায়নি।');
+          await supabase.auth.signOut();
+          setLoading(false);
+          return;
+        }
+
+        // রোল চেক
+        if (profile.role === 'super_admin' || profile.role === 'admin') {
+          setSuccess('✅ লগইন সফল!');
+
+          // লোকাল স্টোরেজে সেভ
+          localStorage.setItem('admin_user', JSON.stringify({
+            id: data.user.id,
+            email: data.user.email,
+            name: profile.name || 'Admin',
+            role: profile.role,
+          }));
+
+          // ১ সেকেন্ড পর ড্যাশবোর্ডে যাবে
           setTimeout(() => {
             window.location.href = '/admin-dashboard';
           }, 1000);
@@ -128,8 +168,6 @@ const styles = {
     maxWidth: '420px',
     width: '100%',
     boxShadow: '0 25px 60px rgba(0,0,0,0.5)',
-    position: 'relative',
-    overflow: 'hidden',
   },
   logoContainer: {
     textAlign: 'center',
@@ -145,7 +183,6 @@ const styles = {
     fontWeight: '800',
     color: '#0f172a',
     margin: '0 0 4px 0',
-    letterSpacing: '-0.5px',
   },
   subtitle: {
     fontSize: '14px',
@@ -191,8 +228,8 @@ const styles = {
     border: '1.5px solid #e2e8f0',
     fontSize: '14px',
     outline: 'none',
-    transition: 'all 0.2s ease',
     background: '#f8fafc',
+    transition: 'all 0.2s ease',
   },
   submitBtn: {
     background: 'linear-gradient(135deg, #16a34a, #15803d)',
@@ -203,9 +240,8 @@ const styles = {
     fontSize: '16px',
     fontWeight: '700',
     cursor: 'pointer',
-    transition: 'all 0.3s ease',
     boxShadow: '0 4px 14px rgba(22, 163, 74, 0.35)',
-    marginTop: '4px',
+    transition: 'all 0.3s ease',
   },
   backBtn: {
     background: 'transparent',
@@ -218,7 +254,6 @@ const styles = {
     cursor: 'pointer',
     width: '100%',
     marginTop: '12px',
-    transition: 'all 0.2s ease',
   },
   helpText: {
     marginTop: '20px',
