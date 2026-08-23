@@ -10,7 +10,7 @@ import ContactPage from './components/ContactPage';
 import SuccessStats from './components/SuccessStats';
 import PortalLogin from './components/auth/PortalLogin';
 import PortalRegister from './components/auth/PortalRegister';
-import StudentDashboard from './components/portal/StudentDashboard';
+import StudentDashboard from './components/student-dashboard/StudentDashboard';
 import TeacherDashboard from './components/portal/TeacherDashboard';
 import ResetPassword from './components/ResetPassword';
 
@@ -36,11 +36,11 @@ function MainApp() {
   const [isResetPassword, setIsResetPassword] = useState(false);
 
   const [siteData, setSiteData] = useState({
-  headmasterName: "Arif Ashab Khorshed",
-  contactNumber: "+8801521-553003",
-  totalMaleStudents: "০",
-  totalFemaleStudents: "০"
-});
+    headmasterName: "Arif Ashab Khorshed",
+    contactNumber: "+8801521-553003",
+    totalMaleStudents: "০",
+    totalFemaleStudents: "০"
+  });
 
   const [teachers, setTeachers] = useState([]);
   const [teachersLoading, setTeachersLoading] = useState(true);
@@ -67,7 +67,7 @@ function MainApp() {
   useEffect(() => {
     // URL থেকে reset-password চেক করুন
     const path = window.location.pathname;
-    if (path.includes('/reset-password')) {
+    if (path.includes('/reset-password') || path.includes('/rest-password')) {
       setIsResetPassword(true);
     }
 
@@ -158,86 +158,83 @@ function MainApp() {
     fatherNidPhoto: null
   });
 
-  // Dashboard view
+  // =============================================
+  // Dashboard view - Student & Teacher
+  // =============================================
   const renderDashboard = () => {
     if (!isAuthenticated) return null;
     
-    return (
-      <div style={{ maxWidth: '1200px', margin: '40px auto', padding: '0 16px' }}>
-        <div className="card" style={{ padding: '30px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
-            <div>
-              <h2 style={{ color: '#14532d', margin: 0 }}>
-                👋 স্বাগতম, {userProfile?.name || 'ইউজার'}!
-              </h2>
-              <p style={{ color: '#64748b', margin: '4px 0 0 0' }}>
-                {userRole === 'student' ? '🎓 ছাত্র ড্যাশবোর্ড' : '👨‍🏫 শিক্ষক ড্যাশবোর্ড'}
-              </p>
+    // ✅ ছাত্র ড্যাশবোর্ড
+    if (userRole === 'student') {
+      return <StudentDashboard />;
+    }
+    
+    // ✅ শিক্ষক ড্যাশবোর্ড
+    if (userRole === 'teacher') {
+      return (
+        <div style={{ maxWidth: '1200px', margin: '40px auto', padding: '0 16px' }}>
+          <div className="card" style={{ padding: '30px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+              <div>
+                <h2 style={{ color: '#14532d', margin: 0 }}>
+                  👋 স্বাগতম, {userProfile?.name || 'ইউজার'}!
+                </h2>
+                <p style={{ color: '#64748b', margin: '4px 0 0 0' }}>
+                  👨‍🏫 শিক্ষক ড্যাশবোর্ড
+                </p>
+              </div>
+              <button 
+                onClick={logout}
+                style={{
+                  background: '#dc2626',
+                  color: 'white',
+                  border: 'none',
+                  padding: '10px 20px',
+                  borderRadius: '10px',
+                  fontWeight: '600',
+                  cursor: 'pointer'
+                }}
+              >
+                লগআউট
+              </button>
             </div>
+            
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', 
+              gap: '20px',
+              marginTop: '24px'
+            }}>
+              <div style={{ background: '#f0fdf4', padding: '20px', borderRadius: '12px', border: '1px solid #bbf7d0' }}>
+                <h4 style={{ margin: '0 0 8px 0', color: '#166534' }}>📊 প্রোফাইল</h4>
+                <p style={{ margin: '4px 0', fontSize: '14px' }}><strong>নাম:</strong> {userProfile?.name}</p>
+                <p style={{ margin: '4px 0', fontSize: '14px' }}><strong>ইমেইল:</strong> {userProfile?.email}</p>
+                <p style={{ margin: '4px 0', fontSize: '14px' }}><strong>পদবি:</strong> {userProfile?.designation || 'নাই'}</p>
+                <p style={{ margin: '4px 0', fontSize: '14px' }}><strong>বিষয়:</strong> {userProfile?.subject || 'নাই'}</p>
+              </div>
+            </div>
+            
             <button 
-              onClick={logout}
+              onClick={() => setCurrentView('home')}
               style={{
-                background: '#dc2626',
+                background: '#64748b',
                 color: 'white',
                 border: 'none',
                 padding: '10px 20px',
                 borderRadius: '10px',
                 fontWeight: '600',
-                cursor: 'pointer'
+                cursor: 'pointer',
+                marginTop: '20px'
               }}
             >
-              লগআউট
+              ⬅ হোম পেজে ফিরে যান
             </button>
           </div>
-          
-          <div style={{ 
-            display: 'grid', 
-            gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', 
-            gap: '20px',
-            marginTop: '24px'
-          }}>
-            <div style={{ background: '#f0fdf4', padding: '20px', borderRadius: '12px', border: '1px solid #bbf7d0' }}>
-              <h4 style={{ margin: '0 0 8px 0', color: '#166534' }}>📊 প্রোফাইল</h4>
-              <p style={{ margin: '4px 0', fontSize: '14px' }}><strong>নাম:</strong> {userProfile?.name}</p>
-              <p style={{ margin: '4px 0', fontSize: '14px' }}><strong>ইমেইল:</strong> {userProfile?.email}</p>
-              <p style={{ margin: '4px 0', fontSize: '14px' }}><strong>রোল:</strong> {userRole}</p>
-            </div>
-            
-            {userRole === 'student' && (
-              <div style={{ background: '#eff6ff', padding: '20px', borderRadius: '12px', border: '1px solid #bfdbfe' }}>
-                <h4 style={{ margin: '0 0 8px 0', color: '#1d4ed8' }}>📚 ক্লাস তথ্য</h4>
-                <p style={{ margin: '4px 0', fontSize: '14px' }}><strong>ক্লাস:</strong> {userProfile?.class_name || 'নাই'}</p>
-                <p style={{ margin: '4px 0', fontSize: '14px' }}><strong>রোল:</strong> {userProfile?.roll_number || 'নাই'}</p>
-              </div>
-            )}
-            
-            {userRole === 'teacher' && (
-              <div style={{ background: '#fef3c7', padding: '20px', borderRadius: '12px', border: '1px solid #fde68a' }}>
-                <h4 style={{ margin: '0 0 8px 0', color: '#b45309' }}>👨‍🏫 শিক্ষক তথ্য</h4>
-                <p style={{ margin: '4px 0', fontSize: '14px' }}><strong>পদবি:</strong> {userProfile?.designation || 'নাই'}</p>
-                <p style={{ margin: '4px 0', fontSize: '14px' }}><strong>বিষয়:</strong> {userProfile?.subject || 'নাই'}</p>
-              </div>
-            )}
-          </div>
-          
-          <button 
-            onClick={() => setCurrentView('home')}
-            style={{
-              background: '#64748b',
-              color: 'white',
-              border: 'none',
-              padding: '10px 20px',
-              borderRadius: '10px',
-              fontWeight: '600',
-              cursor: 'pointer',
-              marginTop: '20px'
-            }}
-          >
-            ⬅ হোম পেজে ফিরে যান
-          </button>
         </div>
-      </div>
-    );
+      );
+    }
+    
+    return null;
   };
 
   // =============================================
@@ -304,6 +301,10 @@ function MainApp() {
         .portal-btn:hover {
           transform: translateY(-2px);
           box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);
+        }
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
         }
       `}</style>
 
@@ -384,7 +385,7 @@ function MainApp() {
       </nav>
 
       {/* =============================================
-          পোর্টাল ভিউ
+          পোর্টাল ভিউ (Dashboard)
           ============================================= */}
       {currentView === 'portal' && isAuthenticated && renderDashboard()}
 
@@ -526,7 +527,7 @@ function MainApp() {
               {teachers.map((teacher, index) => (
                 <div key={index} className="teacher-card">
                   <img 
-                    src={teacher.photo || 'https://i.postimg.cc/gjktXPpH/1786523361131.jpg'} 
+                    src={teacher.photo_url || 'https://i.postimg.cc/gjktXPpH/1786523361131.jpg'} 
                     alt={teacher.name} 
                     className="teacher-photo"
                   />
@@ -553,10 +554,6 @@ function MainApp() {
           <div style={{ textAlign: 'center', marginBottom: '30px' }}>
             <span className="badge">মেধাবী মুখসমূহ</span>
             <h2 style={{ color: '#14532d', margin: '10px 0 10px 0' }}>ছাত্র-ছাত্রী ও ক্লাসের শীর্ষ স্থানাধিকারীগণ</h2>
-            <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', flexWrap: 'wrap', marginTop: '10px' }}>
-              <div className="card" style={{ padding: '12px 24px', background: '#dcfce7', color: '#14532d', fontWeight: 'bold' }}>👦 মোট ছাত্র: {siteData.totalMaleStudents} জন</div>
-              <div className="card" style={{ padding: '12px 24px', background: '#e0f2fe', color: '#0369a1', fontWeight: 'bold' }}>👧 মোট ছাত্রী: {siteData.totalFemaleStudents} জন</div>
-            </div>
           </div>
           
           <StudentList />
