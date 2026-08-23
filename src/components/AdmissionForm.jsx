@@ -23,12 +23,14 @@ export default function AdmissionForm({ onClose, isOpen }) {
 
   // 📤 প্রাইভেট বাকেটে ছবি আপলোড
   const uploadFile = async (file, folder) => {
+    if (!file) return null;
+    
     const fileExt = file.name.split('.').pop();
     const fileName = `${Date.now()}.${fileExt}`;
     const filePath = `${folder}/${fileName}`;
     
     const { data, error } = await supabase.storage
-      .from('private-admission-files')  // ← প্রাইভেট বাকেট
+      .from('private-admission-files')
       .upload(filePath, file);
 
     if (error) throw error;
@@ -84,14 +86,18 @@ export default function AdmissionForm({ onClose, isOpen }) {
           status: 'pending'
         }]);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Insert Error:', error);
+        throw error;
+      }
       
       // ৩. OTP স্টেপে যান (সিমুলেটেড)
       setStep(2);
       alert(`OTP পাঠানো হয়েছে: ১২৩৪৫ (সিমুলেটেড)`);
       
     } catch (err) {
-      setError(err.message);
+      console.error('Submit Error:', err);
+      setError(err.message || 'সাবমিট করতে সমস্যা');
     } finally {
       setLoading(false);
     }
@@ -295,7 +301,6 @@ const styles = {
   },
   photoGrid: {
     display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px',
-    '@media (max-width: 480px)': { gridTemplateColumns: '1fr' }
   },
   fileWrapper: {
     position: 'relative', borderRadius: '12px',
