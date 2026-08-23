@@ -65,7 +65,6 @@ function MainApp() {
   };
 
   useEffect(() => {
-    // URL থেকে reset-password চেক করুন
     const path = window.location.pathname;
     if (path.includes('/reset-password') || path.includes('/rest-password')) {
       setIsResetPassword(true);
@@ -118,7 +117,6 @@ function MainApp() {
 
   const whatsappNumber = "8801918568313";
 
-  // 🔑 সাইন ইন মডাল ওপেন
   const handleOpenSignIn = () => {
     setIsSignInModalOpen(true);
   };
@@ -127,7 +125,6 @@ function MainApp() {
     setIsSignInModalOpen(false);
   };
 
-  // পোর্টাল লগইন/রেজিস্টার হ্যান্ডলার (পুরনো মডালের জন্য - রাখা হচ্ছে)
   const handleOpenLogin = () => {
     setIsSignInModalOpen(false);
     setIsLoginModalOpen(true);
@@ -144,7 +141,6 @@ function MainApp() {
     setIsSignInModalOpen(false);
   };
 
-  // ফর্ম ডেটা স্টেট
   const [formStep, setFormStep] = useState(1);
   const [formData, setFormData] = useState({
     studentName: '',
@@ -158,18 +154,13 @@ function MainApp() {
     fatherNidPhoto: null
   });
 
-  // =============================================
-  // Dashboard view - Student & Teacher
-  // =============================================
   const renderDashboard = () => {
     if (!isAuthenticated) return null;
     
-    // ✅ ছাত্র ড্যাশবোর্ড
     if (userRole === 'student') {
       return <StudentDashboard />;
     }
     
-    // ✅ শিক্ষক ড্যাশবোর্ড
     if (userRole === 'teacher') {
       return (
         <div style={{ maxWidth: '1200px', margin: '40px auto', padding: '0 16px' }}>
@@ -237,9 +228,6 @@ function MainApp() {
     return null;
   };
 
-  // =============================================
-  // Reset Password View
-  // =============================================
   if (isResetPassword) {
     return (
       <div style={{ fontFamily: "'Hind Siliguri', 'Segoe UI', sans-serif", backgroundColor: '#f8fafc', minHeight: '100vh', margin: 0, padding: 0 }}>
@@ -287,20 +275,22 @@ function MainApp() {
         .teacher-designation { color: #15803d; font-weight: 600; font-size: 14px; margin-bottom: 8px; }
         .teacher-details { font-size: 13px; color: #334155; border-top: 1px solid #f1f5f9; padding-top: 10px; margin-top: 8px; }
         .teacher-details div { margin: 2px 0; }
-        .portal-btn {
+        .portal-menu-btn {
           background: linear-gradient(135deg, #8b5cf6, #7c3aed);
           color: white;
           border: none;
-          padding: 8px 18px;
+          padding: 12px;
           border-radius: 10px;
-          font-weight: 600;
-          font-size: 13px;
+          font-size: 15px;
+          font-weight: 700;
           cursor: pointer;
+          box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);
+          width: 100%;
           transition: all 0.2s ease;
         }
-        .portal-btn:hover {
+        .portal-menu-btn:hover {
           transform: translateY(-2px);
-          box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);
+          box-shadow: 0 6px 16px rgba(139, 92, 246, 0.5);
         }
         @keyframes spin {
           0% { transform: rotate(0deg); }
@@ -318,7 +308,9 @@ function MainApp() {
         </div>
       </div>
 
-      {/* নেভিগেশন বার */}
+      {/* =============================================
+          নেভিগেশন বার - পোর্টাল বাটন সরানো
+          ============================================= */}
       <nav style={{ backgroundColor: '#ffffff', position: 'sticky', top: 0, zIndex: 50, boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }} onClick={() => { setCurrentView('home'); }}>
@@ -331,29 +323,18 @@ function MainApp() {
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <button
-              onClick={() => {
-                if (isAuthenticated) {
-                  setCurrentView('portal');
-                } else {
-                  handleOpenSignIn();
-                }
-              }}
-              className="portal-btn"
-            >
-              🎓 Student & Teacher Portal
-            </button>
-
-            <button 
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)} 
-              style={{ background: '#f1f5f9', border: 'none', padding: '8px 12px', borderRadius: '8px', fontSize: '20px', cursor: 'pointer', color: '#1e293b' }}
-            >
-              {mobileMenuOpen ? '✕' : '☰'}
-            </button>
-          </div>
+          {/* ✅ শুধু ৩-লাইন মেনু বাটন - পোর্টাল বাটন সরানো */}
+          <button 
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)} 
+            style={{ background: '#f1f5f9', border: 'none', padding: '10px 14px', borderRadius: '10px', fontSize: '22px', cursor: 'pointer', color: '#1e293b' }}
+          >
+            {mobileMenuOpen ? '✕' : '☰'}
+          </button>
         </div>
 
+        {/* =============================================
+            মোবাইল মেনু - এখানে পোর্টাল বাটন থাকবে
+            ============================================= */}
         {mobileMenuOpen && (
           <div style={{ backgroundColor: '#ffffff', borderTop: '1px solid #f1f5f9', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '12px', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}>
             <span className="nav-link" onClick={() => { setCurrentView('home'); setMobileMenuOpen(false); }}>হোম</span>
@@ -364,22 +345,26 @@ function MainApp() {
             <span className="nav-link" onClick={() => { setCurrentView('gallery'); setMobileMenuOpen(false); }}>গ্যালারি</span>
             <span className="nav-link" onClick={() => { setCurrentView('contact'); setMobileMenuOpen(false); }}>যোগাযোগ</span>
 
+            {/* ✅ পোর্টাল বাটন - সুন্দর করে এখানে */}
             {isAuthenticated ? (
               <>
                 <span className="nav-link" style={{ color: '#16a34a', fontWeight: 'bold' }} onClick={() => { setCurrentView('portal'); setMobileMenuOpen(false); }}>
                   🎓 পোর্টালে যান
                 </span>
-                <button onClick={() => { logout(); setMobileMenuOpen(false); }} style={{ background: '#dc2626', color: 'white', border: 'none', padding: '8px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' }}>
+                <button onClick={() => { logout(); setMobileMenuOpen(false); }} style={{ background: '#dc2626', color: 'white', border: 'none', padding: '10px', borderRadius: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: 'bold' }}>
                   লগআউট করুন
                 </button>
               </>
             ) : (
-              <span className="nav-link" style={{ color: '#2563eb', fontWeight: 'bold' }} onClick={() => { setMobileMenuOpen(false); handleOpenSignIn(); }}>
-                🔑 লগইন / রেজিস্টার
-              </span>
+              <button 
+                onClick={() => { setMobileMenuOpen(false); handleOpenSignIn(); }} 
+                className="portal-menu-btn"
+              >
+                🎓 Student & Teacher Portal
+              </button>
             )}
 
-            <button onClick={() => { setMobileMenuOpen(false); setIsAdmissionModalOpen(true); }} className="btn-primary" style={{ width: '100%', textAlign: 'center', marginTop: '6px' }}>অনলাইন ভর্তি</button>
+            <button onClick={() => { setMobileMenuOpen(false); setIsAdmissionModalOpen(true); }} className="btn-primary" style={{ width: '100%', textAlign: 'center', marginTop: '4px' }}>অনলাইন ভর্তি</button>
           </div>
         )}
       </nav>
@@ -587,13 +572,11 @@ function MainApp() {
       {/* =============================================
           মডালসমূহ
           ============================================= */}
-      {/* নতুন সাইন ইন মডাল (Role + Login + Register) */}
       <SignInModal 
         isOpen={isSignInModalOpen} 
         onClose={handleCloseSignIn} 
       />
 
-      {/* পুরনো লগইন/রেজিস্টার মডাল (ব্যাকওয়ার্ড কম্প্যাটিবিলিটির জন্য রাখা) */}
       {isLoginModalOpen && (
         <PortalLogin
           onSwitchToRegister={handleOpenRegister}
@@ -608,7 +591,6 @@ function MainApp() {
         />
       )}
 
-      {/* অ্যাডমিশন মোডাল */}
       {isAdmissionModalOpen && (
         <AdmissionForm 
           isOpen={isAdmissionModalOpen} 
