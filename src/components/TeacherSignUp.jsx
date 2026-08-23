@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { supabase } from '../supabaseClient';
 import { 
   generateOTP, 
@@ -21,6 +21,7 @@ export default function TeacherSignUp({ onBack, onClose }) {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const photoInputRef = useRef(null);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -75,9 +76,7 @@ export default function TeacherSignUp({ onBack, onClose }) {
     }
   };
 
-  // =============================================
-  // ধাপ ১: OTP পাঠান
-  // =============================================
+  // OTP পাঠান
   const handleSendOTP = async (e) => {
     e.preventDefault();
     setError('');
@@ -90,7 +89,7 @@ export default function TeacherSignUp({ onBack, onClose }) {
     }
 
     try {
-      // ১. ইমেইল চেক
+      // ইমেইল চেক
       const { data: existingEmail } = await supabase
         .from('teachers')
         .select('email')
@@ -103,7 +102,7 @@ export default function TeacherSignUp({ onBack, onClose }) {
         return;
       }
 
-      // ২. ফোন চেক
+      // ফোন চেক
       const { data: existingPhone } = await supabase
         .from('teachers')
         .select('phone')
@@ -116,7 +115,7 @@ export default function TeacherSignUp({ onBack, onClose }) {
         return;
       }
 
-      // ৩. OTP জেনারেট ও ইমেইল পাঠান
+      // OTP জেনারেট ও ইমেইল পাঠান
       const otp = generateOTP();
       await saveTeacherOTP(formData.email, otp);
       
@@ -137,16 +136,14 @@ export default function TeacherSignUp({ onBack, onClose }) {
     }
   };
 
-  // =============================================
-  // ধাপ ২: OTP ভেরিফাই ও রেজিস্ট্রেশন
-  // =============================================
+  // OTP ভেরিফাই ও রেজিস্ট্রেশন
   const handleVerifyAndSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setLoading(true);
 
     try {
-      // ১. OTP ভেরিফাই
+      // OTP ভেরিফাই
       const result = await verifyTeacherOTP(formData.email, formData.otp);
       
       if (!result.success) {
@@ -155,10 +152,10 @@ export default function TeacherSignUp({ onBack, onClose }) {
         return;
       }
 
-      // ২. ছবি আপলোড
+      // ছবি আপলোড
       const photoPath = await uploadPhoto();
 
-      // ৩. ডেটা ইনসার্ট
+      // ডেটা ইনসার্ট
       const { error: insertError } = await supabase
         .from('teachers')
         .insert([{
@@ -183,8 +180,7 @@ export default function TeacherSignUp({ onBack, onClose }) {
         return;
       }
 
-      alert('✅ শিক্ষক রেজিস্ট্রেশন সম্পূর্ণ!');
-      onClose();
+      setStep(3);
     } catch (err) {
       setError(err.message || 'সাবমিট করতে সমস্যা');
     } finally {
@@ -192,18 +188,25 @@ export default function TeacherSignUp({ onBack, onClose }) {
     }
   };
 
-  // =============================================
-  // UI
-  // =============================================
   return (
     <div>
       {step === 1 && (
         <form onSubmit={handleSendOTP} style={styles.form}>
-          <h2 style={styles.heading}>👨‍🏫 শিক্ষক নিবন্ধন</h2>
-          {error && <div style={styles.error}>{error}</div>}
+          <div style={styles.header}>
+            <span style={styles.headerIcon}>👨‍🏫</span>
+            <h2 style={styles.heading}>শিক্ষক নিবন্ধন</h2>
+            <p style={styles.subHeading}>আপনার তথ্য দিয়ে ফরম পূরণ করুন</p>
+          </div>
+          
+          {error && <div style={styles.errorBox}>{error}</div>}
 
           <div style={styles.field}>
-            <label>লিঙ্গ *</label>
+            <label style={styles.label}>👤 নাম <span style={{color: '#ef4444'}}>*</span></label>
+            <input type="text" name="name" required placeholder="আপনার পূর্ণ নাম" value={formData.name} onChange={handleInputChange} style={styles.input} />
+          </div>
+
+          <div style={styles.field}>
+            <label style={styles.label}>⚥ লিঙ্গ <span style={{color: '#ef4444'}}>*</span></label>
             <select name="gender" required value={formData.gender} onChange={handleInputChange} style={styles.select}>
               <option value="">নির্বাচন করুন</option>
               <option value="male">পুরুষ</option>
@@ -212,37 +215,35 @@ export default function TeacherSignUp({ onBack, onClose }) {
           </div>
 
           <div style={styles.field}>
-            <label>পদবি *</label>
+            <label style={styles.label}>💼 পদবি <span style={{color: '#ef4444'}}>*</span></label>
             <input type="text" name="designation" required placeholder="যেমন: হেডমাস্টার" value={formData.designation} onChange={handleInputChange} style={styles.input} />
           </div>
 
           <div style={styles.field}>
-            <label>বিষয় *</label>
+            <label style={styles.label}>📚 বিষয় <span style={{color: '#ef4444'}}>*</span></label>
             <input type="text" name="subject" required placeholder="যেমন: বাংলা, ইংরেজি" value={formData.subject} onChange={handleInputChange} style={styles.input} />
           </div>
 
           <div style={styles.field}>
-            <label>নাম *</label>
-            <input type="text" name="name" required value={formData.name} onChange={handleInputChange} style={styles.input} />
-          </div>
-
-          <div style={styles.field}>
-            <label>মোবাইল নাম্বার *</label>
+            <label style={styles.label}>📱 মোবাইল নাম্বার <span style={{color: '#ef4444'}}>*</span></label>
             <input type="tel" name="phone" required pattern="01[3-9]\d{8}" placeholder="01XXXXXXXXX" value={formData.phone} onChange={handleInputChange} style={styles.input} />
           </div>
 
           <div style={styles.field}>
-            <label>ইমেইল *</label>
-            <input type="email" name="email" required placeholder="example@gmail.com" value={formData.email} onChange={handleInputChange} style={styles.input} />
+            <label style={styles.label}>📧 ইমেইল <span style={{color: '#ef4444'}}>*</span></label>
+            <input type="email" name="email" required placeholder="your@email.com" value={formData.email} onChange={handleInputChange} style={styles.input} />
           </div>
 
           <div style={styles.field}>
-            <label>ছবি *</label>
-            <input type="file" accept="image/*" capture="environment" required onChange={handleFileChange} style={styles.fileInput} />
+            <label style={styles.label}>📸 ছবি <span style={{color: '#ef4444'}}>*</span></label>
+            <div style={styles.fileWrapper}>
+              <input type="file" ref={photoInputRef} accept="image/*" capture="environment" required onChange={handleFileChange} style={styles.fileInput} />
+              <span style={styles.filePlaceholder}>{formData.photo ? '✅ নির্বাচিত' : 'ক্যামেরা দিয়ে ছবি তুলুন'}</span>
+            </div>
           </div>
 
           <div style={styles.buttonGroup}>
-            <button type="button" onClick={onBack} style={styles.backBtn}>পিছনে</button>
+            <button type="button" onClick={onBack} style={styles.backBtn}>⬅ পিছনে</button>
             <button type="submit" disabled={loading} style={styles.submitBtn}>
               {loading ? '⏳ OTP পাঠাচ্ছি...' : '📧 OTP পাঠান'}
             </button>
@@ -252,45 +253,123 @@ export default function TeacherSignUp({ onBack, onClose }) {
 
       {step === 2 && (
         <div style={styles.otpContainer}>
-          <h2 style={styles.otpHeading}>📧 ইমেইল ভেরিফিকেশন</h2>
-          <p style={styles.otpText}>আপনার ইমেইলে ৬ ডিজিটের কোড পাঠানো হয়েছে।</p>
-          {error && <div style={styles.error}>{error}</div>}
+          <div style={styles.otpIcon}>📱</div>
+          <h2 style={styles.otpHeading}>ইমেইল ভেরিফিকেশন</h2>
+          <p style={styles.otpText}>আপনার ইমেইলে ৬ ডিজিটের কোড পাঠানো হয়েছে</p>
+          {error && <div style={styles.errorBox}>{error}</div>}
           <form onSubmit={handleVerifyAndSubmit} style={styles.otpForm}>
             <input 
               type="text" 
               maxLength="6" 
-              placeholder="------" 
+              placeholder="— — — — — —" 
               required
               value={formData.otp} 
               onChange={(e) => setFormData({...formData, otp: e.target.value})}
               style={styles.otpInput} 
             />
-            <button type="submit" disabled={loading} style={styles.otpBtn}>
-              {loading ? '⏳ ভেরিফাই করছি...' : '✅ নিশ্চিত করুন'}
-            </button>
-            <button type="button" onClick={() => setStep(1)} style={styles.backBtn}>পিছনে</button>
+            <div style={styles.otpButtonGroup}>
+              <button type="button" onClick={() => setStep(1)} style={styles.otpBackBtn}>পিছনে</button>
+              <button type="submit" disabled={loading} style={styles.otpBtn}>
+                {loading ? '⏳ ভেরিফাই করছি...' : '✅ নিশ্চিত করুন'}
+              </button>
+            </div>
           </form>
+        </div>
+      )}
+
+      {step === 3 && (
+        <div style={styles.successContainer}>
+          <div style={styles.successIcon}>🎉</div>
+          <h2 style={styles.successHeading}>রেজিস্ট্রেশন সফল!</h2>
+          <p style={styles.successText}>আপনার শিক্ষক অ্যাকাউন্ট তৈরি হয়েছে। এখন লগইন করুন।</p>
+          <button onClick={onClose} style={styles.successBtn}>✅ ঠিক আছে</button>
         </div>
       )}
     </div>
   );
 }
 
+// =============================================
+// প্রিমিয়াম ডিজাইন স্টাইল
+// =============================================
 const styles = {
-  form: { display: 'flex', flexDirection: 'column', gap: '12px' },
-  heading: { fontSize: '20px', fontWeight: '700', color: '#0f172a', margin: '0 0 8px 0' },
+  form: { display: 'flex', flexDirection: 'column', gap: '14px' },
+  header: { textAlign: 'center', marginBottom: '8px' },
+  headerIcon: { fontSize: '36px', display: 'block', marginBottom: '4px' },
+  heading: { fontSize: '22px', fontWeight: '800', color: '#0f172a', margin: '0 0 2px 0' },
+  subHeading: { fontSize: '13px', color: '#64748b', margin: 0 },
   field: { display: 'flex', flexDirection: 'column', gap: '4px' },
-  input: { padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px' },
-  select: { padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px' },
-  fileInput: { padding: '8px', borderRadius: '8px', border: '1px solid #cbd5e1' },
-  buttonGroup: { display: 'flex', gap: '10px', marginTop: '8px' },
-  backBtn: { background: '#f1f5f9', border: 'none', padding: '10px', borderRadius: '8px', flex: 1, cursor: 'pointer', fontWeight: '600' },
-  submitBtn: { background: '#16a34a', color: 'white', border: 'none', padding: '10px', borderRadius: '8px', flex: 2, cursor: 'pointer', fontWeight: '600' },
-  error: { background: '#fee2e2', color: '#991b1b', padding: '8px 12px', borderRadius: '6px', fontSize: '13px', borderLeft: '3px solid #dc2626' },
+  label: { fontSize: '13px', fontWeight: '600', color: '#334155' },
+  input: { 
+    padding: '12px 14px', borderRadius: '12px', border: '1.5px solid #e2e8f0',
+    fontSize: '14px', transition: 'all 0.2s ease', outline: 'none',
+    backgroundColor: '#ffffff'
+  },
+  select: { 
+    padding: '12px 14px', borderRadius: '12px', border: '1.5px solid #e2e8f0',
+    fontSize: '14px', transition: 'all 0.2s ease', outline: 'none',
+    backgroundColor: '#ffffff'
+  },
+  fileWrapper: {
+    position: 'relative', borderRadius: '12px',
+    border: '1.5px dashed #cbd5e1', padding: '10px 14px',
+    backgroundColor: '#f8fafc', transition: 'all 0.2s ease',
+    cursor: 'pointer', minHeight: '44px', display: 'flex', alignItems: 'center'
+  },
+  fileInput: {
+    position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
+    opacity: 0, cursor: 'pointer'
+  },
+  filePlaceholder: { fontSize: '13px', color: '#64748b', pointerEvents: 'none' },
+  buttonGroup: { display: 'flex', gap: '10px', marginTop: '4px' },
+  backBtn: { 
+    background: '#f1f5f9', color: '#64748b', border: 'none', 
+    padding: '12px', borderRadius: '12px', flex: 1, 
+    cursor: 'pointer', fontWeight: '600', fontSize: '14px'
+  },
+  submitBtn: { 
+    background: 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)',
+    color: 'white', border: 'none', padding: '12px', borderRadius: '12px',
+    flex: 2, cursor: 'pointer', fontWeight: '700', fontSize: '14px',
+    boxShadow: '0 4px 14px rgba(22, 163, 74, 0.3)'
+  },
+  errorBox: {
+    backgroundColor: '#fee2e2', color: '#991b1b',
+    padding: '10px 14px', borderRadius: '10px',
+    fontSize: '13px', borderLeft: '4px solid #dc2626'
+  },
   otpContainer: { textAlign: 'center', padding: '20px 0' },
+  otpIcon: { fontSize: '48px', marginBottom: '8px' },
   otpHeading: { fontSize: '20px', fontWeight: '700', color: '#0f172a', margin: '0 0 4px 0' },
   otpText: { fontSize: '14px', color: '#64748b', marginBottom: '16px' },
-  otpForm: { display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'center' },
-  otpInput: { width: '200px', padding: '12px', fontSize: '24px', letterSpacing: '8px', textAlign: 'center', border: '2px solid #cbd5e1', borderRadius: '12px', outline: 'none' },
-  otpBtn: { background: '#2563eb', color: 'white', border: 'none', padding: '10px 32px', borderRadius: '8px', fontWeight: '600', cursor: 'pointer' }
+  otpForm: { display: 'flex', flexDirection: 'column', gap: '16px', alignItems: 'center' },
+  otpInput: {
+    width: '200px', textAlign: 'center', padding: '14px',
+    fontSize: '28px', letterSpacing: '10px',
+    border: '2px solid #e2e8f0', borderRadius: '16px',
+    outline: 'none', transition: 'all 0.2s ease',
+    backgroundColor: '#f8fafc'
+  },
+  otpButtonGroup: { display: 'flex', gap: '10px', width: '100%', maxWidth: '300px' },
+  otpBackBtn: {
+    background: '#f1f5f9', color: '#64748b', border: 'none',
+    padding: '12px', borderRadius: '12px', flex: 1,
+    cursor: 'pointer', fontWeight: '600'
+  },
+  otpBtn: {
+    background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
+    color: 'white', border: 'none', padding: '12px',
+    borderRadius: '12px', flex: 2, cursor: 'pointer',
+    fontWeight: '700', boxShadow: '0 4px 14px rgba(37, 99, 235, 0.3)'
+  },
+  successContainer: { textAlign: 'center', padding: '30px 10px' },
+  successIcon: { fontSize: '56px', marginBottom: '12px' },
+  successHeading: { fontSize: '22px', fontWeight: '700', color: '#0f172a', margin: '0 0 8px 0' },
+  successText: { fontSize: '14px', color: '#64748b', marginBottom: '24px' },
+  successBtn: {
+    background: 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)',
+    color: 'white', border: 'none', padding: '12px 40px',
+    borderRadius: '14px', fontWeight: '700', fontSize: '15px',
+    cursor: 'pointer', boxShadow: '0 6px 20px rgba(22, 163, 74, 0.3)'
+  }
 };
