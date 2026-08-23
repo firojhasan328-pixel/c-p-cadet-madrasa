@@ -12,6 +12,7 @@ import PortalLogin from './components/auth/PortalLogin';
 import PortalRegister from './components/auth/PortalRegister';
 import StudentDashboard from './components/portal/StudentDashboard';
 import TeacherDashboard from './components/portal/TeacherDashboard';
+import ResetPassword from './components/ResetPassword';
 
 // =============================================
 // মেইন App
@@ -32,6 +33,7 @@ function MainApp() {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false);
   const [currentView, setCurrentView] = useState('home');
+  const [isResetPassword, setIsResetPassword] = useState(false);
 
   const [siteData, setSiteData] = useState({
     headmasterName: "Arif Ashab Khorshed",
@@ -63,6 +65,12 @@ function MainApp() {
   };
 
   useEffect(() => {
+    // URL থেকে reset-password চেক করুন
+    const path = window.location.pathname;
+    if (path.includes('/reset-password')) {
+      setIsResetPassword(true);
+    }
+
     fetchSiteContents();
     fetchTeachers();
 
@@ -232,6 +240,17 @@ function MainApp() {
     );
   };
 
+  // =============================================
+  // Reset Password View
+  // =============================================
+  if (isResetPassword) {
+    return (
+      <div style={{ fontFamily: "'Hind Siliguri', 'Segoe UI', sans-serif", backgroundColor: '#f8fafc', minHeight: '100vh', margin: 0, padding: 0 }}>
+        <ResetPassword />
+      </div>
+    );
+  }
+
   return (
     <div style={{ fontFamily: "'Hind Siliguri', 'Segoe UI', sans-serif", backgroundColor: '#f8fafc', color: '#0f172a', minHeight: '100vh', margin: 0, padding: 0, position: 'relative' }}>
       <style>{`
@@ -317,7 +336,7 @@ function MainApp() {
                 if (isAuthenticated) {
                   setCurrentView('portal');
                 } else {
-                  handleOpenSignIn();  // ← নতুন সাইন ইন মডাল ওপেন
+                  handleOpenSignIn();
                 }
               }}
               className="portal-btn"
@@ -571,7 +590,7 @@ function MainApp() {
       {/* =============================================
           মডালসমূহ
           ============================================= */}
-      {/* 🔥 নতুন সাইন ইন মডাল (Role + Login + Register) */}
+      {/* নতুন সাইন ইন মডাল (Role + Login + Register) */}
       <SignInModal 
         isOpen={isSignInModalOpen} 
         onClose={handleCloseSignIn} 
