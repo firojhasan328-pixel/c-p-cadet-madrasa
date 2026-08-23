@@ -13,10 +13,13 @@ export default function StudentSignUp({ onBack, onClose }) {
     roll: '',
     photo: null,
     email: '',
+    password: '',      // ✅ নতুন যোগ
+    confirmPassword: '', // ✅ নতুন যোগ
     otp: ''
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState(false);
   const photoInputRef = useRef(null);
 
   const handleInputChange = (e) => {
@@ -40,9 +43,10 @@ export default function StudentSignUp({ onBack, onClose }) {
       img.onload = () => {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        canvas.width = 200;
-        canvas.height = 200;
-        ctx.drawImage(img, 0, 0, 200, 200);
+        const size = 200;
+        canvas.width = size;
+        canvas.height = size;
+        ctx.drawImage(img, 0, 0, size, size);
         canvas.toBlob((blob) => {
           const compressedFile = new File([blob], file.name, { type: 'image/jpeg' });
           callback(compressedFile);
@@ -78,13 +82,44 @@ export default function StudentSignUp({ onBack, onClose }) {
     setError('');
     setLoading(true);
 
+    // ✅ পাসওয়ার্ড ভ্যালিডেশন
+    if (formData.password.length < 6) {
+      setError('❌ পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে');
+      setLoading(false);
+      return;
+    }
+
+    if (formData.password !== formData.confirmPassword) {
+      setError('❌ পাসওয়ার্ড এবং কনফার্ম পাসওয়ার্ড মিলছে না');
+      setLoading(false);
+      return;
+    }
+
+    // ভ্যালিডেশন
+    if (!formData.name || !formData.fatherName || !formData.motherName || 
+        !formData.village || !formData.class || !formData.email) {
+      setError('❌ সব ঘর পূরণ করুন');
+      setLoading(false);
+      return;
+    }
+
+    if (!formData.photo) {
+      setError('❌ ছবি আপলোড করুন');
+      setLoading(false);
+      return;
+    }
+
     try {
-      // ইমেইল চেক
-      const { data: existingUser } = await supabase
+      // ইমেইল ডুপ্লিকেট চেক
+      const { data: existingUser, error: checkError } = await supabase
         .from('students')
         .select('email')
         .eq('email', formData.email.toLowerCase().trim())
         .maybeSingle();
+
+      if (checkError) {
+        console.error('ডুপ্লিকেট চেক সমস্যা:', checkError);
+      }
 
       if (existingUser) {
         setError('❌ এই ইমেইলটি ইতিমধ্যে ব্যবহার করা হয়েছে।');
@@ -105,7 +140,6 @@ export default function StudentSignUp({ onBack, onClose }) {
       }
 
       setStep(2);
-      alert('✅ আপনার ইমেইলে OTP কোড পাঠানো হয়েছে!');
     } catch (err) {
       setError(err.message || 'OTP পাঠাতে সমস্যা');
     } finally {
@@ -129,13 +163,26 @@ export default function StudentSignUp({ onBack, onClose }) {
         return;
       }
 
+      // ✅ ১. Supabase Auth এ ইউজার তৈরি করুন
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: formData.email.toLowerCase().trim(),
+        password: formData.password,
+      });
+
+      if (authError) {
+        setError('অথেন্টিকেশন সমস্যা: ' + authError.message);
+        setLoading(false);
+        return;
+      }
+
       // ছবি আপলোড
       const photoPath = await uploadPhoto();
 
-      // ডেটা ইনসার্ট
+      // ✅ ২. Students টেবিলে ডেটা ইনসার্ট
       const { error: insertError } = await supabase
         .from('students')
         .insert([{
+          id: authData.user.id, // ✅ Auth ইউজারের ID ব্যবহার
           name: formData.name,
           father_name: formData.fatherName,
           mother_name: formData.motherName,
@@ -158,8 +205,8 @@ export default function StudentSignUp({ onBack, onClose }) {
         return;
       }
 
-      alert('✅ রেজিস্ট্রেশন সম্পূর্ণ!');
-      onClose();
+      setStep(3);
+      setSuccess(true);
     } catch (err) {
       setError(err.message || 'সাবমিট করতে সমস্যা');
     } finally {
@@ -167,114 +214,132 @@ export default function StudentSignUp({ onBack, onClose }) {
     }
   };
 
-  return (
-    <div>
-      {step === 1 && (
-        <form onSubmit={handleSendOTP} style={styles.form}>
-          <div style={styles.header}>
-            <span style={styles.headerIcon}>🎓</span>
-            <h2 style={styles.heading}>ছাত্র নিবন্ধন</h2>
-            <p style={styles.subHeading}>আপনার তথ্য দিয়ে ফরম পূরণ করুন</p>
-          </div>
-          
-          {error && <div style={styles.errorBox}>{error}</div>}
-          
-          <div style={styles.field}>
-            <label style={styles.label}>👤 আপনার নাম <span style={{color: '#ef4444'}}>*</span></label>
-            <input type="text" name="name" required placeholder="পূর্ণ নাম লিখুন" value={formData.name} onChange={handleInputChange} style={styles.input} />
-          </div>
+  // স্টেপ ১: ফর্ম
+  if (step === 1) {
+    return (
+      <form onSubmit={handleSendOTP} style={styles.form}>
+        <div style={styles.header}>
+          <span style={styles.headerIcon}>🎓</span>
+          <h2 style={styles.heading}>ছাত্র নিবন্ধন</h2>
+          <p style={styles.subHeading}>আপনার তথ্য দিয়ে ফরম পূরণ করুন</p>
+        </div>
+        
+        {error && <div style={styles.errorBox}>{error}</div>}
+        
+        <div style={styles.field}>
+          <label style={styles.label}>👤 আপনার নাম <span style={{color: '#ef4444'}}>*</span></label>
+          <input type="text" name="name" required placeholder="পূর্ণ নাম লিখুন" value={formData.name} onChange={handleInputChange} style={styles.input} />
+        </div>
 
-          <div style={styles.field}>
-            <label style={styles.label}>👨 বাবার নাম <span style={{color: '#ef4444'}}>*</span></label>
-            <input type="text" name="fatherName" required placeholder="বাবার পূর্ণ নাম" value={formData.fatherName} onChange={handleInputChange} style={styles.input} />
-          </div>
+        <div style={styles.field}>
+          <label style={styles.label}>👨 বাবার নাম <span style={{color: '#ef4444'}}>*</span></label>
+          <input type="text" name="fatherName" required placeholder="বাবার পূর্ণ নাম" value={formData.fatherName} onChange={handleInputChange} style={styles.input} />
+        </div>
 
-          <div style={styles.field}>
-            <label style={styles.label}>👩 মায়ের নাম <span style={{color: '#ef4444'}}>*</span></label>
-            <input type="text" name="motherName" required placeholder="মায়ের পূর্ণ নাম" value={formData.motherName} onChange={handleInputChange} style={styles.input} />
-          </div>
+        <div style={styles.field}>
+          <label style={styles.label}>👩 মায়ের নাম <span style={{color: '#ef4444'}}>*</span></label>
+          <input type="text" name="motherName" required placeholder="মায়ের পূর্ণ নাম" value={formData.motherName} onChange={handleInputChange} style={styles.input} />
+        </div>
 
-          <div style={styles.field}>
-            <label style={styles.label}>📍 গ্রাম <span style={{color: '#ef4444'}}>*</span></label>
-            <input type="text" name="village" required placeholder="আপনার গ্রামের নাম" value={formData.village} onChange={handleInputChange} style={styles.input} />
-          </div>
+        <div style={styles.field}>
+          <label style={styles.label}>📍 গ্রাম <span style={{color: '#ef4444'}}>*</span></label>
+          <input type="text" name="village" required placeholder="আপনার গ্রামের নাম" value={formData.village} onChange={handleInputChange} style={styles.input} />
+        </div>
 
-          <div style={styles.field}>
-            <label style={styles.label}>📚 ক্লাস <span style={{color: '#ef4444'}}>*</span></label>
-            <select name="class" required value={formData.class} onChange={handleInputChange} style={styles.select}>
-              <option value="">নির্বাচন করুন</option>
-              <option value="প্লে">প্লে</option>
-              <option value="১ম">১ম</option>
-              <option value="২য়">২য়</option>
-              <option value="৩য়">৩য়</option>
-              <option value="৪র্থ">৪র্থ</option>
-              <option value="৫ম">৫ম</option>
-            </select>
-          </div>
+        <div style={styles.field}>
+          <label style={styles.label}>📚 ক্লাস <span style={{color: '#ef4444'}}>*</span></label>
+          <select name="class" required value={formData.class} onChange={handleInputChange} style={styles.select}>
+            <option value="">নির্বাচন করুন</option>
+            <option value="প্লে">প্লে</option>
+            <option value="১ম">১ম</option>
+            <option value="২য়">২য়</option>
+            <option value="৩য়">৩য়</option>
+            <option value="৪র্থ">৪র্থ</option>
+            <option value="৫ম">৫ম</option>
+          </select>
+        </div>
 
-          <div style={styles.field}>
-            <label style={styles.label}>🔢 রোল (ঐচ্ছিক)</label>
-            <input type="number" name="roll" min="1" max="3" placeholder="১-৩" value={formData.roll} onChange={handleInputChange} style={styles.input} />
-          </div>
+        <div style={styles.field}>
+          <label style={styles.label}>🔢 রোল (ঐচ্ছিক)</label>
+          <input type="number" name="roll" min="1" max="3" placeholder="১-৩" value={formData.roll} onChange={handleInputChange} style={styles.input} />
+        </div>
 
-          <div style={styles.field}>
-            <label style={styles.label}>📸 ছবি <span style={{color: '#ef4444'}}>*</span></label>
-            <div style={styles.fileWrapper}>
-              <input type="file" ref={photoInputRef} accept="image/*" capture="environment" required onChange={handleFileChange} style={styles.fileInput} />
-              <span style={styles.filePlaceholder}>{formData.photo ? '✅ নির্বাচিত' : 'ক্যামেরা দিয়ে ছবি তুলুন'}</span>
-            </div>
+        <div style={styles.field}>
+          <label style={styles.label}>📸 ছবি <span style={{color: '#ef4444'}}>*</span></label>
+          <div style={styles.fileWrapper}>
+            <input type="file" ref={photoInputRef} accept="image/*" capture="environment" required onChange={handleFileChange} style={styles.fileInput} />
+            <span style={styles.filePlaceholder}>{formData.photo ? '✅ নির্বাচিত' : 'ক্যামেরা দিয়ে ছবি তুলুন'}</span>
           </div>
+        </div>
 
-          <div style={styles.field}>
-            <label style={styles.label}>📧 ইমেইল <span style={{color: '#ef4444'}}>*</span></label>
-            <input type="email" name="email" required placeholder="your@email.com" value={formData.email} onChange={handleInputChange} style={styles.input} />
-          </div>
+        <div style={styles.field}>
+          <label style={styles.label}>📧 ইমেইল <span style={{color: '#ef4444'}}>*</span></label>
+          <input type="email" name="email" required placeholder="your@email.com" value={formData.email} onChange={handleInputChange} style={styles.input} />
+        </div>
 
-          <div style={styles.buttonGroup}>
-            <button type="button" onClick={onBack} style={styles.backBtn}>⬅ পিছনে</button>
-            <button type="submit" disabled={loading} style={styles.submitBtn}>
-              {loading ? '⏳ OTP পাঠাচ্ছি...' : '📧 OTP পাঠান'}
+        {/* ✅ পাসওয়ার্ড ফিল্ড যোগ */}
+        <div style={styles.field}>
+          <label style={styles.label}>🔑 পাসওয়ার্ড <span style={{color: '#ef4444'}}>*</span></label>
+          <input type="password" name="password" required placeholder="কমপক্ষে ৬ অক্ষর" value={formData.password} onChange={handleInputChange} style={styles.input} />
+        </div>
+
+        <div style={styles.field}>
+          <label style={styles.label}>🔑 কনফার্ম পাসওয়ার্ড <span style={{color: '#ef4444'}}>*</span></label>
+          <input type="password" name="confirmPassword" required placeholder="আবার পাসওয়ার্ড দিন" value={formData.confirmPassword} onChange={handleInputChange} style={styles.input} />
+        </div>
+
+        <div style={styles.buttonGroup}>
+          <button type="button" onClick={onBack} style={styles.backBtn}>⬅ পিছনে</button>
+          <button type="submit" disabled={loading} style={styles.submitBtn}>
+            {loading ? '⏳ OTP পাঠাচ্ছি...' : '📧 OTP পাঠান'}
+          </button>
+        </div>
+      </form>
+    );
+  }
+
+  // স্টেপ ২: OTP ভেরিফিকেশন
+  if (step === 2) {
+    return (
+      <div style={styles.otpContainer}>
+        <div style={styles.otpIcon}>📱</div>
+        <h2 style={styles.otpHeading}>ইমেইল ভেরিফিকেশন</h2>
+        <p style={styles.otpText}>আপনার ইমেইলে ৬ ডিজিটের কোড পাঠানো হয়েছে</p>
+        {error && <div style={styles.errorBox}>{error}</div>}
+        <form onSubmit={handleVerifyAndSubmit} style={styles.otpForm}>
+          <input 
+            type="text" 
+            maxLength="6" 
+            placeholder="— — — — — —" 
+            required
+            value={formData.otp} 
+            onChange={(e) => setFormData({...formData, otp: e.target.value})}
+            style={styles.otpInput} 
+          />
+          <div style={styles.otpButtonGroup}>
+            <button type="button" onClick={() => setStep(1)} style={styles.otpBackBtn}>পিছনে</button>
+            <button type="submit" disabled={loading} style={styles.otpBtn}>
+              {loading ? '⏳ ভেরিফাই করছি...' : '✅ নিশ্চিত করুন'}
             </button>
           </div>
         </form>
-      )}
+      </div>
+    );
+  }
 
-      {step === 2 && (
-        <div style={styles.otpContainer}>
-          <div style={styles.otpIcon}>📱</div>
-          <h2 style={styles.otpHeading}>ইমেইল ভেরিফিকেশন</h2>
-          <p style={styles.otpText}>আপনার ইমেইলে ৬ ডিজিটের কোড পাঠানো হয়েছে</p>
-          {error && <div style={styles.errorBox}>{error}</div>}
-          <form onSubmit={handleVerifyAndSubmit} style={styles.otpForm}>
-            <input 
-              type="text" 
-              maxLength="6" 
-              placeholder="— — — — — —" 
-              required
-              value={formData.otp} 
-              onChange={(e) => setFormData({...formData, otp: e.target.value})}
-              style={styles.otpInput} 
-            />
-            <div style={styles.otpButtonGroup}>
-              <button type="button" onClick={() => setStep(1)} style={styles.otpBackBtn}>পিছনে</button>
-              <button type="submit" disabled={loading} style={styles.otpBtn}>
-                {loading ? '⏳ ভেরিফাই করছি...' : '✅ নিশ্চিত করুন'}
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
+  // স্টেপ ৩: সাফল্য
+  if (step === 3 && success) {
+    return (
+      <div style={styles.successContainer}>
+        <div style={styles.successIcon}>🎉</div>
+        <h2 style={styles.successHeading}>রেজিস্ট্রেশন সফল!</h2>
+        <p style={styles.successText}>আপনার অ্যাকাউন্ট তৈরি হয়েছে। এখন লগইন করুন।</p>
+        <button onClick={onClose} style={styles.successBtn}>✅ ঠিক আছে</button>
+      </div>
+    );
+  }
 
-      {step === 3 && (
-        <div style={styles.successContainer}>
-          <div style={styles.successIcon}>🎉</div>
-          <h2 style={styles.successHeading}>রেজিস্ট্রেশন সফল!</h2>
-          <p style={styles.successText}>আপনার অ্যাকাউন্ট তৈরি হয়েছে। এখন লগইন করুন।</p>
-          <button onClick={onClose} style={styles.successBtn}>✅ ঠিক আছে</button>
-        </div>
-      )}
-    </div>
-  );
+  return null;
 }
 
 // =============================================
