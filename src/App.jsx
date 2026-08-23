@@ -8,10 +8,6 @@ import SignInModal from './components/SignInModal';
 import StudentList from './components/StudentList';
 import ContactPage from './components/ContactPage';
 import SuccessStats from './components/SuccessStats';
-import PortalLogin from './components/auth/PortalLogin';
-import PortalRegister from './components/auth/PortalRegister';
-import StudentDashboard from './components/portal/StudentDashboard';
-import TeacherDashboard from './components/portal/TeacherDashboard';
 
 // =============================================
 // মেইন App
@@ -25,17 +21,13 @@ function App() {
 }
 
 function MainApp() {
-  const { isAuthenticated, userRole, logout } = usePortal();
+  const { isAuthenticated, userRole, logout, userProfile } = usePortal();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isAdmissionModalOpen, setIsAdmissionModalOpen] = useState(false);
   const [isSignInModalOpen, setIsSignInModalOpen] = useState(false);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false);
   const [currentView, setCurrentView] = useState('home');
-
-  // AUTH STATE
-  const [currentUser, setCurrentUser] = useState(null);
-  const [userRoleState, setUserRoleState] = useState(null);
 
   const [siteData, setSiteData] = useState({
     headmasterName: "Arif Ashab Khorshed",
@@ -62,15 +54,19 @@ function MainApp() {
 
   const fetchTeachers = async () => {
     setTeachersLoading(true);
-    const { data, error } = await supabase
-      .from('teachers')
-      .select('*')
-      .order('name', { ascending: true });
-    
-    if (data) {
-      setTeachers(data);
-    } else {
-      console.error('শিক্ষক ডেটা লোড করতে সমস্যা:', error);
+    try {
+      const { data, error } = await supabase
+        .from('teachers')
+        .select('*')
+        .order('name', { ascending: true });
+      
+      if (data) {
+        setTeachers(data);
+      } else {
+        console.error('শিক্ষক ডেটা লোড করতে সমস্যা:', error);
+      }
+    } catch (err) {
+      console.error('Error fetching teachers:', err);
     }
     setTeachersLoading(false);
   };
@@ -92,13 +88,17 @@ function MainApp() {
   }, []);
 
   const fetchSiteContents = async () => {
-    const { data, error } = await supabase.from('site_contents').select('*');
-    if (data) {
-      const formattedData = {};
-      data.forEach(item => {
-        formattedData[item.key] = item.value;
-      });
-      setSiteData(prev => ({ ...prev, ...formattedData }));
+    try {
+      const { data, error } = await supabase.from('site_contents').select('*');
+      if (data) {
+        const formattedData = {};
+        data.forEach(item => {
+          formattedData[item.key] = item.value;
+        });
+        setSiteData(prev => ({ ...prev, ...formattedData }));
+      }
+    } catch (err) {
+      console.error('Error fetching site contents:', err);
     }
   };
 
@@ -136,10 +136,87 @@ function MainApp() {
     setIsSignInModalOpen(false);
   };
 
-  // যদি ইউজার লগইন থাকে এবং পোর্টালে না যায়
-  if (isAuthenticated && currentView !== 'portal') {
-    // ড্যাশবোর্ডে পাঠানোর জন্য
-  }
+  // Dashboard view (সরলীকৃত)
+  const renderDashboard = () => {
+    if (!isAuthenticated) return null;
+    
+    return (
+      <div style={{ maxWidth: '1200px', margin: '40px auto', padding: '0 16px' }}>
+        <div className="card" style={{ padding: '30px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+            <div>
+              <h2 style={{ color: '#14532d', margin: 0 }}>
+                👋 স্বাগতম, {userProfile?.name || 'ইউজার'}!
+              </h2>
+              <p style={{ color: '#64748b', margin: '4px 0 0 0' }}>
+                {userRole === 'student' ? '🎓 ছাত্র ড্যাশবোর্ড' : '👨‍🏫 শিক্ষক ড্যাশবোর্ড'}
+              </p>
+            </div>
+            <button 
+              onClick={logout}
+              style={{
+                background: '#dc2626',
+                color: 'white',
+                border: 'none',
+                padding: '10px 20px',
+                borderRadius: '10px',
+                fontWeight: '600',
+                cursor: 'pointer'
+              }}
+            >
+              লগআউট
+            </button>
+          </div>
+          
+          <div style={{ 
+            display: 'grid', 
+            gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', 
+            gap: '20px',
+            marginTop: '24px'
+          }}>
+            <div style={{ background: '#f0fdf4', padding: '20px', borderRadius: '12px', border: '1px solid #bbf7d0' }}>
+              <h4 style={{ margin: '0 0 8px 0', color: '#166534' }}>📊 প্রোফাইল</h4>
+              <p style={{ margin: '4px 0', fontSize: '14px' }}><strong>নাম:</strong> {userProfile?.name}</p>
+              <p style={{ margin: '4px 0', fontSize: '14px' }}><strong>ইমেইল:</strong> {userProfile?.email}</p>
+              <p style={{ margin: '4px 0', fontSize: '14px' }}><strong>রোল:</strong> {userRole}</p>
+            </div>
+            
+            {userRole === 'student' && (
+              <div style={{ background: '#eff6ff', padding: '20px', borderRadius: '12px', border: '1px solid #bfdbfe' }}>
+                <h4 style={{ margin: '0 0 8px 0', color: '#1d4ed8' }}>📚 ক্লাস তথ্য</h4>
+                <p style={{ margin: '4px 0', fontSize: '14px' }}><strong>ক্লাস:</strong> {userProfile?.class_name || 'নাই'}</p>
+                <p style={{ margin: '4px 0', fontSize: '14px' }}><strong>রোল:</strong> {userProfile?.roll_number || 'নাই'}</p>
+              </div>
+            )}
+            
+            {userRole === 'teacher' && (
+              <div style={{ background: '#fef3c7', padding: '20px', borderRadius: '12px', border: '1px solid #fde68a' }}>
+                <h4 style={{ margin: '0 0 8px 0', color: '#b45309' }}>👨‍🏫 শিক্ষক তথ্য</h4>
+                <p style={{ margin: '4px 0', fontSize: '14px' }}><strong>পদবি:</strong> {userProfile?.designation || 'নাই'}</p>
+                <p style={{ margin: '4px 0', fontSize: '14px' }}><strong>বিষয়:</strong> {userProfile?.subject || 'নাই'}</p>
+              </div>
+            )}
+          </div>
+          
+          <button 
+            onClick={() => setCurrentView('home')}
+            style={{
+              background: '#64748b',
+              color: 'white',
+              border: 'none',
+              padding: '10px 20px',
+              borderRadius: '10px',
+              fontWeight: '600',
+              cursor: 'pointer',
+              marginTop: '20px'
+            }}
+          >
+            ⬅ হোম পেজে ফিরে যান
+          </button>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div style={{ fontFamily: "'Hind Siliguri', 'Segoe UI', sans-serif", backgroundColor: '#f8fafc', color: '#0f172a', minHeight: '100vh', margin: 0, padding: 0, position: 'relative' }}>
@@ -221,7 +298,6 @@ function MainApp() {
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            {/* 🎓 Student & Teacher Portal বাটন */}
             <button
               onClick={() => {
                 if (isAuthenticated) {
@@ -277,13 +353,7 @@ function MainApp() {
       {/* =============================================
           পোর্টাল ভিউ
           ============================================= */}
-      {currentView === 'portal' && isAuthenticated && (
-        <>
-          {userRole === 'student' && <StudentDashboard />}
-          {userRole === 'teacher' && <TeacherDashboard />}
-          {!userRole && <p style={{ textAlign: 'center', padding: '40px' }}>রোল নির্ধারণ করা হয়নি</p>}
-        </>
-      )}
+      {currentView === 'portal' && isAuthenticated && renderDashboard()}
 
       {/* =============================================
           হোমপেজ ভিউ
@@ -487,34 +557,53 @@ function MainApp() {
       {/* =============================================
           মডালসমূহ
           ============================================= */}
+      {/* লগইন মডাল (সরলীকৃত) */}
       {isLoginModalOpen && (
-        <PortalLogin
-          onSwitchToRegister={handleOpenRegister}
-          onClose={handleCloseAuth}
-        />
-      )}
-
-      {isRegisterModalOpen && (
-        <PortalRegister
-          onSwitchToLogin={handleOpenLogin}
-          onClose={handleCloseAuth}
-        />
-      )}
-
-      {/* পুরাতন সাইন ইন মডাল (বন্ধ) */}
-      {isSignInModalOpen && !isLoginModalOpen && (
         <div style={styles.overlay}>
           <div style={styles.modal}>
-            <button onClick={() => setIsSignInModalOpen(false)} style={styles.closeBtn}>✕</button>
-            <div style={{ textAlign: 'center', padding: '20px 0' }}>
-              <h2>🎓 Student & Teacher Portal</h2>
-              <p style={{ color: '#64748b' }}>লগইন বা অ্যাকাউন্ট তৈরি করুন</p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '20px' }}>
-                <button onClick={handleOpenLogin} style={styles.primaryBtn}>🔓 লগইন</button>
-                <button onClick={handleOpenRegister} style={styles.secondaryBtn}>➕ অ্যাকাউন্ট তৈরি করুন</button>
-              </div>
-              <button onClick={() => setIsSignInModalOpen(false)} style={styles.cancelBtn}>বাতিল</button>
-            </div>
+            <button onClick={handleCloseAuth} style={styles.closeBtn}>✕</button>
+            <h2 style={{ textAlign: 'center', marginBottom: '20px' }}>🔑 লগইন</h2>
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              const email = e.target.email.value;
+              const password = e.target.password.value;
+              // সিম্পল লগইন - 실제 구현은 usePortal থেকে নিন
+              alert('লগইন ফিচারটি পোর্টালের মাধ্যমে কাজ করবে। দয়া করে রেজিস্টার করুন।');
+            }}>
+              <input type="email" name="email" placeholder="ইমেইল" required style={styles.input} />
+              <input type="password" name="password" placeholder="পাসওয়ার্ড" required style={styles.input} />
+              <button type="submit" style={styles.primaryBtn}>লগইন</button>
+            </form>
+            <p style={{ textAlign: 'center', marginTop: '12px' }}>
+              অ্যাকাউন্ট নেই? <span onClick={handleOpenRegister} style={{ color: '#2563eb', cursor: 'pointer', fontWeight: 'bold' }}>রেজিস্টার</span>
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* রেজিস্টার মডাল (সরলীকৃত) */}
+      {isRegisterModalOpen && (
+        <div style={styles.overlay}>
+          <div style={styles.modal}>
+            <button onClick={handleCloseAuth} style={styles.closeBtn}>✕</button>
+            <h2 style={{ textAlign: 'center', marginBottom: '20px' }}>📝 রেজিস্টার</h2>
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              alert('রেজিস্টার ফিচারটি পোর্টালের মাধ্যমে কাজ করবে।');
+            }}>
+              <input type="text" placeholder="পূর্ণ নাম" required style={styles.input} />
+              <input type="email" placeholder="ইমেইল" required style={styles.input} />
+              <input type="password" placeholder="পাসওয়ার্ড" required style={styles.input} />
+              <select required style={styles.input}>
+                <option value="">আপনি কে?</option>
+                <option value="student">ছাত্র/ছাত্রী</option>
+                <option value="teacher">শিক্ষক/শিক্ষিকা</option>
+              </select>
+              <button type="submit" style={styles.primaryBtn}>রেজিস্টার</button>
+            </form>
+            <p style={{ textAlign: 'center', marginTop: '12px' }}>
+              ইতিমধ্যে অ্যাকাউন্ট আছে? <span onClick={handleOpenLogin} style={{ color: '#2563eb', cursor: 'pointer', fontWeight: 'bold' }}>লগইন</span>
+            </p>
           </div>
         </div>
       )}
@@ -576,6 +665,15 @@ const styles = {
     cursor: 'pointer',
     color: '#64748b',
   },
+  input: {
+    width: '100%',
+    padding: '12px',
+    borderRadius: '10px',
+    border: '1px solid #e2e8f0',
+    fontSize: '14px',
+    marginBottom: '12px',
+    outline: 'none',
+  },
   primaryBtn: {
     background: 'linear-gradient(135deg, #16a34a, #15803d)',
     color: 'white',
@@ -586,29 +684,6 @@ const styles = {
     fontWeight: '700',
     cursor: 'pointer',
     width: '100%',
-  },
-  secondaryBtn: {
-    background: '#2563eb',
-    color: 'white',
-    border: 'none',
-    padding: '12px',
-    borderRadius: '10px',
-    fontSize: '16px',
-    fontWeight: '700',
-    cursor: 'pointer',
-    width: '100%',
-  },
-  cancelBtn: {
-    background: '#f1f5f9',
-    color: '#64748b',
-    border: 'none',
-    padding: '10px',
-    borderRadius: '10px',
-    fontSize: '14px',
-    fontWeight: '600',
-    cursor: 'pointer',
-    width: '100%',
-    marginTop: '8px',
   },
 };
 
