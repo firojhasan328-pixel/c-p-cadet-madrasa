@@ -59,14 +59,13 @@ export default function AdmissionForm({ onClose, isOpen }) {
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
-    // Clear error for this field
     if (errors[name]) {
       setErrors({ ...errors, [name]: '' });
     }
   };
 
   // =============================================
-  // Handle File Capture with Validation
+  // Handle File Capture with Validation & Compression
   // =============================================
   const handleFileCapture = (e, field) => {
     const file = e.target.files[0];
@@ -81,13 +80,65 @@ export default function AdmissionForm({ onClose, isOpen }) {
       }
     }
 
-    // Compress image
-    ImageCompressor(file, (compressedFile) => {
+    // ✅ Compress image to 10KB or less
+    compressImage(file, (compressedFile) => {
       setFormData({ ...formData, [field]: compressedFile });
       if (errors[field]) {
         setErrors({ ...errors, [field]: '' });
       }
     });
+  };
+
+  // =============================================
+  // 🖼️ Image Compressor (10KB এর নিচে)
+  // =============================================
+  const compressImage = (file, callback) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        // রেজুলেশন কমানো (৫০% কম)
+        let width = img.width;
+        let height = img.height;
+        
+        // ম্যাক্স 800px রেজুলেশন
+        if (width > 800) {
+          height = (height / width) * 800;
+          width = 800;
+        }
+        if (height > 800) {
+          width = (width / height) * 800;
+          height = 800;
+        }
+        
+        canvas.width = width;
+        canvas.height = height;
+        ctx.drawImage(img, 0, 0, width, height);
+        
+        // ১০KB এর নিচে কম্প্রেস
+        let quality = 0.7;
+        let blob = null;
+        
+        const tryCompress = (q) => {
+          canvas.toBlob((b) => {
+            console.log(`📸 Compressed size: ${(b.size / 1024).toFixed(2)}KB, quality: ${q}`);
+            if (b.size > 10 * 1024 && q > 0.05) {
+              tryCompress(q - 0.05);
+            } else {
+              const compressedFile = new File([b], file.name, { type: 'image/jpeg' });
+              callback(compressedFile);
+            }
+          }, 'image/jpeg', q);
+        };
+        
+        tryCompress(quality);
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
   };
 
   // =============================================
@@ -161,7 +212,7 @@ export default function AdmissionForm({ onClose, isOpen }) {
       const formNumber = data[0]?.form_number || generateFormNumber();
       setFormNumber(formNumber);
 
-      // 4. Send auto-reply email
+      // 4. Send auto-reply email (if email provided)
       if (formData.email) {
         await sendAutoReplyEmail(formData.email, formNumber, formData.studentName);
       }
@@ -180,7 +231,7 @@ export default function AdmissionForm({ onClose, isOpen }) {
   };
 
   // =============================================
-  // Upload File
+  // Upload File to Storage
   // =============================================
   const uploadFile = async (file, folder) => {
     if (!file) return null;
@@ -223,7 +274,9 @@ export default function AdmissionForm({ onClose, isOpen }) {
     );
   }
 
+  // =============================================
   // Main Form
+  // =============================================
   return (
     <div style={styles.overlay}>
       <div style={styles.modal}>
@@ -280,8 +333,11 @@ export default function AdmissionForm({ onClose, isOpen }) {
             {errors.classToAdmit && <span style={styles.errorText}>{errors.classToAdmit}</span>}
           </div>
 
-          {/* Photos Grid */}
+          {/* =============================================
+              📸 Photos Grid with Camera + Gallery Option
+              ============================================= */}
           <div style={styles.photoGrid}>
+            {/* Student Photo */}
             <div style={styles.field}>
               <label style={styles.label}>📸 ছাত্র/ছাত্রীর ছবি <span style={{color: '#ef4444'}}>*</span></label>
               <div style={styles.fileWrapper}>
@@ -295,12 +351,21 @@ export default function AdmissionForm({ onClose, isOpen }) {
                   style={styles.fileInput}
                 />
                 <span style={styles.filePlaceholder}>
-                  {formData.studentPhoto ? '✅ নির্বাচিত' : 'ক্যামেরা দিয়ে ছবি তুলুন'}
+                  {formData.studentPhoto ? '✅ নির্বাচিত' : '📷 ক্যামেরা'}
                 </span>
+                {/* ✅ Gallery/File System Button */}
+                <button
+                  type="button"
+                  onClick={() => studentPhotoInput.current?.click()}
+                  style={styles.galleryBtn}
+                >
+                  📁 ফাইল
+                </button>
               </div>
               {errors.studentPhoto && <span style={styles.errorText}>{errors.studentPhoto}</span>}
             </div>
 
+            {/* Birth Certificate */}
             <div style={styles.field}>
               <label style={styles.label}>📄 জন্ম নিবন্ধন <span style={{color: '#ef4444'}}>*</span></label>
               <div style={styles.fileWrapper}>
@@ -314,12 +379,20 @@ export default function AdmissionForm({ onClose, isOpen }) {
                   style={styles.fileInput}
                 />
                 <span style={styles.filePlaceholder}>
-                  {formData.birthCertPhoto ? '✅ নির্বাচিত' : 'ক্যামেরা দিয়ে ছবি তুলুন'}
+                  {formData.birthCertPhoto ? '✅ নির্বাচিত' : '📷 ক্যামেরা'}
                 </span>
+                <button
+                  type="button"
+                  onClick={() => birthCertInput.current?.click()}
+                  style={styles.galleryBtn}
+                >
+                  📁 ফাইল
+                </button>
               </div>
               {errors.birthCertPhoto && <span style={styles.errorText}>{errors.birthCertPhoto}</span>}
             </div>
 
+            {/* Father NID */}
             <div style={styles.field}>
               <label style={styles.label}>🆔 বাবার NID <span style={{color: '#ef4444'}}>*</span></label>
               <div style={styles.fileWrapper}>
@@ -333,8 +406,15 @@ export default function AdmissionForm({ onClose, isOpen }) {
                   style={styles.fileInput}
                 />
                 <span style={styles.filePlaceholder}>
-                  {formData.fatherNidPhoto ? '✅ নির্বাচিত' : 'NID কার্ড স্ক্যান করুন'}
+                  {formData.fatherNidPhoto ? '✅ নির্বাচিত' : '📷 ক্যামেরা'}
                 </span>
+                <button
+                  type="button"
+                  onClick={() => fatherNidInput.current?.click()}
+                  style={styles.galleryBtn}
+                >
+                  📁 ফাইল
+                </button>
               </div>
               {errors.fatherNidPhoto && <span style={styles.errorText}>{errors.fatherNidPhoto}</span>}
             </div>
@@ -530,9 +610,11 @@ const styles = {
     padding: '10px 14px',
     backgroundColor: '#f8fafc',
     cursor: 'pointer',
-    minHeight: '44px',
+    minHeight: '48px',
     display: 'flex',
-    alignItems: 'center'
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: '8px'
   },
   fileInput: {
     position: 'absolute',
@@ -546,7 +628,22 @@ const styles = {
   filePlaceholder: {
     fontSize: '13px',
     color: '#64748b',
-    pointerEvents: 'none'
+    pointerEvents: 'none',
+    flex: 1
+  },
+  galleryBtn: {
+    background: 'linear-gradient(135deg, #3b82f6, #2563eb)',
+    color: 'white',
+    border: 'none',
+    padding: '6px 14px',
+    borderRadius: '8px',
+    fontSize: '12px',
+    fontWeight: '600',
+    cursor: 'pointer',
+    pointerEvents: 'auto',
+    zIndex: 2,
+    whiteSpace: 'nowrap',
+    boxShadow: '0 2px 8px rgba(59, 130, 246, 0.3)'
   },
   btn: {
     background: 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)',
