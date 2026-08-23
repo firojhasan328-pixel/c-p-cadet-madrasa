@@ -8,6 +8,10 @@ import SignInModal from './components/SignInModal';
 import StudentList from './components/StudentList';
 import ContactPage from './components/ContactPage';
 import SuccessStats from './components/SuccessStats';
+import PortalLogin from './components/auth/PortalLogin';
+import PortalRegister from './components/auth/PortalRegister';
+import StudentDashboard from './components/portal/StudentDashboard';
+import TeacherDashboard from './components/portal/TeacherDashboard';
 
 // =============================================
 // মেইন App
@@ -38,19 +42,6 @@ function MainApp() {
 
   const [teachers, setTeachers] = useState([]);
   const [teachersLoading, setTeachersLoading] = useState(true);
-
-  const [formStep, setFormStep] = useState(1);
-  const [formData, setFormData] = useState({
-    studentName: '',
-    className: '',
-    fatherName: '',
-    motherName: '',
-    phone: '',
-    otp: '',
-    studentPhoto: null,
-    birthCertPhoto: null,
-    fatherNidPhoto: null
-  });
 
   const fetchTeachers = async () => {
     setTeachersLoading(true);
@@ -136,7 +127,21 @@ function MainApp() {
     setIsSignInModalOpen(false);
   };
 
-  // Dashboard view (সরলীকৃত)
+  // ফর্ম ডেটা স্টেট
+  const [formStep, setFormStep] = useState(1);
+  const [formData, setFormData] = useState({
+    studentName: '',
+    className: '',
+    fatherName: '',
+    motherName: '',
+    phone: '',
+    otp: '',
+    studentPhoto: null,
+    birthCertPhoto: null,
+    fatherNidPhoto: null
+  });
+
+  // Dashboard view
   const renderDashboard = () => {
     if (!isAuthenticated) return null;
     
@@ -557,55 +562,18 @@ function MainApp() {
       {/* =============================================
           মডালসমূহ
           ============================================= */}
-      {/* লগইন মডাল (সরলীকৃত) */}
       {isLoginModalOpen && (
-        <div style={styles.overlay}>
-          <div style={styles.modal}>
-            <button onClick={handleCloseAuth} style={styles.closeBtn}>✕</button>
-            <h2 style={{ textAlign: 'center', marginBottom: '20px' }}>🔑 লগইন</h2>
-            <form onSubmit={(e) => {
-              e.preventDefault();
-              const email = e.target.email.value;
-              const password = e.target.password.value;
-              // সিম্পল লগইন - 실제 구현은 usePortal থেকে নিন
-              alert('লগইন ফিচারটি পোর্টালের মাধ্যমে কাজ করবে। দয়া করে রেজিস্টার করুন।');
-            }}>
-              <input type="email" name="email" placeholder="ইমেইল" required style={styles.input} />
-              <input type="password" name="password" placeholder="পাসওয়ার্ড" required style={styles.input} />
-              <button type="submit" style={styles.primaryBtn}>লগইন</button>
-            </form>
-            <p style={{ textAlign: 'center', marginTop: '12px' }}>
-              অ্যাকাউন্ট নেই? <span onClick={handleOpenRegister} style={{ color: '#2563eb', cursor: 'pointer', fontWeight: 'bold' }}>রেজিস্টার</span>
-            </p>
-          </div>
-        </div>
+        <PortalLogin
+          onSwitchToRegister={handleOpenRegister}
+          onClose={handleCloseAuth}
+        />
       )}
 
-      {/* রেজিস্টার মডাল (সরলীকৃত) */}
       {isRegisterModalOpen && (
-        <div style={styles.overlay}>
-          <div style={styles.modal}>
-            <button onClick={handleCloseAuth} style={styles.closeBtn}>✕</button>
-            <h2 style={{ textAlign: 'center', marginBottom: '20px' }}>📝 রেজিস্টার</h2>
-            <form onSubmit={(e) => {
-              e.preventDefault();
-              alert('রেজিস্টার ফিচারটি পোর্টালের মাধ্যমে কাজ করবে।');
-            }}>
-              <input type="text" placeholder="পূর্ণ নাম" required style={styles.input} />
-              <input type="email" placeholder="ইমেইল" required style={styles.input} />
-              <input type="password" placeholder="পাসওয়ার্ড" required style={styles.input} />
-              <select required style={styles.input}>
-                <option value="">আপনি কে?</option>
-                <option value="student">ছাত্র/ছাত্রী</option>
-                <option value="teacher">শিক্ষক/শিক্ষিকা</option>
-              </select>
-              <button type="submit" style={styles.primaryBtn}>রেজিস্টার</button>
-            </form>
-            <p style={{ textAlign: 'center', marginTop: '12px' }}>
-              ইতিমধ্যে অ্যাকাউন্ট আছে? <span onClick={handleOpenLogin} style={{ color: '#2563eb', cursor: 'pointer', fontWeight: 'bold' }}>লগইন</span>
-            </p>
-          </div>
-        </div>
+        <PortalRegister
+          onSwitchToLogin={handleOpenLogin}
+          onClose={handleCloseAuth}
+        />
       )}
 
       {/* অ্যাডমিশন মোডাল */}
@@ -624,67 +592,5 @@ function MainApp() {
     </div>
   );
 }
-
-// =============================================
-// মডাল স্টাইল
-// =============================================
-const styles = {
-  overlay: {
-    position: 'fixed',
-    top: 0,
-    left: 0,
-    width: '100%',
-    height: '100%',
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    backdropFilter: 'blur(4px)',
-    zIndex: 2000,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: '16px',
-  },
-  modal: {
-    backgroundColor: '#ffffff',
-    borderRadius: '24px',
-    padding: '32px 28px',
-    maxWidth: '400px',
-    width: '100%',
-    position: 'relative',
-    boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
-  },
-  closeBtn: {
-    position: 'absolute',
-    top: '12px',
-    right: '12px',
-    background: '#f1f5f9',
-    border: 'none',
-    width: '36px',
-    height: '36px',
-    borderRadius: '50%',
-    fontSize: '18px',
-    cursor: 'pointer',
-    color: '#64748b',
-  },
-  input: {
-    width: '100%',
-    padding: '12px',
-    borderRadius: '10px',
-    border: '1px solid #e2e8f0',
-    fontSize: '14px',
-    marginBottom: '12px',
-    outline: 'none',
-  },
-  primaryBtn: {
-    background: 'linear-gradient(135deg, #16a34a, #15803d)',
-    color: 'white',
-    border: 'none',
-    padding: '12px',
-    borderRadius: '10px',
-    fontSize: '16px',
-    fontWeight: '700',
-    cursor: 'pointer',
-    width: '100%',
-  },
-};
 
 export default App;
