@@ -4,6 +4,7 @@ import { supabase } from '../supabaseClient';
 export default function StudentList() {
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [totalStudents, setTotalStudents] = useState(0);
 
   useEffect(() => {
     fetchStudents();
@@ -11,14 +12,21 @@ export default function StudentList() {
 
   const fetchStudents = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('students')
-      .select('*')
-      .eq('is_approved', true)
-      .order('class_name', { ascending: true })
-      .order('roll_number', { ascending: true });
-    
-    if (data) setStudents(data);
+    try {
+      const { data, error } = await supabase
+        .from('students')
+        .select('*')
+        .eq('is_approved', true)
+        .order('class_name', { ascending: true })
+        .order('roll_number', { ascending: true });
+      
+      if (data) {
+        setStudents(data);
+        setTotalStudents(data.length);
+      }
+    } catch (err) {
+      console.error('Error fetching students:', err);
+    }
     setLoading(false);
   };
 
@@ -32,6 +40,23 @@ export default function StudentList() {
 
   return (
     <div>
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        gap: '20px', 
+        flexWrap: 'wrap',
+        marginBottom: '24px'
+      }}>
+        <div className="card" style={{ 
+          padding: '12px 24px', 
+          background: '#dcfce7', 
+          color: '#14532d', 
+          fontWeight: 'bold' 
+        }}>
+          👦 মোট ছাত্র: {totalStudents} জন
+        </div>
+      </div>
+
       {Object.keys(groupedStudents).map(className => (
         <div key={className} style={{ marginBottom: '24px' }}>
           <h3 style={{ color: '#166534', borderBottom: '2px solid #f1f5f9', paddingBottom: '8px' }}>
