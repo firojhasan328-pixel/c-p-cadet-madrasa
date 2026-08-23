@@ -36,11 +36,11 @@ function MainApp() {
   const [isResetPassword, setIsResetPassword] = useState(false);
 
   const [siteData, setSiteData] = useState({
-    headmasterName: "Arif Ashab Khorshed",
-    contactNumber: "+8801521-553003",
-    totalMaleStudents: "২৫০",
-    totalFemaleStudents: "২২০"
-  });
+  headmasterName: "Arif Ashab Khorshed",
+  contactNumber: "+8801521-553003",
+  totalMaleStudents: "০",
+  totalFemaleStudents: "০"
+});
 
   const [teachers, setTeachers] = useState([]);
   const [teachersLoading, setTeachersLoading] = useState(true);
