@@ -23,17 +23,29 @@ export default function AdmissionForm({ onClose, isOpen }) {
 
   // 📤 প্রাইভেট বাকেটে ছবি আপলোড
   const uploadFile = async (file, folder) => {
-    if (!file) return null;
+    if (!file) {
+      console.log('❌ No file provided');
+      return null;
+    }
+    
+    console.log('📤 Uploading file:', file.name, 'to folder:', folder);
     
     const fileExt = file.name.split('.').pop();
     const fileName = `${Date.now()}.${fileExt}`;
     const filePath = `${folder}/${fileName}`;
     
+    console.log('📤 File path:', filePath);
+    
     const { data, error } = await supabase.storage
       .from('private-admission-files')
       .upload(filePath, file);
 
-    if (error) throw error;
+    if (error) {
+      console.error('❌ Upload error:', error);
+      throw error;
+    }
+    
+    console.log('✅ Upload success:', data);
     return data.path;
   };
 
@@ -42,7 +54,7 @@ export default function AdmissionForm({ onClose, isOpen }) {
     if (!filePath) return null;
     const { data, error } = await supabase.storage
       .from('private-admission-files')
-      .createSignedUrl(filePath, 60); // ৬০ সেকেন্ড বৈধ
+      .createSignedUrl(filePath, 60);
     
     if (error) return null;
     return data.signedUrl;
@@ -51,6 +63,8 @@ export default function AdmissionForm({ onClose, isOpen }) {
   const handleSubmitForm = async (e) => {
     e.preventDefault();
     setError('');
+    
+    console.log('📝 Form submitted');
     
     // ভ্যালিডেশন
     if (!formData.studentName || !formData.classToAdmit || !formData.fatherName || 
@@ -66,12 +80,21 @@ export default function AdmissionForm({ onClose, isOpen }) {
 
     setLoading(true);
     try {
+      console.log('📤 1. Starting file uploads...');
+      
       // ১. ছবি আপলোড (প্রাইভেট বাকেটে)
       const studentPhotoPath = await uploadFile(formData.studentPhoto, 'student-photos');
+      console.log('📤 2. Student photo uploaded:', studentPhotoPath);
+      
       const birthCertPath = await uploadFile(formData.birthCertPhoto, 'birth-certs');
+      console.log('📤 3. Birth cert uploaded:', birthCertPath);
+      
       const fatherNidPath = await uploadFile(formData.fatherNidPhoto, 'nid-photos');
+      console.log('📤 4. NID uploaded:', fatherNidPath);
 
       // ২. ডেটাবেসে ডেটা সংরক্ষণ
+      console.log('📤 5. Inserting into database...');
+      
       const { data, error } = await supabase
         .from('admissions')
         .insert([{
@@ -87,16 +110,18 @@ export default function AdmissionForm({ onClose, isOpen }) {
         }]);
 
       if (error) {
-        console.error('Insert Error:', error);
+        console.error('❌ Database insert error:', error);
         throw error;
       }
+      
+      console.log('✅ 6. Success! Data inserted:', data);
       
       // ৩. OTP স্টেপে যান (সিমুলেটেড)
       setStep(2);
       alert(`OTP পাঠানো হয়েছে: ১২৩৪৫ (সিমুলেটেড)`);
       
     } catch (err) {
-      console.error('Submit Error:', err);
+      console.error('❌ Submit Error:', err);
       setError(err.message || 'সাবমিট করতে সমস্যা');
     } finally {
       setLoading(false);
@@ -107,10 +132,8 @@ export default function AdmissionForm({ onClose, isOpen }) {
     e.preventDefault();
     setLoading(true);
     try {
-      // সিমুলেটেড OTP চেক
       if (formData.otp === '12345') {
         setStep(3);
-        // এখানে ডেটাবেসে OTP ভেরিফাইড আপডেট করতে পারেন
       } else {
         setError('ভুল কোড, আবার চেষ্টা করুন');
       }
@@ -124,6 +147,7 @@ export default function AdmissionForm({ onClose, isOpen }) {
   const handleFileCapture = (e, field) => {
     const file = e.target.files[0];
     if (file) {
+      console.log('📎 File selected:', file.name, 'for field:', field);
       setFormData({ ...formData, [field]: file });
     }
   };
