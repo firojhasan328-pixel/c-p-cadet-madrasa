@@ -13,8 +13,8 @@ export default function StudentSignUp({ onBack, onClose }) {
     roll: '',
     photo: null,
     email: '',
-    password: '',      // ✅ নতুন যোগ
-    confirmPassword: '', // ✅ নতুন যোগ
+    password: '',
+    confirmPassword: '',
     otp: ''
   });
   const [loading, setLoading] = useState(false);
@@ -82,7 +82,7 @@ export default function StudentSignUp({ onBack, onClose }) {
     setError('');
     setLoading(true);
 
-    // ✅ পাসওয়ার্ড ভ্যালিডেশন
+    // পাসওয়ার্ড ভ্যালিডেশন
     if (formData.password.length < 6) {
       setError('❌ পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে');
       setLoading(false);
@@ -163,10 +163,16 @@ export default function StudentSignUp({ onBack, onClose }) {
         return;
       }
 
-      // ✅ ১. Supabase Auth এ ইউজার তৈরি করুন
+      // Supabase Auth এ ইউজার তৈরি করুন
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.email.toLowerCase().trim(),
         password: formData.password,
+        options: {
+          data: {
+            name: formData.name,
+            role: 'student'
+          }
+        }
       });
 
       if (authError) {
@@ -175,14 +181,20 @@ export default function StudentSignUp({ onBack, onClose }) {
         return;
       }
 
+      if (!authData.user) {
+        setError('ইউজার তৈরি করতে সমস্যা হয়েছে');
+        setLoading(false);
+        return;
+      }
+
       // ছবি আপলোড
       const photoPath = await uploadPhoto();
 
-      // ✅ ২. Students টেবিলে ডেটা ইনসার্ট
+      // students টেবিলে ডেটা ইনসার্ট
       const { error: insertError } = await supabase
         .from('students')
         .insert([{
-          id: authData.user.id, // ✅ Auth ইউজারের ID ব্যবহার
+          id: authData.user.id,
           name: formData.name,
           father_name: formData.fatherName,
           mother_name: formData.motherName,
@@ -196,6 +208,7 @@ export default function StudentSignUp({ onBack, onClose }) {
         }]);
 
       if (insertError) {
+        console.error('Insert Error:', insertError);
         if (insertError.code === '23505') {
           setError('❌ এই ইমেইলটি ইতিমধ্যে ব্যবহার করা হয়েছে।');
         } else {
@@ -208,6 +221,7 @@ export default function StudentSignUp({ onBack, onClose }) {
       setStep(3);
       setSuccess(true);
     } catch (err) {
+      console.error('Error:', err);
       setError(err.message || 'সাবমিট করতে সমস্যা');
     } finally {
       setLoading(false);
@@ -259,9 +273,19 @@ export default function StudentSignUp({ onBack, onClose }) {
           </select>
         </div>
 
+        {/* ✅ রোল ফিল্ড - Unlimited Number */}
         <div style={styles.field}>
-          <label style={styles.label}>🔢 রোল (ঐচ্ছিক)</label>
-          <input type="number" name="roll" min="1" max="3" placeholder="১-৩" value={formData.roll} onChange={handleInputChange} style={styles.input} />
+          <label style={styles.label}>🔢 রোল নম্বর (ঐচ্ছিক)</label>
+          <input 
+            type="number" 
+            name="roll" 
+            min="1" 
+            placeholder="যেকোনো সংখ্যা দিন" 
+            value={formData.roll} 
+            onChange={handleInputChange} 
+            style={styles.input} 
+          />
+          <small style={{ color: '#64748b', fontSize: '12px' }}>যেকোনো সংখ্যা দেওয়া যাবে (১, ২, ৩, ১০, ৫০ ইত্যাদি)</small>
         </div>
 
         <div style={styles.field}>
@@ -277,7 +301,6 @@ export default function StudentSignUp({ onBack, onClose }) {
           <input type="email" name="email" required placeholder="your@email.com" value={formData.email} onChange={handleInputChange} style={styles.input} />
         </div>
 
-        {/* ✅ পাসওয়ার্ড ফিল্ড যোগ */}
         <div style={styles.field}>
           <label style={styles.label}>🔑 পাসওয়ার্ড <span style={{color: '#ef4444'}}>*</span></label>
           <input type="password" name="password" required placeholder="কমপক্ষে ৬ অক্ষর" value={formData.password} onChange={handleInputChange} style={styles.input} />
