@@ -3,8 +3,8 @@ import emailjs from '@emailjs/browser';
 // ============================================
 // ✅ আপনার EmailJS Credentials দিন
 // ============================================
-const SERVICE_ID = 'service_vznszfm';        // ← আপনার Service ID
-const TEMPLATE_ID = 'template_byuqvor';      // ← আপনার Template ID
+const SERVICE_ID = 'service_rh68xfe';        // ← আপনার Service ID
+const TEMPLATE_ID = 'template_5k4c498';      // ← আপনার Template ID
 const PUBLIC_KEY = 'pucd8tSwEaUYH7Rp_';      // ← আপনার Public Key
 
 // ============================================
