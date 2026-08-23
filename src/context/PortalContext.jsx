@@ -19,13 +19,13 @@ export function PortalProvider({ children }) {
       const { data: { session } } = await supabase.auth.getSession();
       
       if (session) {
-        const { data: profile } = await supabase
+        const { data: profile, error } = await supabase
           .from('profiles')
           .select('*')
           .eq('id', session.user.id)
           .single();
         
-        if (profile) {
+        if (profile && !error) {
           setUser(session.user);
           setUserProfile(profile);
           setUserRole(profile.role);
@@ -47,11 +47,13 @@ export function PortalProvider({ children }) {
       if (error) throw error;
 
       if (data.user) {
-        const { data: profile } = await supabase
+        const { data: profile, error: profileError } = await supabase
           .from('profiles')
           .select('*')
           .eq('id', data.user.id)
           .single();
+
+        if (profileError) throw profileError;
 
         if (profile) {
           setUser(data.user);
@@ -68,7 +70,6 @@ export function PortalProvider({ children }) {
 
   const register = async (userData) => {
     try {
-      // 1. Auth তৈরি
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: userData.email.trim(),
         password: userData.password.trim(),
@@ -77,7 +78,6 @@ export function PortalProvider({ children }) {
       if (authError) throw authError;
 
       if (authData.user) {
-        // 2. প্রোফাইল তৈরি
         const profileData = {
           id: authData.user.id,
           name: userData.name,
@@ -97,7 +97,6 @@ export function PortalProvider({ children }) {
 
         if (profileError) throw profileError;
 
-        // 3. লগইন করানো
         const loginResult = await login(userData.email, userData.password);
         return loginResult;
       }
