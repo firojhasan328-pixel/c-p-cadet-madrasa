@@ -13,25 +13,16 @@ export default function SuccessStats() {
   useEffect(() => {
     fetchStats();
 
-    // ✅ রিয়েল টাইম আপডেটের জন্য Subscription
     const studentChannel = supabase
       .channel('student-count-changes')
-      .on('postgres_changes', { 
-        event: '*', 
-        schema: 'public', 
-        table: 'students' 
-      }, () => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'students' }, () => {
         fetchStats();
       })
       .subscribe();
 
     const teacherChannel = supabase
       .channel('teacher-count-changes')
-      .on('postgres_changes', { 
-        event: '*', 
-        schema: 'public', 
-        table: 'teachers' 
-      }, () => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'teachers' }, () => {
         fetchStats();
       })
       .subscribe();
@@ -45,23 +36,13 @@ export default function SuccessStats() {
   const fetchStats = async () => {
     setLoading(true);
     try {
-      // ✅ students কাউন্ট
-      const { count: studentCount, error: studentError } = await supabase
+      const { count: studentCount } = await supabase
         .from('students')
         .select('*', { count: 'exact', head: true });
 
-      if (studentError) {
-        console.error('Student count error:', studentError);
-      }
-
-      // ✅ teachers কাউন্ট
-      const { count: teacherCount, error: teacherError } = await supabase
+      const { count: teacherCount } = await supabase
         .from('teachers')
         .select('*', { count: 'exact', head: true });
-
-      if (teacherError) {
-        console.error('Teacher count error:', teacherError);
-      }
 
       setStats({
         students: studentCount || 0,
@@ -78,22 +59,11 @@ export default function SuccessStats() {
 
   if (loading) {
     return (
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-        gap: '16px',
-        marginBottom: '32px'
-      }}>
-        {[1, 2, 3, 4].map((_, index) => (
-          <div key={index} style={{
-            background: 'white',
-            borderRadius: '16px',
-            padding: '20px 16px',
-            textAlign: 'center',
-            border: '1px solid #e2e8f0'
-          }}>
-            <div style={{ fontSize: '24px', color: '#94a3b8' }}>⏳</div>
-            <div style={{ fontSize: '13px', color: '#94a3b8' }}>লোড হচ্ছে...</div>
+      <div style={styles.grid}>
+        {[1, 2, 3, 4].map((_, i) => (
+          <div key={i} style={styles.card}>
+            <div style={{ fontSize: '20px', color: '#94a3b8' }}>⏳</div>
+            <div style={{ fontSize: '11px', color: '#94a3b8' }}>লোড...</div>
           </div>
         ))}
       </div>
@@ -108,26 +78,46 @@ export default function SuccessStats() {
   ];
 
   return (
-    <div style={{
-      display: 'grid',
-      gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-      gap: '16px',
-      marginBottom: '32px'
-    }}>
+    <div style={styles.grid}>
       {statsData.map((stat, index) => (
-        <div key={index} style={{
-          background: 'white',
-          borderRadius: '16px',
-          padding: '20px 16px',
-          textAlign: 'center',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
-          border: '1px solid #e2e8f0'
-        }}>
-          <div style={{ fontSize: '32px', marginBottom: '4px' }}>{stat.icon}</div>
-          <div style={{ fontSize: '24px', fontWeight: '800', color: '#14532d' }}>{stat.number}</div>
-          <div style={{ fontSize: '13px', color: '#64748b' }}>{stat.label}</div>
+        <div key={index} style={styles.card}>
+          <div style={styles.icon}>{stat.icon}</div>
+          <div style={styles.number}>{stat.number}</div>
+          <div style={styles.label}>{stat.label}</div>
         </div>
       ))}
     </div>
   );
 }
+
+const styles = {
+  grid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(4, 1fr)',
+    gap: '12px',
+    marginBottom: '28px'
+  },
+  card: {
+    background: 'white',
+    borderRadius: '14px',
+    padding: '14px 10px',
+    textAlign: 'center',
+    boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+    border: '1px solid #e2e8f0'
+  },
+  icon: {
+    fontSize: '24px',
+    marginBottom: '2px'
+  },
+  number: {
+    fontSize: '20px',
+    fontWeight: '800',
+    color: '#14532d',
+    lineHeight: '1.2'
+  },
+  label: {
+    fontSize: '11px',
+    color: '#64748b',
+    marginTop: '2px'
+  }
+};
