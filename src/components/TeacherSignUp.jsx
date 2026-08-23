@@ -16,8 +16,8 @@ export default function TeacherSignUp({ onBack, onClose }) {
     subject: '',
     phone: '',
     email: '',
-    password: '',      // ✅ নতুন যোগ
-    confirmPassword: '', // ✅ নতুন যোগ
+    password: '',
+    confirmPassword: '',
     photo: null,
     otp: ''
   });
@@ -86,7 +86,7 @@ export default function TeacherSignUp({ onBack, onClose }) {
     setError('');
     setLoading(true);
 
-    // ✅ পাসওয়ার্ড ভ্যালিডেশন
+    // পাসওয়ার্ড ভ্যালিডেশন
     if (formData.password.length < 6) {
       setError('❌ পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে');
       setLoading(false);
@@ -156,6 +156,8 @@ export default function TeacherSignUp({ onBack, onClose }) {
 
       // OTP জেনারেট ও ইমেইল পাঠান
       const otp = generateOTP();
+      console.log('📝 Generated Teacher OTP:', otp, 'for:', formData.email);
+      
       await saveTeacherOTP(formData.email, otp);
       
       const emailResult = await sendTeacherOTPEmail(formData.email, otp);
@@ -166,8 +168,10 @@ export default function TeacherSignUp({ onBack, onClose }) {
         return;
       }
 
+      console.log('✅ Teacher OTP sent successfully');
       setStep(2);
     } catch (err) {
+      console.error('❌ Teacher OTP send error:', err);
       setError(err.message || 'OTP পাঠাতে সমস্যা');
     } finally {
       setLoading(false);
@@ -181,8 +185,12 @@ export default function TeacherSignUp({ onBack, onClose }) {
     setLoading(true);
 
     try {
+      console.log('🔍 Verifying Teacher OTP:', formData.otp, 'for:', formData.email);
+      
       // OTP ভেরিফাই
       const result = await verifyTeacherOTP(formData.email, formData.otp);
+      
+      console.log('📋 Teacher OTP verification result:', result);
       
       if (!result.success) {
         setError(result.message);
@@ -190,10 +198,16 @@ export default function TeacherSignUp({ onBack, onClose }) {
         return;
       }
 
-      // ✅ ১. Supabase Auth এ ইউজার তৈরি করুন
+      // Supabase Auth এ ইউজার তৈরি করুন
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.email.toLowerCase().trim(),
         password: formData.password,
+        options: {
+          data: {
+            name: formData.name,
+            role: 'teacher'
+          }
+        }
       });
 
       if (authError) {
@@ -202,14 +216,20 @@ export default function TeacherSignUp({ onBack, onClose }) {
         return;
       }
 
+      if (!authData.user) {
+        setError('ইউজার তৈরি করতে সমস্যা হয়েছে');
+        setLoading(false);
+        return;
+      }
+
       // ছবি আপলোড
       const photoPath = await uploadPhoto();
 
-      // ✅ ২. Teachers টেবিলে ডেটা ইনসার্ট
+      // teachers টেবিলে ডেটা ইনসার্ট
       const { error: insertError } = await supabase
         .from('teachers')
         .insert([{
-          id: authData.user.id, // ✅ Auth ইউজারের ID ব্যবহার
+          id: authData.user.id,
           name: formData.name,
           gender: formData.gender,
           designation: formData.designation,
@@ -222,6 +242,7 @@ export default function TeacherSignUp({ onBack, onClose }) {
         }]);
 
       if (insertError) {
+        console.error('Insert Error:', insertError);
         if (insertError.code === '23505') {
           setError('❌ এই ইমেইল বা ফোন নাম্বারটি ইতিমধ্যে ব্যবহার করা হয়েছে।');
         } else {
@@ -234,6 +255,7 @@ export default function TeacherSignUp({ onBack, onClose }) {
       setStep(3);
       setSuccess(true);
     } catch (err) {
+      console.error('❌ Teacher verification error:', err);
       setError(err.message || 'সাবমিট করতে সমস্যা');
     } finally {
       setLoading(false);
@@ -286,7 +308,6 @@ export default function TeacherSignUp({ onBack, onClose }) {
           <input type="email" name="email" required placeholder="your@email.com" value={formData.email} onChange={handleInputChange} style={styles.input} />
         </div>
 
-        {/* ✅ পাসওয়ার্ড ফিল্ড যোগ */}
         <div style={styles.field}>
           <label style={styles.label}>🔑 পাসওয়ার্ড <span style={{color: '#ef4444'}}>*</span></label>
           <input type="password" name="password" required placeholder="কমপক্ষে ৬ অক্ষর" value={formData.password} onChange={handleInputChange} style={styles.input} />
