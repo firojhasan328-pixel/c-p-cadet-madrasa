@@ -110,7 +110,16 @@ function MainApp() {
 
   const whatsappNumber = "8801918568313";
 
-  // পোর্টাল লগইন/রেজিস্টার হ্যান্ডলার
+  // 🔑 সাইন ইন মডাল ওপেন
+  const handleOpenSignIn = () => {
+    setIsSignInModalOpen(true);
+  };
+
+  const handleCloseSignIn = () => {
+    setIsSignInModalOpen(false);
+  };
+
+  // পোর্টাল লগইন/রেজিস্টার হ্যান্ডলার (পুরনো মডালের জন্য - রাখা হচ্ছে)
   const handleOpenLogin = () => {
     setIsSignInModalOpen(false);
     setIsLoginModalOpen(true);
@@ -308,7 +317,7 @@ function MainApp() {
                 if (isAuthenticated) {
                   setCurrentView('portal');
                 } else {
-                  handleOpenLogin();
+                  handleOpenSignIn();  // ← নতুন সাইন ইন মডাল ওপেন
                 }
               }}
               className="portal-btn"
@@ -345,7 +354,7 @@ function MainApp() {
                 </button>
               </>
             ) : (
-              <span className="nav-link" style={{ color: '#2563eb', fontWeight: 'bold' }} onClick={() => { setMobileMenuOpen(false); handleOpenLogin(); }}>
+              <span className="nav-link" style={{ color: '#2563eb', fontWeight: 'bold' }} onClick={() => { setMobileMenuOpen(false); handleOpenSignIn(); }}>
                 🔑 লগইন / রেজিস্টার
               </span>
             )}
@@ -562,6 +571,13 @@ function MainApp() {
       {/* =============================================
           মডালসমূহ
           ============================================= */}
+      {/* 🔥 নতুন সাইন ইন মডাল (Role + Login + Register) */}
+      <SignInModal 
+        isOpen={isSignInModalOpen} 
+        onClose={handleCloseSignIn} 
+      />
+
+      {/* পুরনো লগইন/রেজিস্টার মডাল (ব্যাকওয়ার্ড কম্প্যাটিবিলিটির জন্য রাখা) */}
       {isLoginModalOpen && (
         <PortalLogin
           onSwitchToRegister={handleOpenRegister}
