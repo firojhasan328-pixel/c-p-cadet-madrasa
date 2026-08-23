@@ -2,14 +2,21 @@ import React, { useState } from 'react';
 import StudentSignUp from './StudentSignUp';
 import TeacherSignUp from './TeacherSignUp';
 import { usePortal } from '../context/PortalContext';
+import { supabase } from '../supabaseClient';
 
 export default function SignInModal({ isOpen, onClose }) {
   const { login, loading: authLoading } = usePortal();
-  const [step, setStep] = useState('role'); // role, login, student-register, teacher-register
+  const [step, setStep] = useState('role'); // role, login, student-register, teacher-register, forgot-password
   const [role, setRole] = useState(null);
   const [loginData, setLoginData] = useState({ email: '', password: '' });
   const [loginError, setLoginError] = useState('');
   const [loginLoading, setLoginLoading] = useState(false);
+  
+  // ✅ ফরগেট পাসওয়ার্ড স্টেট
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotError, setForgotError] = useState('');
+  const [forgotSuccess, setForgotSuccess] = useState(false);
+  const [forgotLoading, setForgotLoading] = useState(false);
 
   if (!isOpen) return null;
 
@@ -27,7 +34,6 @@ export default function SignInModal({ isOpen, onClose }) {
       const result = await login(loginData.email, loginData.password);
       if (result.success) {
         onClose();
-        // সাফল্যের পর মডাল বন্ধ
       } else {
         setLoginError(result.error || 'লগইন ব্যর্থ হয়েছে');
       }
@@ -35,6 +41,32 @@ export default function SignInModal({ isOpen, onClose }) {
       setLoginError(err.message || 'লগইন করতে সমস্যা');
     } finally {
       setLoginLoading(false);
+    }
+  };
+
+  // ✅ ফরগেট পাসওয়ার্ড হ্যান্ডলার
+  const handleForgotPassword = async (e) => {
+    e.preventDefault();
+    setForgotError('');
+    setForgotSuccess(false);
+    setForgotLoading(true);
+
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(
+        forgotEmail.trim(),
+        {
+          redirectTo: window.location.origin + '/reset-password',
+        }
+      );
+
+      if (error) throw error;
+
+      setForgotSuccess(true);
+      setForgotEmail('');
+    } catch (err) {
+      setForgotError(err.message || 'পাসওয়ার্ড রিসেট ইমেইল পাঠাতে সমস্যা');
+    } finally {
+      setForgotLoading(false);
     }
   };
 
@@ -53,6 +85,12 @@ export default function SignInModal({ isOpen, onClose }) {
   const handleBackToRole = () => {
     setStep('role');
     setRole(null);
+  };
+
+  const handleOpenForgotPassword = () => {
+    setStep('forgot-password');
+    setForgotError('');
+    setForgotSuccess(false);
   };
 
   // =============================================
@@ -85,7 +123,7 @@ export default function SignInModal({ isOpen, onClose }) {
   }
 
   // =============================================
-  // স্টেপ ২: লগইন ফর্ম
+  // স্টেপ ২: লগইন ফর্ম (ফরগেট পাসওয়ার্ড লিংক সহ)
   // =============================================
   if (step === 'login') {
     return (
@@ -128,6 +166,13 @@ export default function SignInModal({ isOpen, onClose }) {
                 />
               </div>
 
+              {/* ✅ ফরগেট পাসওয়ার্ড লিংক */}
+              <div style={styles.forgotLinkContainer}>
+                <span style={styles.forgotLink} onClick={handleOpenForgotPassword}>
+                  পাসওয়ার্ড ভুলে গেছেন?
+                </span>
+              </div>
+
               <button type="submit" disabled={loginLoading || authLoading} style={styles.loginBtn}>
                 {loginLoading || authLoading ? '⏳ লগইন হচ্ছে...' : '🚀 লগইন করুন'}
               </button>
@@ -148,7 +193,65 @@ export default function SignInModal({ isOpen, onClose }) {
   }
 
   // =============================================
-  // স্টেপ ৩: ছাত্র রেজিস্ট্রেশন
+  // স্টেপ ৩: ফরগেট পাসওয়ার্ড
+  // =============================================
+  if (step === 'forgot-password') {
+    return (
+      <div style={styles.overlay}>
+        <div style={styles.modal}>
+          <button onClick={onClose} style={styles.closeBtn}>✕</button>
+          <button onClick={handleBackToLogin} style={styles.backBtn}>⬅ পিছনে</button>
+          
+          <div style={styles.loginContainer}>
+            <span style={styles.loginIcon}>🔑</span>
+            <h2 style={styles.loginHeading}>পাসওয়ার্ড রিসেট</h2>
+            <p style={styles.loginSubText}>
+              আপনার ইমেইলে পাসওয়ার্ড রিসেট লিংক পাঠানো হবে
+            </p>
+
+            {forgotError && <div style={styles.errorBox}>{forgotError}</div>}
+            {forgotSuccess && (
+              <div style={styles.successBox}>
+                ✅ পাসওয়ার্ড রিসেট ইমেইল পাঠানো হয়েছে! আপনার ইমেইল চেক করুন।
+              </div>
+            )}
+
+            <form onSubmit={handleForgotPassword} style={styles.loginForm}>
+              <div style={styles.field}>
+                <label style={styles.label}>📧 ইমেইল</label>
+                <input 
+                  type="email" 
+                  required 
+                  placeholder="your@email.com" 
+                  value={forgotEmail} 
+                  onChange={(e) => setForgotEmail(e.target.value)}
+                  style={styles.input} 
+                  disabled={forgotSuccess}
+                />
+              </div>
+
+              <button type="submit" disabled={forgotLoading || forgotSuccess} style={styles.loginBtn}>
+                {forgotLoading ? '⏳ পাঠাচ্ছি...' : '📧 রিসেট লিংক পাঠান'}
+              </button>
+            </form>
+
+            {forgotSuccess && (
+              <div style={styles.switchContainer}>
+                <p style={styles.switchText}>
+                  <span style={styles.switchLink} onClick={handleBackToLogin}>
+                    ⬅ লগইন পেজে ফিরে যান
+                  </span>
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // =============================================
+  // স্টেপ ৪: ছাত্র রেজিস্ট্রেশন
   // =============================================
   if (step === 'student-register') {
     return (
@@ -162,7 +265,7 @@ export default function SignInModal({ isOpen, onClose }) {
   }
 
   // =============================================
-  // স্টেপ ৪: শিক্ষক রেজিস্ট্রেশন
+  // স্টেপ ৫: শিক্ষক রেজিস্ট্রেশন
   // =============================================
   if (step === 'teacher-register') {
     return (
@@ -245,10 +348,21 @@ const styles = {
     fontSize: '13px', borderLeft: '4px solid #dc2626',
     marginBottom: '12px'
   },
+  successBox: {
+    backgroundColor: '#dcfce7', color: '#166534',
+    padding: '10px 14px', borderRadius: '10px',
+    fontSize: '13px', borderLeft: '4px solid #16a34a',
+    marginBottom: '12px'
+  },
   switchContainer: { textAlign: 'center', marginTop: '16px' },
   switchText: { fontSize: '14px', color: '#64748b', margin: 0 },
   switchLink: { 
     color: '#2563eb', fontWeight: '600', cursor: 'pointer',
     textDecoration: 'underline', ':hover': { color: '#1d4ed8' }
+  },
+  forgotLinkContainer: { textAlign: 'right', marginTop: '-8px' },
+  forgotLink: {
+    fontSize: '13px', color: '#64748b', cursor: 'pointer',
+    ':hover': { color: '#2563eb', textDecoration: 'underline' }
   }
 };
