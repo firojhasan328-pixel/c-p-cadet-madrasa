@@ -36,7 +36,7 @@ export default function ResetPassword() {
       
       setSuccess(true);
       
-      // ✅ ৩ সেকেন্ড পর হোম পেজে রিডাইরেক্ট
+      // ৩ সেকেন্ড পর হোম পেজে রিডাইরেক্ট
       setTimeout(() => {
         navigate('/');
       }, 3000);
@@ -94,7 +94,6 @@ export default function ResetPassword() {
           </form>
         )}
         
-        {/* ✅ হোম পেজে ফিরে যাওয়ার লিংক */}
         <div style={styles.backContainer}>
           <a href="/" style={styles.backLink}>⬅ হোম পেজে ফিরে যান</a>
         </div>
