@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { supabase } from '../supabaseClient';
+import { useNavigate } from 'react-router-dom';
 
 export default function ResetPassword() {
   const [password, setPassword] = useState('');
@@ -7,6 +8,7 @@ export default function ResetPassword() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
   const handleResetPassword = async (e) => {
     e.preventDefault();
@@ -31,9 +33,16 @@ export default function ResetPassword() {
       });
 
       if (error) throw error;
+      
       setSuccess(true);
+      
+      // ✅ ৩ সেকেন্ড পর হোম পেজে রিডাইরেক্ট
+      setTimeout(() => {
+        navigate('/');
+      }, 3000);
+      
     } catch (err) {
-      setError(err.message);
+      setError(err.message || 'পাসওয়ার্ড আপডেট করতে সমস্যা');
     } finally {
       setLoading(false);
     }
@@ -48,7 +57,8 @@ export default function ResetPassword() {
         {success && (
           <div style={styles.successBox}>
             ✅ পাসওয়ার্ড সফলভাবে পরিবর্তন করা হয়েছে! 
-            <a href="/" style={styles.loginLink}> লগইন করুন</a>
+            <br />
+            <span style={styles.successSub}>হোম পেজে রিডাইরেক্ট করা হচ্ছে...</span>
           </div>
         )}
 
@@ -83,6 +93,11 @@ export default function ResetPassword() {
             </button>
           </form>
         )}
+        
+        {/* ✅ হোম পেজে ফিরে যাওয়ার লিংক */}
+        <div style={styles.backContainer}>
+          <a href="/" style={styles.backLink}>⬅ হোম পেজে ফিরে যান</a>
+        </div>
       </div>
     </div>
   );
@@ -138,19 +153,33 @@ const styles = {
     padding: '10px 14px',
     borderRadius: '10px',
     fontSize: '13px',
-    marginBottom: '12px'
+    marginBottom: '12px',
+    borderLeft: '4px solid #dc2626'
   },
   successBox: {
     backgroundColor: '#dcfce7',
     color: '#166534',
-    padding: '10px 14px',
+    padding: '14px 16px',
     borderRadius: '10px',
-    fontSize: '13px',
-    marginBottom: '12px'
+    fontSize: '14px',
+    marginBottom: '12px',
+    borderLeft: '4px solid #16a34a',
+    textAlign: 'center'
   },
-  loginLink: {
-    color: '#2563eb',
-    textDecoration: 'underline',
-    fontWeight: '600'
+  successSub: {
+    fontSize: '12px',
+    color: '#64748b',
+    display: 'block',
+    marginTop: '6px'
+  },
+  backContainer: {
+    textAlign: 'center',
+    marginTop: '16px'
+  },
+  backLink: {
+    color: '#64748b',
+    textDecoration: 'none',
+    fontSize: '14px',
+    fontWeight: '500'
   }
 };
