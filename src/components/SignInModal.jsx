@@ -6,13 +6,13 @@ import { supabase } from '../supabaseClient';
 
 export default function SignInModal({ isOpen, onClose }) {
   const { login, loading: authLoading } = usePortal();
-  const [step, setStep] = useState('role'); // role, login, student-register, teacher-register, forgot-password
+  const [step, setStep] = useState('role');
   const [role, setRole] = useState(null);
   const [loginData, setLoginData] = useState({ email: '', password: '' });
   const [loginError, setLoginError] = useState('');
   const [loginLoading, setLoginLoading] = useState(false);
   
-  // ✅ ফরগেট পাসওয়ার্ড স্টেট
+  // ফরগেট পাসওয়ার্ড স্টেট
   const [forgotEmail, setForgotEmail] = useState('');
   const [forgotError, setForgotError] = useState('');
   const [forgotSuccess, setForgotSuccess] = useState(false);
@@ -44,7 +44,13 @@ export default function SignInModal({ isOpen, onClose }) {
     }
   };
 
-  // ✅ ফরগেট পাসওয়ার্ড হ্যান্ডলার
+  // ✅ ফরগেট পাসওয়ার্ড হ্যান্ডলার (আপডেটেড)
+  const handleOpenForgotPassword = () => {
+    setStep('forgot-password');
+    setForgotError('');
+    setForgotSuccess(false);
+  };
+
   const handleForgotPassword = async (e) => {
     e.preventDefault();
     setForgotError('');
@@ -52,15 +58,18 @@ export default function SignInModal({ isOpen, onClose }) {
     setForgotLoading(true);
 
     try {
+      // ✅ ডায়নামিক URL ব্যবহার করুন
+      const redirectUrl = window.location.origin + '/reset-password';
+      
       const { error } = await supabase.auth.resetPasswordForEmail(
         forgotEmail.trim(),
         {
-          redirectTo: window.location.origin + '/reset-password',
+          redirectTo: redirectUrl,
         }
       );
 
       if (error) throw error;
-
+      
       setForgotSuccess(true);
       setForgotEmail('');
     } catch (err) {
@@ -85,12 +94,6 @@ export default function SignInModal({ isOpen, onClose }) {
   const handleBackToRole = () => {
     setStep('role');
     setRole(null);
-  };
-
-  const handleOpenForgotPassword = () => {
-    setStep('forgot-password');
-    setForgotError('');
-    setForgotSuccess(false);
   };
 
   // =============================================
@@ -123,7 +126,7 @@ export default function SignInModal({ isOpen, onClose }) {
   }
 
   // =============================================
-  // স্টেপ ২: লগইন ফর্ম (ফরগেট পাসওয়ার্ড লিংক সহ)
+  // স্টেপ ২: লগইন ফর্ম
   // =============================================
   if (step === 'login') {
     return (
@@ -315,8 +318,7 @@ const styles = {
   roleGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' },
   roleCard: {
     background: '#f8fafc', padding: '24px 16px', borderRadius: '16px',
-    cursor: 'pointer', border: '2px solid #e2e8f0', transition: 'all 0.3s ease',
-    ':hover': { borderColor: '#16a34a', transform: 'translateY(-2px)', boxShadow: '0 8px 20px rgba(0,0,0,0.08)' }
+    cursor: 'pointer', border: '2px solid #e2e8f0', transition: 'all 0.3s ease'
   },
   roleIcon: { fontSize: '40px', display: 'block', marginBottom: '8px' },
   roleTitle: { fontSize: '16px', fontWeight: '700', color: '#0f172a', margin: '0 0 4px 0' },
@@ -358,11 +360,10 @@ const styles = {
   switchText: { fontSize: '14px', color: '#64748b', margin: 0 },
   switchLink: { 
     color: '#2563eb', fontWeight: '600', cursor: 'pointer',
-    textDecoration: 'underline', ':hover': { color: '#1d4ed8' }
+    textDecoration: 'underline'
   },
   forgotLinkContainer: { textAlign: 'right', marginTop: '-8px' },
   forgotLink: {
-    fontSize: '13px', color: '#64748b', cursor: 'pointer',
-    ':hover': { color: '#2563eb', textDecoration: 'underline' }
+    fontSize: '13px', color: '#64748b', cursor: 'pointer'
   }
 };
