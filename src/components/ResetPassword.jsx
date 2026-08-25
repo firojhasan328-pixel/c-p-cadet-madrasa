@@ -8,33 +8,111 @@ export default function ResetPassword() {
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
   const [isValidLink, setIsValidLink] = useState(true);
+  const [isProcessing, setIsProcessing] = useState(true);
 
+  // =============================================
+  // ১. Recovery Session Handle
+  // =============================================
   useEffect(() => {
-    const checkSession = async () => {
+    const handleRecoverySession = async () => {
+      setIsProcessing(true);
+      
       try {
+        // ✅ URL hash থেকে access_token বের করুন
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        const accessToken = hashParams.get('access_token');
+        const refreshToken = hashParams.get('refresh_token');
+        const type = hashParams.get('type');
+
+        console.log('🔍 URL Hash:', window.location.hash);
+        console.log('🔍 Access Token:', accessToken ? '✅ পাওয়া গেছে' : '❌ নেই');
+
+        // ✅ যদি access_token থাকে, PKCE flow complete করুন
+        if (accessToken && type === 'recovery') {
+          console.log('🔄 Recovery token detected, exchanging for session...');
+          
+          const { data, error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken || '',
+          });
+
+          if (error) {
+            console.error('❌ Session set error:', error);
+            throw error;
+          }
+
+          console.log('✅ Session set successfully');
+          setIsValidLink(true);
+          setIsProcessing(false);
+          return;
+        }
+
+        // ✅ যদি access_token না থাকে, current session চেক করুন
         const { data: { session } } = await supabase.auth.getSession();
         
         if (!session) {
+          console.log('❌ No recovery session found');
           setIsValidLink(false);
           setError('❌ এই রিসেট লিংকটি মেয়াদ শেষ বা সঠিক নয়। দয়া করে নতুন রিকোয়েস্ট করুন।');
-        } else {
-          console.log('✅ বৈধ রিসেট সেশন পাওয়া গেছে');
+          setIsProcessing(false);
+          return;
         }
+
+        // ✅ Recovery session আছে কিনা চেক করুন
+        if (session) {
+          console.log('✅ Valid session found');
+          setIsValidLink(true);
+        } else {
+          setIsValidLink(false);
+          setError('❌ এই রিসেট লিংকটি মেয়াদ শেষ বা সঠিক নয়।');
+        }
+        
       } catch (err) {
-        console.error('সেশন চেক এরর:', err);
+        console.error('❌ Session check error:', err);
         setIsValidLink(false);
         setError('❌ লিংক যাচাই করতে সমস্যা। দয়া করে আবার চেষ্টা করুন।');
       }
+      
+      setIsProcessing(false);
     };
-    
-    checkSession();
+
+    handleRecoverySession();
+
+    // ✅ Auth state change listener
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        console.log('🔔 Auth event:', event);
+        
+        if (event === 'PASSWORD_RECOVERY') {
+          console.log('✅ PASSWORD_RECOVERY event received!');
+          setIsValidLink(true);
+          setError('');
+          setIsProcessing(false);
+        }
+        
+        if (event === 'SIGNED_IN' && session) {
+          console.log('✅ User signed in via recovery link');
+          setIsValidLink(true);
+          setIsProcessing(false);
+        }
+      }
+    );
+
+    // ✅ Cleanup: unsubscribe on unmount
+    return () => {
+      authListener?.subscription?.unsubscribe();
+    };
   }, []);
 
+  // =============================================
+  // ২. Password Update Handler
+  // =============================================
   const handleResetPassword = async (e) => {
     e.preventDefault();
     setError('');
     setLoading(true);
 
+    // Validation
     if (password.length < 6) {
       setError('❌ পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে');
       setLoading(false);
@@ -48,38 +126,70 @@ export default function ResetPassword() {
     }
 
     try {
-      const { error } = await supabase.auth.updateUser({
+      // ✅ Valid session check
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        setError('❌ সেশন মেয়াদ শেষ। দয়া করে নতুন রিসেট লিংক রিকোয়েস্ট করুন।');
+        setLoading(false);
+        return;
+      }
+
+      // ✅ Password update
+      const { error: updateError } = await supabase.auth.updateUser({
         password: password
       });
 
-      if (error) {
-        console.error('আপডেট এরর:', error);
-        throw error;
+      if (updateError) {
+        console.error('❌ Update error:', updateError);
+        
+        if (updateError.message.includes('Invalid login credentials')) {
+          setError('❌ সেশন মেয়াদ শেষ। দয়া করে নতুন রিসেট লিংক রিকোয়েস্ট করুন।');
+        } else if (updateError.message.toLowerCase().includes('weak')) {
+          setError('❌ পাসওয়ার্ড খুব সহজ। কমপক্ষে ৬ অক্ষরের শক্তিশালী পাসওয়ার্ড দিন।');
+        } else {
+          setError(updateError.message || '❌ পাসওয়ার্ড আপডেট করতে সমস্যা');
+        }
+        setLoading(false);
+        return;
       }
-      
+
+      // ✅ Success!
       setSuccess(true);
       console.log('✅ পাসওয়ার্ড সফলভাবে আপডেট হয়েছে');
-      
-      // ✅ আপনার URL দিয়ে রিডাইরেক্ট
+
+      // ✅ 3 seconds later, redirect to home
       setTimeout(() => {
         window.location.href = 'https://c-p-cadet-madrasa-beryl.vercel.app';
       }, 3000);
-      
+
     } catch (err) {
-      console.error('রিসেট পাসওয়ার্ড এরর:', err);
-      
-      if (err.message.includes('Invalid login credentials')) {
-        setError('❌ সেশন মেয়াদ শেষ। দয়া করে নতুন রিসেট লিংক রিকোয়েস্ট করুন।');
-      } else if (err.message.includes('weak password')) {
-        setError('❌ পাসওয়ার্ড খুব সহজ। কমপক্ষে ৬ অক্ষরের শক্তিশালী পাসওয়ার্ড দিন।');
-      } else {
-        setError(err.message || '❌ পাসওয়ার্ড আপডেট করতে সমস্যা');
-      }
+      console.error('❌ Reset password error:', err);
+      setError(err.message || '❌ পাসওয়ার্ড আপডেট করতে সমস্যা');
     } finally {
       setLoading(false);
     }
   };
 
+  // =============================================
+  // ৩. Loading State
+  // =============================================
+  if (isProcessing) {
+    return (
+      <div style={styles.container}>
+        <div style={styles.card}>
+          <div style={styles.loadingContainer}>
+            <div style={styles.spinner}></div>
+            <p style={styles.loadingText}>⏳ যাচাই করা হচ্ছে...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // =============================================
+  // ৪. Invalid Link
+  // =============================================
   if (!isValidLink) {
     return (
       <div style={styles.container}>
@@ -103,6 +213,9 @@ export default function ResetPassword() {
     );
   }
 
+  // =============================================
+  // ৫. Reset Password Form
+  // =============================================
   return (
     <div style={styles.container}>
       <div style={styles.card}>
@@ -186,8 +299,7 @@ const styles = {
     borderRadius: '28px',
     maxWidth: '450px',
     width: '100%',
-    boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
-    animation: 'fadeIn 0.5s ease'
+    boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)'
   },
   heading: {
     fontSize: '26px',
@@ -312,8 +424,7 @@ const styles = {
     color: '#64748b',
     textDecoration: 'none',
     fontSize: '14px',
-    fontWeight: '500',
-    transition: 'color 0.2s'
+    fontWeight: '500'
   },
   homeLink: {
     display: 'inline-block',
@@ -325,5 +436,24 @@ const styles = {
     borderRadius: '10px',
     border: '2px solid #16a34a',
     transition: 'all 0.2s ease'
+  },
+  loadingContainer: {
+    textAlign: 'center',
+    padding: '20px 0'
+  },
+  spinner: {
+    width: '48px',
+    height: '48px',
+    border: '4px solid #e2e8f0',
+    borderTop: '4px solid #16a34a',
+    borderRadius: '50%',
+    animation: 'spin 1s linear infinite',
+    margin: '0 auto 12px auto'
+  },
+  loadingText: {
+    color: '#64748b',
+    fontSize: '16px',
+    fontWeight: '500',
+    margin: 0
   }
 };
