@@ -12,7 +12,6 @@ export default function SignInModal({ isOpen, onClose }) {
   const [loginError, setLoginError] = useState('');
   const [loginLoading, setLoginLoading] = useState(false);
   
-  // ফরগেট পাসওয়ার্ড স্টেট
   const [forgotEmail, setForgotEmail] = useState('');
   const [forgotError, setForgotError] = useState('');
   const [forgotSuccess, setForgotSuccess] = useState(false);
@@ -44,7 +43,7 @@ export default function SignInModal({ isOpen, onClose }) {
     }
   };
 
-  // ✅ ফরগেট পাসওয়ার্ড হ্যান্ডলার (আপডেটেড)
+  // ✅ ফরগেট পাসওয়ার্ড হ্যান্ডলার (আপনার URL সহ)
   const handleOpenForgotPassword = () => {
     setStep('forgot-password');
     setForgotError('');
@@ -59,8 +58,8 @@ export default function SignInModal({ isOpen, onClose }) {
     setForgotLoading(true);
 
     try {
-      // ✅ সঠিক Redirect URL তৈরি করুন
-      const redirectUrl = window.location.origin + '/reset-password';
+      // ✅ আপনার URL দিয়ে রিডাইরেক্ট সেট করুন
+      const redirectUrl = 'https://c-p-cadet-madrasa-beryl.vercel.app/reset-password';
       
       console.log('📧 রিসেট ইমেইল পাঠানো হচ্ছে:', forgotEmail.trim());
       console.log('🔗 রিডাইরেক্ট URL:', redirectUrl);
@@ -179,7 +178,6 @@ export default function SignInModal({ isOpen, onClose }) {
                 />
               </div>
 
-              {/* ✅ ফরগেট পাসওয়ার্ড লিংক - ঠিক করা হয়েছে */}
               <div style={styles.forgotLinkContainer}>
                 <span style={styles.forgotLink} onClick={handleOpenForgotPassword}>
                   পাসওয়ার্ড ভুলে গেছেন?
@@ -206,7 +204,7 @@ export default function SignInModal({ isOpen, onClose }) {
   }
 
   // =============================================
-  // স্টেপ ৩: ফরগেট পাসওয়ার্ড - আপডেটেড
+  // স্টেপ ৩: ফরগেট পাসওয়ার্ড
   // =============================================
   if (step === 'forgot-password') {
     return (
@@ -299,7 +297,7 @@ export default function SignInModal({ isOpen, onClose }) {
 }
 
 // =============================================
-// প্রিমিয়াম ডিজাইন স্টাইল
+// স্টাইলসমূহ (আপনার existing design অনুযায়ী)
 // =============================================
 const styles = {
   overlay: {
@@ -325,7 +323,6 @@ const styles = {
     borderRadius: '8px', fontSize: '13px', cursor: 'pointer',
     fontWeight: '600', color: '#64748b'
   },
-  // Role Selection Styles
   roleContainer: { textAlign: 'center', padding: '20px 0' },
   heading: { fontSize: '26px', fontWeight: '800', color: '#0f172a', margin: '0 0 4px 0' },
   subHeading: { fontSize: '14px', color: '#64748b', margin: '0 0 24px 0' },
@@ -337,8 +334,6 @@ const styles = {
   roleIcon: { fontSize: '40px', display: 'block', marginBottom: '8px' },
   roleTitle: { fontSize: '16px', fontWeight: '700', color: '#0f172a', margin: '0 0 4px 0' },
   roleDesc: { fontSize: '12px', color: '#64748b', margin: 0 },
-  
-  // Login Styles
   loginContainer: { padding: '10px 0' },
   loginIcon: { fontSize: '48px', display: 'block', textAlign: 'center', marginBottom: '8px' },
   loginHeading: { fontSize: '24px', fontWeight: '800', color: '#0f172a', textAlign: 'center', margin: '0 0 4px 0' },
