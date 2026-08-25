@@ -49,6 +49,7 @@ export default function SignInModal({ isOpen, onClose }) {
     setStep('forgot-password');
     setForgotError('');
     setForgotSuccess(false);
+    setForgotEmail('');
   };
 
   const handleForgotPassword = async (e) => {
@@ -58,8 +59,11 @@ export default function SignInModal({ isOpen, onClose }) {
     setForgotLoading(true);
 
     try {
-      // ✅ ডায়নামিক URL ব্যবহার করুন
+      // ✅ সঠিক Redirect URL তৈরি করুন
       const redirectUrl = window.location.origin + '/reset-password';
+      
+      console.log('📧 রিসেট ইমেইল পাঠানো হচ্ছে:', forgotEmail.trim());
+      console.log('🔗 রিডাইরেক্ট URL:', redirectUrl);
       
       const { error } = await supabase.auth.resetPasswordForEmail(
         forgotEmail.trim(),
@@ -68,11 +72,17 @@ export default function SignInModal({ isOpen, onClose }) {
         }
       );
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ রিসেট এরর:', error);
+        throw error;
+      }
       
       setForgotSuccess(true);
       setForgotEmail('');
+      console.log('✅ রিসেট ইমেইল সফলভাবে পাঠানো হয়েছে');
+      
     } catch (err) {
+      console.error('❌ ফরগেট পাসওয়ার্ড এরর:', err);
       setForgotError(err.message || 'পাসওয়ার্ড রিসেট ইমেইল পাঠাতে সমস্যা');
     } finally {
       setForgotLoading(false);
@@ -169,7 +179,7 @@ export default function SignInModal({ isOpen, onClose }) {
                 />
               </div>
 
-              {/* ✅ ফরগেট পাসওয়ার্ড লিংক */}
+              {/* ✅ ফরগেট পাসওয়ার্ড লিংক - ঠিক করা হয়েছে */}
               <div style={styles.forgotLinkContainer}>
                 <span style={styles.forgotLink} onClick={handleOpenForgotPassword}>
                   পাসওয়ার্ড ভুলে গেছেন?
@@ -196,7 +206,7 @@ export default function SignInModal({ isOpen, onClose }) {
   }
 
   // =============================================
-  // স্টেপ ৩: ফরগেট পাসওয়ার্ড
+  // স্টেপ ৩: ফরগেট পাসওয়ার্ড - আপডেটেড
   // =============================================
   if (step === 'forgot-password') {
     return (
@@ -216,6 +226,10 @@ export default function SignInModal({ isOpen, onClose }) {
             {forgotSuccess && (
               <div style={styles.successBox}>
                 ✅ পাসওয়ার্ড রিসেট ইমেইল পাঠানো হয়েছে! আপনার ইমেইল চেক করুন।
+                <br />
+                <small style={{ display: 'block', marginTop: '4px', fontSize: '12px' }}>
+                  ⏳ লিংকে ক্লিক করে নতুন পাসওয়ার্ড সেট করুন
+                </small>
               </div>
             )}
 
