@@ -1,6 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
-import { useNavigate } from 'react-router-dom';
 
 export default function ResetPassword() {
   const [password, setPassword] = useState('');
@@ -8,57 +7,127 @@ export default function ResetPassword() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
-  const navigate = useNavigate();
+  const [isValidLink, setIsValidLink] = useState(true);
+
+  // ✅ চেক করুন আমাদের কাছে বৈধ রিসেট সেশন আছে কিনা
+  useEffect(() => {
+    const checkSession = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        // যদি সেশন না থাকে, লিংকটি ইনভ্যালিড বা মেয়াদ শেষ
+        if (!session) {
+          setIsValidLink(false);
+          setError('❌ এই রিসেট লিংকটি মেয়াদ শেষ বা সঠিক নয়। দয়া করে নতুন রিকোয়েস্ট করুন।');
+        } else {
+          console.log('✅ বৈধ রিসেট সেশন পাওয়া গেছে');
+        }
+      } catch (err) {
+        console.error('সেশন চেক এরর:', err);
+        setIsValidLink(false);
+        setError('❌ লিংক যাচাই করতে সমস্যা। দয়া করে আবার চেষ্টা করুন।');
+      }
+    };
+    
+    checkSession();
+  }, []);
 
   const handleResetPassword = async (e) => {
     e.preventDefault();
     setError('');
     setLoading(true);
 
+    // ✅ ভ্যালিডেশন চেক
     if (password.length < 6) {
-      setError('পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে');
+      setError('❌ পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে');
       setLoading(false);
       return;
     }
 
     if (password !== confirmPassword) {
-      setError('পাসওয়ার্ড এবং কনফার্ম পাসওয়ার্ড মিলছে না');
+      setError('❌ পাসওয়ার্ড এবং কনফার্ম পাসওয়ার্ড মিলছে না');
       setLoading(false);
       return;
     }
 
     try {
+      // ✅ Supabase ব্যবহার করে পাসওয়ার্ড আপডেট করুন
       const { error } = await supabase.auth.updateUser({
         password: password
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('আপডেট এরর:', error);
+        throw error;
+      }
       
       setSuccess(true);
+      console.log('✅ পাসওয়ার্ড সফলভাবে আপডেট হয়েছে');
       
-      // ৩ সেকেন্ড পর হোম পেজে রিডাইরেক্ট
+      // ✅ ৩ সেকেন্ড পর হোম পেজে রিডাইরেক্ট
       setTimeout(() => {
-        navigate('/');
+        window.location.href = '/';
       }, 3000);
       
     } catch (err) {
-      setError(err.message || 'পাসওয়ার্ড আপডেট করতে সমস্যা');
+      console.error('রিসেট পাসওয়ার্ড এরর:', err);
+      
+      // ✅ নির্দিষ্ট এরর মেসেজ হ্যান্ডেল করুন
+      if (err.message.includes('Invalid login credentials')) {
+        setError('❌ সেশন মেয়াদ শেষ। দয়া করে নতুন রিসেট লিংক রিকোয়েস্ট করুন।');
+      } else if (err.message.includes('weak password')) {
+        setError('❌ পাসওয়ার্ড খুব সহজ। কমপক্ষে ৬ অক্ষরের শক্তিশালী পাসওয়ার্ড দিন।');
+      } else {
+        setError(err.message || '❌ পাসওয়ার্ড আপডেট করতে সমস্যা');
+      }
     } finally {
       setLoading(false);
     }
   };
 
+  // ✅ লিংক ইনভ্যালিড হলে এরর দেখান
+  if (!isValidLink) {
+    return (
+      <div style={styles.container}>
+        <div style={styles.card}>
+          <div style={styles.errorIcon}>🚫</div>
+          <h2 style={styles.heading}>লিংক মেয়াদ শেষ!</h2>
+          <div style={styles.errorBoxLarge}>
+            <p style={styles.errorMessage}>
+              এই পাসওয়ার্ড রিসেট লিংকটি মেয়াদ শেষ বা সঠিক নয়।
+            </p>
+            <p style={styles.errorSubMessage}>
+              দয়া করে লগইন পেজে গিয়ে আবার "পাসওয়ার্ড ভুলে গেছেন?" অপশন ব্যবহার করে 
+              নতুন রিসেট লিংক রিকোয়েস্ট করুন।
+            </p>
+          </div>
+          <a href="/" style={styles.homeLink}>
+            ⬅ হোম পেজে ফিরে যান
+          </a>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={styles.container}>
       <div style={styles.card}>
         <h2 style={styles.heading}>🔑 নতুন পাসওয়ার্ড সেট করুন</h2>
+        <p style={styles.subHeading}>
+          আপনার অ্যাকাউন্টের জন্য নতুন পাসওয়ার্ড দিন
+        </p>
         
         {error && <div style={styles.errorBox}>{error}</div>}
+        
         {success && (
           <div style={styles.successBox}>
-            ✅ পাসওয়ার্ড সফলভাবে পরিবর্তন করা হয়েছে! 
-            <br />
-            <span style={styles.successSub}>হোম পেজে রিডাইরেক্ট করা হচ্ছে...</span>
+            <div style={styles.successIcon}>✅</div>
+            <div>
+              <p style={styles.successTitle}>পাসওয়ার্ড সফলভাবে পরিবর্তন করা হয়েছে!</p>
+              <p style={styles.successSub}>
+                ⏳ ৩ সেকেন্ডের মধ্যে হোম পেজে রিডাইরেক্ট করা হচ্ছে...
+              </p>
+            </div>
           </div>
         )}
 
@@ -72,8 +141,12 @@ export default function ResetPassword() {
                 placeholder="কমপক্ষে ৬ অক্ষর" 
                 value={password} 
                 onChange={(e) => setPassword(e.target.value)}
-                style={styles.input} 
+                style={styles.input}
+                autoFocus
               />
+              <small style={styles.hint}>
+                ⚠️ পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে
+              </small>
             </div>
 
             <div style={styles.field}>
@@ -102,83 +175,162 @@ export default function ResetPassword() {
   );
 }
 
+// =============================================
+// প্রিমিয়াম ডিজাইন স্টাইল (Existing Design অনুযায়ী)
+// =============================================
 const styles = {
   container: {
     minHeight: '100vh',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    background: '#f8fafc',
+    background: 'linear-gradient(135deg, #064e3b 0%, #14532d 50%, #166534 100%)',
     padding: '20px'
   },
   card: {
     background: 'white',
-    padding: '40px',
-    borderRadius: '20px',
+    padding: '40px 32px',
+    borderRadius: '28px',
     maxWidth: '450px',
     width: '100%',
-    boxShadow: '0 10px 30px rgba(0,0,0,0.1)'
+    boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
+    animation: 'fadeIn 0.5s ease'
   },
   heading: {
-    fontSize: '24px',
+    fontSize: '26px',
     fontWeight: '800',
     color: '#0f172a',
     textAlign: 'center',
-    marginBottom: '20px'
+    margin: '0 0 8px 0'
   },
-  form: { display: 'flex', flexDirection: 'column', gap: '16px' },
-  field: { display: 'flex', flexDirection: 'column', gap: '4px' },
-  label: { fontSize: '14px', fontWeight: '600', color: '#334155' },
+  subHeading: {
+    fontSize: '14px',
+    color: '#64748b',
+    textAlign: 'center',
+    margin: '0 0 24px 0'
+  },
+  form: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '16px'
+  },
+  field: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '4px'
+  },
+  label: {
+    fontSize: '14px',
+    fontWeight: '600',
+    color: '#334155'
+  },
   input: {
-    padding: '12px 14px',
+    padding: '12px 16px',
     borderRadius: '12px',
     border: '1.5px solid #e2e8f0',
-    fontSize: '14px',
-    outline: 'none'
+    fontSize: '15px',
+    outline: 'none',
+    transition: 'border-color 0.2s',
+    backgroundColor: '#f8fafc'
+  },
+  hint: {
+    fontSize: '12px',
+    color: '#94a3b8',
+    marginTop: '2px'
   },
   btn: {
     background: 'linear-gradient(135deg, #16a34a, #15803d)',
     color: 'white',
     border: 'none',
     padding: '14px',
-    borderRadius: '12px',
+    borderRadius: '14px',
     fontWeight: '700',
     fontSize: '16px',
-    cursor: 'pointer'
+    cursor: 'pointer',
+    boxShadow: '0 6px 20px rgba(22, 163, 74, 0.3)',
+    transition: 'all 0.2s ease',
+    marginTop: '4px'
   },
   errorBox: {
     backgroundColor: '#fee2e2',
     color: '#991b1b',
-    padding: '10px 14px',
-    borderRadius: '10px',
-    fontSize: '13px',
-    marginBottom: '12px',
+    padding: '12px 16px',
+    borderRadius: '12px',
+    fontSize: '14px',
+    marginBottom: '16px',
     borderLeft: '4px solid #dc2626'
+  },
+  errorBoxLarge: {
+    backgroundColor: '#fee2e2',
+    color: '#991b1b',
+    padding: '20px 16px',
+    borderRadius: '12px',
+    marginBottom: '20px',
+    borderLeft: '4px solid #dc2626',
+    textAlign: 'center'
+  },
+  errorMessage: {
+    fontSize: '16px',
+    fontWeight: '600',
+    margin: '0 0 8px 0'
+  },
+  errorSubMessage: {
+    fontSize: '14px',
+    margin: 0,
+    color: '#7f1d1d'
+  },
+  errorIcon: {
+    fontSize: '56px',
+    textAlign: 'center',
+    display: 'block',
+    marginBottom: '12px'
   },
   successBox: {
     backgroundColor: '#dcfce7',
     color: '#166534',
-    padding: '14px 16px',
-    borderRadius: '10px',
-    fontSize: '14px',
-    marginBottom: '12px',
+    padding: '16px 20px',
+    borderRadius: '12px',
+    marginBottom: '16px',
     borderLeft: '4px solid #16a34a',
-    textAlign: 'center'
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px'
+  },
+  successIcon: {
+    fontSize: '32px'
+  },
+  successTitle: {
+    fontSize: '15px',
+    fontWeight: '700',
+    margin: '0 0 4px 0'
   },
   successSub: {
-    fontSize: '12px',
-    color: '#64748b',
-    display: 'block',
-    marginTop: '6px'
+    fontSize: '13px',
+    margin: 0,
+    color: '#15803d'
   },
   backContainer: {
     textAlign: 'center',
-    marginTop: '16px'
+    marginTop: '20px',
+    borderTop: '1px solid #f1f5f9',
+    paddingTop: '16px'
   },
   backLink: {
     color: '#64748b',
     textDecoration: 'none',
     fontSize: '14px',
-    fontWeight: '500'
+    fontWeight: '500',
+    transition: 'color 0.2s'
+  },
+  homeLink: {
+    display: 'inline-block',
+    color: '#16a34a',
+    textDecoration: 'none',
+    fontSize: '16px',
+    fontWeight: '600',
+    padding: '10px 24px',
+    borderRadius: '10px',
+    border: '2px solid #16a34a',
+    transition: 'all 0.2s ease'
   }
 };
