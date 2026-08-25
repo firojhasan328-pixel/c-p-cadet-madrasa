@@ -9,13 +9,11 @@ export default function ResetPassword() {
   const [loading, setLoading] = useState(false);
   const [isValidLink, setIsValidLink] = useState(true);
 
-  // ✅ চেক করুন আমাদের কাছে বৈধ রিসেট সেশন আছে কিনা
   useEffect(() => {
     const checkSession = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         
-        // যদি সেশন না থাকে, লিংকটি ইনভ্যালিড বা মেয়াদ শেষ
         if (!session) {
           setIsValidLink(false);
           setError('❌ এই রিসেট লিংকটি মেয়াদ শেষ বা সঠিক নয়। দয়া করে নতুন রিকোয়েস্ট করুন।');
@@ -37,7 +35,6 @@ export default function ResetPassword() {
     setError('');
     setLoading(true);
 
-    // ✅ ভ্যালিডেশন চেক
     if (password.length < 6) {
       setError('❌ পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে');
       setLoading(false);
@@ -51,7 +48,6 @@ export default function ResetPassword() {
     }
 
     try {
-      // ✅ Supabase ব্যবহার করে পাসওয়ার্ড আপডেট করুন
       const { error } = await supabase.auth.updateUser({
         password: password
       });
@@ -64,15 +60,14 @@ export default function ResetPassword() {
       setSuccess(true);
       console.log('✅ পাসওয়ার্ড সফলভাবে আপডেট হয়েছে');
       
-      // ✅ ৩ সেকেন্ড পর হোম পেজে রিডাইরেক্ট
+      // ✅ আপনার URL দিয়ে রিডাইরেক্ট
       setTimeout(() => {
-        window.location.href = '/';
+        window.location.href = 'https://c-p-cadet-madrasa-beryl.vercel.app';
       }, 3000);
       
     } catch (err) {
       console.error('রিসেট পাসওয়ার্ড এরর:', err);
       
-      // ✅ নির্দিষ্ট এরর মেসেজ হ্যান্ডেল করুন
       if (err.message.includes('Invalid login credentials')) {
         setError('❌ সেশন মেয়াদ শেষ। দয়া করে নতুন রিসেট লিংক রিকোয়েস্ট করুন।');
       } else if (err.message.includes('weak password')) {
@@ -85,7 +80,6 @@ export default function ResetPassword() {
     }
   };
 
-  // ✅ লিংক ইনভ্যালিড হলে এরর দেখান
   if (!isValidLink) {
     return (
       <div style={styles.container}>
@@ -101,7 +95,7 @@ export default function ResetPassword() {
               নতুন রিসেট লিংক রিকোয়েস্ট করুন।
             </p>
           </div>
-          <a href="/" style={styles.homeLink}>
+          <a href="https://c-p-cadet-madrasa-beryl.vercel.app" style={styles.homeLink}>
             ⬅ হোম পেজে ফিরে যান
           </a>
         </div>
@@ -168,16 +162,15 @@ export default function ResetPassword() {
         )}
         
         <div style={styles.backContainer}>
-          <a href="/" style={styles.backLink}>⬅ হোম পেজে ফিরে যান</a>
+          <a href="https://c-p-cadet-madrasa-beryl.vercel.app" style={styles.backLink}>
+            ⬅ হোম পেজে ফিরে যান
+          </a>
         </div>
       </div>
     </div>
   );
 }
 
-// =============================================
-// প্রিমিয়াম ডিজাইন স্টাইল (Existing Design অনুযায়ী)
-// =============================================
 const styles = {
   container: {
     minHeight: '100vh',
