@@ -24,7 +24,6 @@ export default function SignInModal({ isOpen, onClose }) {
   const [otpVerified, setOtpVerified] = useState(false);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [cooldown, setCooldown] = useState(0);
 
   if (!isOpen) return null;
 
@@ -65,16 +64,7 @@ export default function SignInModal({ isOpen, onClose }) {
     setOtpVerified(false);
     setNewPassword('');
     setConfirmPassword('');
-    setCooldown(0);
   };
-
-  // Cooldown Timer
-  React.useEffect(() => {
-    if (cooldown > 0) {
-      const timer = setTimeout(() => setCooldown(cooldown - 1), 1000);
-      return () => clearTimeout(timer);
-    }
-  }, [cooldown]);
 
   // ধাপ ১: OTP ইমেইল পাঠান
   const handleSendOTP = async (e) => {
@@ -101,7 +91,6 @@ export default function SignInModal({ isOpen, onClose }) {
 
       setForgotSuccess(true);
       setForgotStep(2);
-      setCooldown(60);
       console.log('✅ OTP ইমেইল পাঠানো হয়েছে:', forgotEmail);
 
     } catch (err) {
@@ -137,8 +126,6 @@ export default function SignInModal({ isOpen, onClose }) {
         
         if (error.message.includes('expired')) {
           setForgotError('❌ OTP-এর মেয়াদ শেষ। নতুন OTP রিকোয়েস্ট করুন।');
-        } else if (error.message.includes('Invalid token')) {
-          setForgotError('❌ ভুল OTP কোড। আবার চেষ্টা করুন।');
         } else {
           setForgotError(error.message || '❌ OTP ভেরিফাই করতে সমস্যা');
         }
@@ -212,7 +199,6 @@ export default function SignInModal({ isOpen, onClose }) {
 
   // OTP রিসেন্ড
   const handleResendOTP = async () => {
-    if (cooldown > 0) return;
     setForgotError('');
     setForgotLoading(true);
 
@@ -224,7 +210,6 @@ export default function SignInModal({ isOpen, onClose }) {
       if (error) throw error;
 
       setForgotSuccess(true);
-      setCooldown(60);
       console.log('✅ নতুন OTP পাঠানো হয়েছে');
 
     } catch (err) {
@@ -442,9 +427,9 @@ export default function SignInModal({ isOpen, onClose }) {
                   type="button"
                   onClick={handleResendOTP}
                   style={styles.resendBtn}
-                  disabled={forgotLoading || cooldown > 0}
+                  disabled={forgotLoading}
                 >
-                  🔄 নতুন OTP পাঠান {cooldown > 0 && `(${cooldown}s)`}
+                  🔄 নতুন OTP পাঠান
                 </button>
               </form>
             </div>
