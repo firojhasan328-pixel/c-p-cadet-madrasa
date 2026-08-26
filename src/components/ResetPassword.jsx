@@ -2,117 +2,127 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 
 export default function ResetPassword() {
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  // =============================================
+  // State
+  // =============================================
+  const [email, setEmail] = useState('');
+  const [otp, setOtp] = useState('');
+  const [step, setStep] = useState(1); // 1=email, 2=otp, 3=reset
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [isValidLink, setIsValidLink] = useState(true);
-  const [isProcessing, setIsProcessing] = useState(true);
+  const [cooldown, setCooldown] = useState(0);
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
 
   // =============================================
-  // ১. Recovery Session Handle
+  // Resend Cooldown Timer
   // =============================================
   useEffect(() => {
-    const handleRecoverySession = async () => {
-      setIsProcessing(true);
-      
-      try {
-        // ✅ URL hash থেকে access_token বের করুন
-        const hashParams = new URLSearchParams(window.location.hash.substring(1));
-        const accessToken = hashParams.get('access_token');
-        const refreshToken = hashParams.get('refresh_token');
-        const type = hashParams.get('type');
-
-        console.log('🔍 URL Hash:', window.location.hash);
-        console.log('🔍 Access Token:', accessToken ? '✅ পাওয়া গেছে' : '❌ নেই');
-
-        // ✅ যদি access_token থাকে, PKCE flow complete করুন
-        if (accessToken && type === 'recovery') {
-          console.log('🔄 Recovery token detected, exchanging for session...');
-          
-          const { data, error } = await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken || '',
-          });
-
-          if (error) {
-            console.error('❌ Session set error:', error);
-            throw error;
-          }
-
-          console.log('✅ Session set successfully');
-          setIsValidLink(true);
-          setIsProcessing(false);
-          return;
-        }
-
-        // ✅ যদি access_token না থাকে, current session চেক করুন
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        if (!session) {
-          console.log('❌ No recovery session found');
-          setIsValidLink(false);
-          setError('❌ এই রিসেট লিংকটি মেয়াদ শেষ বা সঠিক নয়। দয়া করে নতুন রিকোয়েস্ট করুন।');
-          setIsProcessing(false);
-          return;
-        }
-
-        // ✅ Recovery session আছে কিনা চেক করুন
-        if (session) {
-          console.log('✅ Valid session found');
-          setIsValidLink(true);
-        } else {
-          setIsValidLink(false);
-          setError('❌ এই রিসেট লিংকটি মেয়াদ শেষ বা সঠিক নয়।');
-        }
-        
-      } catch (err) {
-        console.error('❌ Session check error:', err);
-        setIsValidLink(false);
-        setError('❌ লিংক যাচাই করতে সমস্যা। দয়া করে আবার চেষ্টা করুন।');
-      }
-      
-      setIsProcessing(false);
-    };
-
-    handleRecoverySession();
-
-    // ✅ Auth state change listener
-    const { data: authListener } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log('🔔 Auth event:', event);
-        
-        if (event === 'PASSWORD_RECOVERY') {
-          console.log('✅ PASSWORD_RECOVERY event received!');
-          setIsValidLink(true);
-          setError('');
-          setIsProcessing(false);
-        }
-        
-        if (event === 'SIGNED_IN' && session) {
-          console.log('✅ User signed in via recovery link');
-          setIsValidLink(true);
-          setIsProcessing(false);
-        }
-      }
-    );
-
-    // ✅ Cleanup: unsubscribe on unmount
-    return () => {
-      authListener?.subscription?.unsubscribe();
-    };
-  }, []);
+    if (cooldown > 0) {
+      const timer = setTimeout(() => setCooldown(cooldown - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [cooldown]);
 
   // =============================================
-  // ২. Password Update Handler
+  // ধাপ ১: OTP ইমেইল পাঠান
+  // =============================================
+  const handleSendOTP = async (e) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+
+    if (!email || !email.includes('@')) {
+      setError('❌ সঠিক ইমেইল দিন');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      // ✅ Supabase-এ OTP রিকোয়েস্ট পাঠান
+      const { error } = await supabase.auth.resetPasswordForEmail(
+        email.trim(),
+        {
+          // ⚠️ OTP সিস্টেমে redirectTo প্রয়োজন নেই!
+          // কারণ আমরা কোড ব্যবহার করছি, লিংক নয়
+        }
+      );
+
+      if (error) {
+        console.error('❌ OTP Send Error:', error);
+        throw error;
+      }
+
+      setOtpSent(true);
+      setStep(2);
+      setCooldown(60);
+      console.log('✅ OTP ইমেইল পাঠানো হয়েছে:', email);
+
+    } catch (err) {
+      console.error('❌ Error:', err);
+      setError(err.message || '❌ OTP পাঠাতে সমস্যা');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // =============================================
+  // ধাপ ২: OTP Verify + Password Reset
+  // =============================================
+  const handleVerifyOTP = async (e) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+
+    if (!otp || otp.length !== 6) {
+      setError('❌ ৬ ডিজিটের OTP দিন');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      // ✅ OTP Verify করুন
+      const { data, error } = await supabase.auth.verifyOtp({
+        email: email.trim(),
+        token: otp,
+        type: 'recovery',
+      });
+
+      if (error) {
+        console.error('❌ OTP Verify Error:', error);
+        
+        if (error.message.includes('expired')) {
+          setError('❌ OTP-এর মেয়াদ শেষ। নতুন OTP রিকোয়েস্ট করুন।');
+        } else if (error.message.includes('Invalid token')) {
+          setError('❌ ভুল OTP কোড। আবার চেষ্টা করুন।');
+        } else {
+          setError(error.message || '❌ OTP ভেরিফাই করতে সমস্যা');
+        }
+        setLoading(false);
+        return;
+      }
+
+      console.log('✅ OTP Verified Successfully!');
+      setStep(3);
+
+    } catch (err) {
+      console.error('❌ Verify Error:', err);
+      setError(err.message || '❌ OTP ভেরিফাই করতে সমস্যা');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // =============================================
+  // ধাপ ৩: নতুন পাসওয়ার্ড সেট করুন
   // =============================================
   const handleResetPassword = async (e) => {
     e.preventDefault();
     setError('');
     setLoading(true);
 
-    // Validation
     if (password.length < 6) {
       setError('❌ পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে');
       setLoading(false);
@@ -126,45 +136,26 @@ export default function ResetPassword() {
     }
 
     try {
-      // ✅ Valid session check
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) {
-        setError('❌ সেশন মেয়াদ শেষ। দয়া করে নতুন রিসেট লিংক রিকোয়েস্ট করুন।');
-        setLoading(false);
-        return;
-      }
-
-      // ✅ Password update
-      const { error: updateError } = await supabase.auth.updateUser({
+      // ✅ OTP Verify হওয়ার পরে password update করুন
+      const { error } = await supabase.auth.updateUser({
         password: password
       });
 
-      if (updateError) {
-        console.error('❌ Update error:', updateError);
-        
-        if (updateError.message.includes('Invalid login credentials')) {
-          setError('❌ সেশন মেয়াদ শেষ। দয়া করে নতুন রিসেট লিংক রিকোয়েস্ট করুন।');
-        } else if (updateError.message.toLowerCase().includes('weak')) {
-          setError('❌ পাসওয়ার্ড খুব সহজ। কমপক্ষে ৬ অক্ষরের শক্তিশালী পাসওয়ার্ড দিন।');
-        } else {
-          setError(updateError.message || '❌ পাসওয়ার্ড আপডেট করতে সমস্যা');
-        }
-        setLoading(false);
-        return;
+      if (error) {
+        console.error('❌ Password Update Error:', error);
+        throw error;
       }
 
-      // ✅ Success!
       setSuccess(true);
       console.log('✅ পাসওয়ার্ড সফলভাবে আপডেট হয়েছে');
 
-      // ✅ 3 seconds later, redirect to home
+      // ✅ ৩ সেকেন্ড পর লগইন পেজে রিডাইরেক্ট
       setTimeout(() => {
-        window.location.href = 'https://c-p-cadet-madrasa-beryl.vercel.app';
+        window.location.href = '/';
       }, 3000);
 
     } catch (err) {
-      console.error('❌ Reset password error:', err);
+      console.error('❌ Reset Error:', err);
       setError(err.message || '❌ পাসওয়ার্ড আপডেট করতে সমস্যা');
     } finally {
       setLoading(false);
@@ -172,118 +163,208 @@ export default function ResetPassword() {
   };
 
   // =============================================
-  // ৩. Loading State
+  // Resend OTP
   // =============================================
-  if (isProcessing) {
+  const handleResendOTP = async () => {
+    if (cooldown > 0) return;
+    setError('');
+    setLoading(true);
+
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(
+        email.trim()
+      );
+
+      if (error) throw error;
+
+      setCooldown(60);
+      setOtpSent(true);
+      console.log('✅ নতুন OTP পাঠানো হয়েছে');
+
+    } catch (err) {
+      setError(err.message || '❌ OTP পাঠাতে সমস্যা');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // =============================================
+  // UI Rendering
+  // =============================================
+
+  // স্টেপ ১: ইমেইল ফর্ম
+  if (step === 1) {
     return (
       <div style={styles.container}>
         <div style={styles.card}>
-          <div style={styles.loadingContainer}>
-            <div style={styles.spinner}></div>
-            <p style={styles.loadingText}>⏳ যাচাই করা হচ্ছে...</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
+          <div style={styles.icon}>🔑</div>
+          <h2 style={styles.heading}>পাসওয়ার্ড রিসেট</h2>
+          <p style={styles.subHeading}>
+            আপনার ইমেইলে ৬ ডিজিটের একটি কোড পাঠানো হবে
+          </p>
 
-  // =============================================
-  // ৪. Invalid Link
-  // =============================================
-  if (!isValidLink) {
-    return (
-      <div style={styles.container}>
-        <div style={styles.card}>
-          <div style={styles.errorIcon}>🚫</div>
-          <h2 style={styles.heading}>লিংক মেয়াদ শেষ!</h2>
-          <div style={styles.errorBoxLarge}>
-            <p style={styles.errorMessage}>
-              এই পাসওয়ার্ড রিসেট লিংকটি মেয়াদ শেষ বা সঠিক নয়।
-            </p>
-            <p style={styles.errorSubMessage}>
-              দয়া করে লগইন পেজে গিয়ে আবার "পাসওয়ার্ড ভুলে গেছেন?" অপশন ব্যবহার করে 
-              নতুন রিসেট লিংক রিকোয়েস্ট করুন।
-            </p>
-          </div>
-          <a href="https://c-p-cadet-madrasa-beryl.vercel.app" style={styles.homeLink}>
-            ⬅ হোম পেজে ফিরে যান
-          </a>
-        </div>
-      </div>
-    );
-  }
+          {error && <div style={styles.errorBox}>{error}</div>}
 
-  // =============================================
-  // ৫. Reset Password Form
-  // =============================================
-  return (
-    <div style={styles.container}>
-      <div style={styles.card}>
-        <h2 style={styles.heading}>🔑 নতুন পাসওয়ার্ড সেট করুন</h2>
-        <p style={styles.subHeading}>
-          আপনার অ্যাকাউন্টের জন্য নতুন পাসওয়ার্ড দিন
-        </p>
-        
-        {error && <div style={styles.errorBox}>{error}</div>}
-        
-        {success && (
-          <div style={styles.successBox}>
-            <div style={styles.successIcon}>✅</div>
-            <div>
-              <p style={styles.successTitle}>পাসওয়ার্ড সফলভাবে পরিবর্তন করা হয়েছে!</p>
-              <p style={styles.successSub}>
-                ⏳ ৩ সেকেন্ডের মধ্যে হোম পেজে রিডাইরেক্ট করা হচ্ছে...
-              </p>
-            </div>
-          </div>
-        )}
-
-        {!success && (
-          <form onSubmit={handleResetPassword} style={styles.form}>
+          <form onSubmit={handleSendOTP} style={styles.form}>
             <div style={styles.field}>
-              <label style={styles.label}>🔑 নতুন পাসওয়ার্ড</label>
-              <input 
-                type="password" 
-                required 
-                placeholder="কমপক্ষে ৬ অক্ষর" 
-                value={password} 
-                onChange={(e) => setPassword(e.target.value)}
+              <label style={styles.label}>📧 ইমেইল</label>
+              <input
+                type="email"
+                required
+                placeholder="your@email.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 style={styles.input}
-                autoFocus
-              />
-              <small style={styles.hint}>
-                ⚠️ পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে
-              </small>
-            </div>
-
-            <div style={styles.field}>
-              <label style={styles.label}>🔑 কনফার্ম পাসওয়ার্ড</label>
-              <input 
-                type="password" 
-                required 
-                placeholder="আবার পাসওয়ার্ড দিন" 
-                value={confirmPassword} 
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                style={styles.input} 
+                disabled={loading}
               />
             </div>
 
             <button type="submit" disabled={loading} style={styles.btn}>
-              {loading ? '⏳ আপডেট হচ্ছে...' : '✅ পাসওয়ার্ড আপডেট করুন'}
+              {loading ? '⏳ পাঠাচ্ছি...' : '📧 OTP পাঠান'}
             </button>
+
+            <div style={styles.backContainer}>
+              <a href="/" style={styles.backLink}>⬅ লগইন পেজে ফিরে যান</a>
+            </div>
           </form>
-        )}
-        
-        <div style={styles.backContainer}>
-          <a href="https://c-p-cadet-madrasa-beryl.vercel.app" style={styles.backLink}>
-            ⬅ হোম পেজে ফিরে যান
-          </a>
         </div>
       </div>
-    </div>
-  );
+    );
+  }
+
+  // স্টেপ ২: OTP ভেরিফিকেশন
+  if (step === 2) {
+    return (
+      <div style={styles.container}>
+        <div style={styles.card}>
+          <div style={styles.icon}>📱</div>
+          <h2 style={styles.heading}>OTP ভেরিফাই করুন</h2>
+          <p style={styles.subHeading}>
+            আপনার ইমেইলে পাঠানো ৬ ডিজিটের কোড দিন
+          </p>
+
+          {error && <div style={styles.errorBox}>{error}</div>}
+
+          <form onSubmit={handleVerifyOTP} style={styles.form}>
+            <div style={styles.field}>
+              <label style={styles.label}>🔢 OTP কোড</label>
+              <input
+                type="text"
+                maxLength="6"
+                required
+                placeholder="১ ২ ৩ ৪ ৫ ৬"
+                value={otp}
+                onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
+                style={{ ...styles.input, textAlign: 'center', fontSize: '24px', letterSpacing: '8px' }}
+                disabled={loading}
+              />
+              <small style={styles.hint}>
+                ⏳ ১০ মিনিটের মধ্যে কোডটি ব্যবহার করুন
+              </small>
+            </div>
+
+            <button type="submit" disabled={loading} style={styles.btn}>
+              {loading ? '⏳ ভেরিফাই করছি...' : '✅ OTP ভেরিফাই করুন'}
+            </button>
+
+            <div style={styles.resendContainer}>
+              <button
+                type="button"
+                onClick={handleResendOTP}
+                disabled={loading || cooldown > 0}
+                style={styles.resendBtn}
+              >
+                🔄 নতুন OTP পাঠান {cooldown > 0 && `(${cooldown}s)`}
+              </button>
+            </div>
+
+            <div style={styles.backContainer}>
+              <a href="/" style={styles.backLink}>⬅ লগইন পেজে ফিরে যান</a>
+            </div>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
+  // স্টেপ ৩: নতুন পাসওয়ার্ড সেট করুন
+  if (step === 3) {
+    return (
+      <div style={styles.container}>
+        <div style={styles.card}>
+          {success ? (
+            <>
+              <div style={styles.successIcon}>🎉</div>
+              <h2 style={styles.heading}>পাসওয়ার্ড পরিবর্তন সফল!</h2>
+              <p style={styles.successText}>
+                আপনার পাসওয়ার্ড সফলভাবে পরিবর্তন করা হয়েছে।
+                <br />
+                ⏳ ৩ সেকেন্ডের মধ্যে লগইন পেজে রিডাইরেক্ট করা হচ্ছে...
+              </p>
+              <a href="/" style={styles.homeLink}>
+                ⬅ লগইন পেজে যান
+              </a>
+            </>
+          ) : (
+            <>
+              <div style={styles.icon}>🔐</div>
+              <h2 style={styles.heading}>নতুন পাসওয়ার্ড সেট করুন</h2>
+              <p style={styles.subHeading}>
+                আপনার অ্যাকাউন্টের জন্য নতুন পাসওয়ার্ড দিন
+              </p>
+
+              {error && <div style={styles.errorBox}>{error}</div>}
+
+              <form onSubmit={handleResetPassword} style={styles.form}>
+                <div style={styles.field}>
+                  <label style={styles.label}>🔑 নতুন পাসওয়ার্ড</label>
+                  <input
+                    type="password"
+                    name="password"
+                    required
+                    placeholder="কমপক্ষে ৬ অক্ষর"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    style={styles.input}
+                    disabled={loading}
+                  />
+                </div>
+
+                <div style={styles.field}>
+                  <label style={styles.label}>🔑 কনফার্ম পাসওয়ার্ড</label>
+                  <input
+                    type="password"
+                    name="confirmPassword"
+                    required
+                    placeholder="আবার পাসওয়ার্ড দিন"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    style={styles.input}
+                    disabled={loading}
+                  />
+                </div>
+
+                <button type="submit" disabled={loading} style={styles.btn}>
+                  {loading ? '⏳ আপডেট হচ্ছে...' : '✅ পাসওয়ার্ড আপডেট করুন'}
+                </button>
+
+                <div style={styles.backContainer}>
+                  <a href="/" style={styles.backLink}>⬅ লগইন পেজে ফিরে যান</a>
+                </div>
+              </form>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  return null;
 }
 
+// =============================================
+// স্টাইলসমূহ
+// =============================================
 const styles = {
   container: {
     minHeight: '100vh',
@@ -301,12 +382,18 @@ const styles = {
     width: '100%',
     boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)'
   },
+  icon: {
+    fontSize: '48px',
+    textAlign: 'center',
+    display: 'block',
+    marginBottom: '8px'
+  },
   heading: {
-    fontSize: '26px',
+    fontSize: '24px',
     fontWeight: '800',
     color: '#0f172a',
     textAlign: 'center',
-    margin: '0 0 8px 0'
+    margin: '0 0 4px 0'
   },
   subHeading: {
     fontSize: '14px',
@@ -325,15 +412,15 @@ const styles = {
     gap: '4px'
   },
   label: {
-    fontSize: '14px',
+    fontSize: '13px',
     fontWeight: '600',
     color: '#334155'
   },
   input: {
-    padding: '12px 16px',
+    padding: '12px 14px',
     borderRadius: '12px',
     border: '1.5px solid #e2e8f0',
-    fontSize: '15px',
+    fontSize: '14px',
     outline: 'none',
     transition: 'border-color 0.2s',
     backgroundColor: '#f8fafc'
@@ -353,70 +440,32 @@ const styles = {
     fontSize: '16px',
     cursor: 'pointer',
     boxShadow: '0 6px 20px rgba(22, 163, 74, 0.3)',
-    transition: 'all 0.2s ease',
-    marginTop: '4px'
+    transition: 'all 0.2s ease'
   },
   errorBox: {
     backgroundColor: '#fee2e2',
     color: '#991b1b',
-    padding: '12px 16px',
-    borderRadius: '12px',
-    fontSize: '14px',
-    marginBottom: '16px',
-    borderLeft: '4px solid #dc2626'
-  },
-  errorBoxLarge: {
-    backgroundColor: '#fee2e2',
-    color: '#991b1b',
-    padding: '20px 16px',
-    borderRadius: '12px',
-    marginBottom: '20px',
+    padding: '10px 14px',
+    borderRadius: '10px',
+    fontSize: '13px',
     borderLeft: '4px solid #dc2626',
-    textAlign: 'center'
-  },
-  errorMessage: {
-    fontSize: '16px',
-    fontWeight: '600',
-    margin: '0 0 8px 0'
-  },
-  errorSubMessage: {
-    fontSize: '14px',
-    margin: 0,
-    color: '#7f1d1d'
-  },
-  errorIcon: {
-    fontSize: '56px',
-    textAlign: 'center',
-    display: 'block',
     marginBottom: '12px'
   },
-  successBox: {
-    backgroundColor: '#dcfce7',
-    color: '#166534',
-    padding: '16px 20px',
-    borderRadius: '12px',
-    marginBottom: '16px',
-    borderLeft: '4px solid #16a34a',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px'
+  resendContainer: {
+    textAlign: 'center'
   },
-  successIcon: {
-    fontSize: '32px'
-  },
-  successTitle: {
-    fontSize: '15px',
-    fontWeight: '700',
-    margin: '0 0 4px 0'
-  },
-  successSub: {
-    fontSize: '13px',
-    margin: 0,
-    color: '#15803d'
+  resendBtn: {
+    background: 'none',
+    border: 'none',
+    color: '#2563eb',
+    fontWeight: '600',
+    cursor: 'pointer',
+    fontSize: '14px',
+    textDecoration: 'underline',
+    padding: '8px 0'
   },
   backContainer: {
     textAlign: 'center',
-    marginTop: '20px',
     borderTop: '1px solid #f1f5f9',
     paddingTop: '16px'
   },
@@ -426,34 +475,28 @@ const styles = {
     fontSize: '14px',
     fontWeight: '500'
   },
+  successIcon: {
+    fontSize: '56px',
+    textAlign: 'center',
+    display: 'block',
+    marginBottom: '12px'
+  },
+  successText: {
+    fontSize: '14px',
+    color: '#64748b',
+    textAlign: 'center',
+    marginBottom: '20px',
+    lineHeight: '1.6'
+  },
   homeLink: {
-    display: 'inline-block',
+    display: 'block',
+    textAlign: 'center',
     color: '#16a34a',
     textDecoration: 'none',
     fontSize: '16px',
     fontWeight: '600',
     padding: '10px 24px',
     borderRadius: '10px',
-    border: '2px solid #16a34a',
-    transition: 'all 0.2s ease'
-  },
-  loadingContainer: {
-    textAlign: 'center',
-    padding: '20px 0'
-  },
-  spinner: {
-    width: '48px',
-    height: '48px',
-    border: '4px solid #e2e8f0',
-    borderTop: '4px solid #16a34a',
-    borderRadius: '50%',
-    animation: 'spin 1s linear infinite',
-    margin: '0 auto 12px auto'
-  },
-  loadingText: {
-    color: '#64748b',
-    fontSize: '16px',
-    fontWeight: '500',
-    margin: 0
+    border: '2px solid #16a34a'
   }
 };
