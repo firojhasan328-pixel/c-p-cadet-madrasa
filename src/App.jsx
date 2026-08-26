@@ -64,28 +64,44 @@ function MainApp() {
     setTeachersLoading(false);
   };
 
-  useEffect(() => {
-    // ✅ URL থেকে reset-password চেক করুন
-    const path = window.location.pathname;
-    if (path.includes('/reset-password') || path.includes('/rest-password')) {
-      setIsResetPassword(true);
+  // =============================================
+  // ⭐ NEW: CMS ডেটা ফেচ ফাংশন (যোগ করা হয়েছে)
+  // =============================================
+  const fetchCMSData = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('cms_values')
+        .select(`
+          value,
+          cms_fields (
+            field_key
+          )
+        `);
+
+      if (error) {
+        console.error('CMS ডেটা লোড করতে সমস্যা:', error);
+        return;
+      }
+
+      if (data) {
+        const formattedData = {};
+        data.forEach(item => {
+          if (item.cms_fields) {
+            formattedData[item.cms_fields.field_key] = item.value;
+          }
+        });
+        
+        console.log('✅ CMS ডেটা লোড হয়েছে:', formattedData);
+        setSiteData(prev => ({ ...prev, ...formattedData }));
+      }
+    } catch (err) {
+      console.error('CMS ডেটা লোড করতে সমস্যা:', err);
     }
+  };
 
-    fetchSiteContents();
-    fetchTeachers();
-
-    const channel = supabase
-      .channel('schema-db-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'site_contents' }, (payload) => {
-        fetchSiteContents();
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
-
+  // =============================================
+  // পুরানো site_contents ডেটা ফেচ (অপরিবর্তিত)
+  // =============================================
   const fetchSiteContents = async () => {
     try {
       const { data, error } = await supabase.from('site_contents').select('*');
@@ -100,6 +116,52 @@ function MainApp() {
       console.error('Error fetching site contents:', err);
     }
   };
+
+  // =============================================
+  // ⭐ UPDATED: useEffect (CMS যোগ করা হয়েছে)
+  // =============================================
+  useEffect(() => {
+    // ✅ URL থেকে reset-password চেক করুন
+    const path = window.location.pathname;
+    if (path.includes('/reset-password') || path.includes('/rest-password')) {
+      setIsResetPassword(true);
+    }
+
+    // ⭐ প্রথমে CMS ডেটা নিন (নতুন)
+    fetchCMSData();
+    
+    // তারপর পুরানো site_contents ডেটা নিন (ব্যাকওয়ার্ড কম্প্যাটিবিলিটি)
+    fetchSiteContents();
+    
+    // শিক্ষক ডেটা নিন
+    fetchTeachers();
+
+    // ⭐ Realtime subscription for CMS (নতুন)
+    const cmsChannel = supabase
+      .channel('cms-realtime')
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'cms_values' 
+      }, (payload) => {
+        console.log('🔄 CMS ডেটা পরিবর্তন হয়েছে:', payload);
+        fetchCMSData(); // রিয়েলটাইম আপডেট
+      })
+      .subscribe();
+
+    // পুরানো site_contents রিয়েলটাইম (অপরিবর্তিত)
+    const siteChannel = supabase
+      .channel('schema-db-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'site_contents' }, (payload) => {
+        fetchSiteContents();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(cmsChannel);
+      supabase.removeChannel(siteChannel);
+    };
+  }, []);
 
   const resetForm = () => {
     setFormStep(1);
