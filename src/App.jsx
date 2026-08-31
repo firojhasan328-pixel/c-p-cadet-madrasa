@@ -45,6 +45,36 @@ function MainApp() {
   const [teachers, setTeachers] = useState([]);
   const [teachersLoading, setTeachersLoading] = useState(true);
 
+  // =============================================
+  // ✅ নোটিশ স্টেট (NEW)
+  // =============================================
+  const [notices, setNotices] = useState([]);
+  const [noticesLoading, setNoticesLoading] = useState(true);
+
+  // =============================================
+  // ✅ নোটিশ ফেচ ফাংশন (শুধু is_featured = true)
+  // =============================================
+  const fetchNotices = async () => {
+    setNoticesLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('portal_notices')
+        .select('*')
+        .eq('is_featured', true)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setNotices(data || []);
+    } catch (err) {
+      console.error('নোটিশ লোড করতে সমস্যা:', err);
+    } finally {
+      setNoticesLoading(false);
+    }
+  };
+
+  // =============================================
+  // শিক্ষক ফেচ
+  // =============================================
   const fetchTeachers = async () => {
     setTeachersLoading(true);
     try {
@@ -65,7 +95,7 @@ function MainApp() {
   };
 
   // =============================================
-  // ⭐ NEW: CMS ডেটা ফেচ ফাংশন (যোগ করা হয়েছে)
+  // CMS ডেটা ফেচ
   // =============================================
   const fetchCMSData = async () => {
     try {
@@ -100,7 +130,7 @@ function MainApp() {
   };
 
   // =============================================
-  // পুরানো site_contents ডেটা ফেচ (অপরিবর্তিত)
+  // পুরানো site_contents ডেটা ফেচ
   // =============================================
   const fetchSiteContents = async () => {
     try {
@@ -118,7 +148,7 @@ function MainApp() {
   };
 
   // =============================================
-  // ⭐ UPDATED: useEffect (CMS যোগ করা হয়েছে)
+  // ⭐ useEffect (সব ডেটা + রিয়েল-টাইম)
   // =============================================
   useEffect(() => {
     // ✅ URL থেকে reset-password চেক করুন
@@ -127,39 +157,48 @@ function MainApp() {
       setIsResetPassword(true);
     }
 
-    // ⭐ প্রথমে CMS ডেটা নিন (নতুন)
+    // প্রাথমিক ডেটা লোড
     fetchCMSData();
-    
-    // তারপর পুরানো site_contents ডেটা নিন (ব্যাকওয়ার্ড কম্প্যাটিবিলিটি)
     fetchSiteContents();
-    
-    // শিক্ষক ডেটা নিন
     fetchTeachers();
+    fetchNotices(); // ✅ নোটিশ লোড
 
-    // ⭐ Realtime subscription for CMS (নতুন)
+    // ⭐ Realtime subscription for CMS
     const cmsChannel = supabase
       .channel('cms-realtime')
       .on('postgres_changes', { 
         event: '*', 
         schema: 'public', 
         table: 'cms_values' 
-      }, (payload) => {
-        console.log('🔄 CMS ডেটা পরিবর্তন হয়েছে:', payload);
-        fetchCMSData(); // রিয়েলটাইম আপডেট
+      }, () => {
+        fetchCMSData();
       })
       .subscribe();
 
-    // পুরানো site_contents রিয়েলটাইম (অপরিবর্তিত)
+    // পুরানো site_contents রিয়েলটাইম
     const siteChannel = supabase
       .channel('schema-db-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'site_contents' }, (payload) => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'site_contents' }, () => {
         fetchSiteContents();
+      })
+      .subscribe();
+
+    // ✅ নোটিশ রিয়েল-টাইম সাবস্ক্রিপশন (NEW)
+    const noticeChannel = supabase
+      .channel('notice-realtime')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'portal_notices',
+      }, () => {
+        fetchNotices(); // রিফ্রেশ ছাড়াই আপডেট
       })
       .subscribe();
 
     return () => {
       supabase.removeChannel(cmsChannel);
       supabase.removeChannel(siteChannel);
+      supabase.removeChannel(noticeChannel); // ✅ ক্লিনআপ
     };
   }, []);
 
@@ -299,6 +338,11 @@ function MainApp() {
       </div>
     );
   }
+
+  // =============================================
+  // ✅ ফিচার্ড নোটিশ নির্বাচন (প্রথমটি)
+  // =============================================
+  const featuredNotice = notices.length > 0 ? notices[0] : null;
 
   return (
     <div style={{ fontFamily: "'Hind Siliguri', 'Segoe UI', sans-serif", backgroundColor: '#f8fafc', color: '#0f172a', minHeight: '100vh', margin: 0, padding: 0, position: 'relative' }}>
@@ -490,18 +534,67 @@ function MainApp() {
             </section>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px', marginBottom: '32px' }}>
+              {/* =============================================
+                  📌 নোটিশ বোর্ড (আপডেটেড)
+                  ============================================= */}
               <div id="notice" className="card">
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', borderBottom: '2px solid #f1f5f9', paddingBottom: '10px' }}>
-                  <h3 style={{ margin: 0, fontSize: '18px', color: '#166534', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'space-between', 
+                  marginBottom: '16px', 
+                  borderBottom: '2px solid #f1f5f9', 
+                  paddingBottom: '10px' 
+                }}>
+                  <h3 style={{ 
+                    margin: 0, 
+                    fontSize: '18px', 
+                    color: '#166534', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '8px' 
+                  }}>
                     📌 নোটিশ বোর্ড
                   </h3>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  <div style={{ padding: '12px', borderRadius: '10px', background: '#f8fafc', borderLeft: '4px solid #16a34a' }}>
-                    <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 'bold' }}>আগামী ১ জানুয়ারি থেকে</span>
-                    <p style={{ margin: '4px 0 0 0', fontSize: '14px', fontWeight: '600' }}>২০২৬-২৭ শিক্ষাবর্ষের নতুন ভর্তি ফরম অনলাইন ও অফিসে পাওয়া যাচ্ছে।</p>
+
+                {noticesLoading ? (
+                  <p style={{ textAlign: 'center', color: '#94a3b8', padding: '12px 0' }}>⏳ লোড হচ্ছে...</p>
+                ) : featuredNotice ? (
+                  <div style={{ 
+                    padding: '12px', 
+                    borderRadius: '10px', 
+                    background: '#f8fafc', 
+                    borderLeft: '4px solid #16a34a' 
+                  }}>
+                    <span style={{ 
+                      fontSize: '11px', 
+                      color: '#64748b', 
+                      fontWeight: 'bold' 
+                    }}>
+                      📢 গুরুত্বপূর্ণ
+                    </span>
+                    <p style={{ 
+                      margin: '4px 0 0 0', 
+                      fontSize: '14px', 
+                      fontWeight: '600' 
+                    }}>
+                      {featuredNotice.message}
+                    </p>
                   </div>
-                </div>
+                ) : (
+                  <div style={{ 
+                    padding: '20px', 
+                    textAlign: 'center', 
+                    color: '#94a3b8', 
+                    fontSize: '14px',
+                    background: '#f8fafc',
+                    borderRadius: '10px',
+                    border: '1px dashed #cbd5e1'
+                  }}>
+                    ⚠️ বর্তমানে কোনো নোটিশ নেই
+                  </div>
+                )}
               </div>
 
               <div className="card">
@@ -616,10 +709,18 @@ function MainApp() {
           <div className="card">
             <h2 style={{ color: '#14532d', borderBottom: '2px solid #f1f5f9', paddingBottom: '10px', marginTop: 0 }}>📌 নোটিশ বোর্ড</h2>
             <div style={{ marginTop: '16px' }}>
-              <div style={{ padding: '16px', borderRadius: '12px', background: '#f8fafc', borderLeft: '4px solid #16a34a' }}>
-                <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 'bold' }}>আগামী ১ জানুয়ারি থেকে</span>
-                <p style={{ margin: '6px 0 0 0', fontSize: '15px', fontWeight: '600' }}>২০২৬-২৭ শিক্ষাবর্ষের নতুন ভর্তি ফরম অনলাইন ও অফিসে পাওয়া যাচ্ছে।</p>
-              </div>
+              {noticesLoading ? (
+                <p>⏳ লোড হচ্ছে...</p>
+              ) : featuredNotice ? (
+                <div style={{ padding: '16px', borderRadius: '12px', background: '#f8fafc', borderLeft: '4px solid #16a34a' }}>
+                  <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 'bold' }}>📢 গুরুত্বপূর্ণ</span>
+                  <p style={{ margin: '6px 0 0 0', fontSize: '15px', fontWeight: '600' }}>{featuredNotice.message}</p>
+                </div>
+              ) : (
+                <div style={{ padding: '20px', textAlign: 'center', color: '#94a3b8', fontSize: '14px' }}>
+                  ⚠️ বর্তমানে কোনো নোটিশ নেই
+                </div>
+              )}
             </div>
             <div style={{ marginTop: '20px', textAlign: 'center' }}>
               <button onClick={() => setCurrentView('home')} className="btn-primary" style={{ backgroundColor: '#64748b' }}>হোম পেজে ফিরে যান</button>
