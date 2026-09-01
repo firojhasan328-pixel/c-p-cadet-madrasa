@@ -39,20 +39,33 @@ function MainApp() {
     headmasterName: "Arif Ashab Khorshed",
     contactNumber: "+8801521-553003",
     totalMaleStudents: "০",
-    totalFemaleStudents: "০"
+    totalFemaleStudents: "০",
+    // ✅ হোমপেজ CMS ফিল্ড (ডিফল্ট)
+    homepage_header_title: "সুশিক্ষা ও সুন্নাত ভিত্তিক আদর্শ জীবন গড়ার বিশ্বস্ত প্রতিষ্ঠান",
+    homepage_header_subtitle: "আমরা দিচ্ছি আধুনিক ক্বওমী ও জেনারেল শিক্ষা ব্যবস্থার এক অনন্য সমন্বয়। অভিজ্ঞ শিক্ষক মণ্ডলীর তত্ত্বাবধানে আপনার সন্তানের দ্বীনি শিক্ষার পথ সুগম করুন।",
+    homepage_about_title: "প্রধান শিক্ষকের বাণী",
+    homepage_about_message: '"বিসমিল্লাহির রহমানির রহিম। চিলমারী প্রি ক্যাডেট মাদ্রাসায় আপনাকে জানাই আন্তরিক শুভেচ্ছা। আমাদের সুনির্দিষ্ট লক্ষ্য হলো কোমলমতি শিশুদের ধর্মীয় মূল্যবোধ, উত্তম চরিত্র এবং আধুনিক শিক্ষার মাধ্যমে এক আদর্শ সুনাগরিক হিসেবে গড়ে তোলা।"',
+    homepage_notice_title: "📌 নোটিশ বোর্ড",
+    homepage_notice_empty: "⚠️ বর্তমানে কোনো নোটিশ নেই",
+    homepage_features_title: "🌟 আমাদের বিশেষত্ব",
+    homepage_features_list: "অভিজ্ঞ ও দ্বীনদার শিক্ষক মণ্ডলী\nহিফজ ও বিশুদ্ধ ক্বিরাআত প্রশিক্ষণ\nকম্পিউটার ও তথ্যপ্রযুক্তি শিক্ষা\nনিরাপদ ও সিসিটিভি নিয়ন্ত্রিত ক্যাম্পাস\nসুপরিসর ক্লাসরুম ও মনোরম পরিবেশ",
+    homepage_admission_title: "অনলাইন ভর্তি আবেদন",
+    homepage_admission_subtitle: "আপনার সন্তানের ভর্তি নিশ্চিত করতে নিচের বাটনে ক্লিক করে ফরম পূরণ করুন",
+    homepage_admission_btn_text: "🎓 ভর্তি আবেদন করুন",
+    homepage_footer_text: "© 2026 চিলমারী প্রি ক্যাডেট মাদ্রাসা। সর্বস্বত্ব সংরক্ষিত।"
   });
 
   const [teachers, setTeachers] = useState([]);
   const [teachersLoading, setTeachersLoading] = useState(true);
 
   // =============================================
-  // ✅ নোটিশ স্টেট (NEW)
+  // ✅ নোটিশ স্টেট
   // =============================================
   const [notices, setNotices] = useState([]);
   const [noticesLoading, setNoticesLoading] = useState(true);
 
   // =============================================
-  // ✅ নোটিশ ফেচ ফাংশন (শুধু is_featured = true)
+  // ✅ নোটিশ ফেচ ফাংশন (is_featured = true)
   // =============================================
   const fetchNotices = async () => {
     setNoticesLoading(true);
@@ -73,7 +86,7 @@ function MainApp() {
   };
 
   // =============================================
-  // শিক্ষক ফেচ
+  // ✅ শিক্ষক ফেচ
   // =============================================
   const fetchTeachers = async () => {
     setTeachersLoading(true);
@@ -95,7 +108,7 @@ function MainApp() {
   };
 
   // =============================================
-  // CMS ডেটা ফেচ
+  // ✅ CMS ডেটা ফেচ (হোমপেজ + অন্যান্য)
   // =============================================
   const fetchCMSData = async () => {
     try {
@@ -130,7 +143,7 @@ function MainApp() {
   };
 
   // =============================================
-  // পুরানো site_contents ডেটা ফেচ
+  // ✅ পুরানো site_contents ডেটা ফেচ
   // =============================================
   const fetchSiteContents = async () => {
     try {
@@ -161,7 +174,7 @@ function MainApp() {
     fetchCMSData();
     fetchSiteContents();
     fetchTeachers();
-    fetchNotices(); // ✅ নোটিশ লোড
+    fetchNotices();
 
     // ⭐ Realtime subscription for CMS
     const cmsChannel = supabase
@@ -183,7 +196,7 @@ function MainApp() {
       })
       .subscribe();
 
-    // ✅ নোটিশ রিয়েল-টাইম সাবস্ক্রিপশন (NEW)
+    // ✅ নোটিশ রিয়েল-টাইম সাবস্ক্রিপশন
     const noticeChannel = supabase
       .channel('notice-realtime')
       .on('postgres_changes', {
@@ -191,14 +204,27 @@ function MainApp() {
         schema: 'public',
         table: 'portal_notices',
       }, () => {
-        fetchNotices(); // রিফ্রেশ ছাড়াই আপডেট
+        fetchNotices();
+      })
+      .subscribe();
+
+    // ✅ হোমপেজ CMS রিয়েল-টাইম (অতিরিক্ত নিরাপত্তা)
+    const homepageChannel = supabase
+      .channel('homepage-realtime')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'cms_values',
+      }, () => {
+        fetchCMSData();
       })
       .subscribe();
 
     return () => {
       supabase.removeChannel(cmsChannel);
       supabase.removeChannel(siteChannel);
-      supabase.removeChannel(noticeChannel); // ✅ ক্লিনআপ
+      supabase.removeChannel(noticeChannel);
+      supabase.removeChannel(homepageChannel);
     };
   }, []);
 
@@ -343,6 +369,13 @@ function MainApp() {
   // ✅ ফিচার্ড নোটিশ নির্বাচন (প্রথমটি)
   // =============================================
   const featuredNotice = notices.length > 0 ? notices[0] : null;
+
+  // =============================================
+  // ✅ বিশেষত্ব তালিকা পার্স করুন
+  // =============================================
+  const featuresList = (siteData.homepage_features_list || '')
+    .split('\n')
+    .filter(item => item.trim() !== '');
 
   return (
     <div style={{ fontFamily: "'Hind Siliguri', 'Segoe UI', sans-serif", backgroundColor: '#f8fafc', color: '#0f172a', minHeight: '100vh', margin: 0, padding: 0, position: 'relative' }}>
@@ -491,10 +524,10 @@ function MainApp() {
                 🎓 নতুন সেশনে ভর্তি চলছে
               </span>
               <h2 style={{ fontSize: '2.1rem', fontWeight: '800', margin: '16px 0', lineHeight: '1.3' }}>
-                সুশিক্ষা ও সুন্নাত ভিত্তিক আদর্শ জীবন গড়ার বিশ্বস্ত প্রতিষ্ঠান
+                {siteData.homepage_header_title}
               </h2>
               <p style={{ fontSize: '15px', color: '#ecfdf5', lineHeight: '1.7', marginBottom: '28px' }}>
-                আমরা দিচ্ছি আধুনিক ক্বওমী ও জেনারেল শিক্ষা ব্যবস্থার এক অনন্য সমন্বয়। অভিজ্ঞ শিক্ষক মণ্ডলীর তত্ত্বাবধানে আপনার সন্তানের দ্বীনি শিক্ষার পথ সুগম করুন।
+                {siteData.homepage_header_subtitle}
               </p>
               <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
                 <button onClick={() => { resetForm(); setIsAdmissionModalOpen(true); }} className="btn-primary" style={{ backgroundColor: '#ffffff', color: '#14532d', fontWeight: 'bold' }}>
@@ -524,10 +557,10 @@ function MainApp() {
                 
                 <div style={{ textAlign: 'left', width: '100%' }}>
                   <h3 style={{ fontSize: '20px', color: '#166534', marginTop: 0, marginBottom: '12px', borderBottom: '2px solid #f1f5f9', paddingBottom: '8px' }}>
-                    প্রধান শিক্ষকের বার্তা
+                    {siteData.homepage_about_title}
                   </h3>
                   <p style={{ lineHeight: '1.8', color: '#334155', margin: 0, fontSize: '15px' }}>
-                    "বিসমিল্লাহির রহমানির রহিম। চিলমারী প্রি ক্যাডেট মাদ্রাসায় আপনাকে জানাই আন্তরিক শুভেচ্ছা। আমাদের সুনির্দিষ্ট লক্ষ্য হলো কোমলমতি শিশুদের ধর্মীয় মূল্যবোধ, উত্তম চরিত্র এবং আধুনিক শিক্ষার মাধ্যমে এক আদর্শ সুনাগরিক হিসেবে গড়ে তোলা।"
+                    {siteData.homepage_about_message}
                   </p>
                 </div>
               </div>
@@ -554,7 +587,7 @@ function MainApp() {
                     alignItems: 'center', 
                     gap: '8px' 
                   }}>
-                    📌 নোটিশ বোর্ড
+                    {siteData.homepage_notice_title}
                   </h3>
                 </div>
 
@@ -592,20 +625,20 @@ function MainApp() {
                     borderRadius: '10px',
                     border: '1px dashed #cbd5e1'
                   }}>
-                    ⚠️ বর্তমানে কোনো নোটিশ নেই
+                    {siteData.homepage_notice_empty}
                   </div>
                 )}
               </div>
 
               <div className="card">
                 <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', color: '#166534', borderBottom: '2px solid #f1f5f9', paddingBottom: '10px' }}>
-                  🌟 আমাদের বিশেষত্ব
+                  {siteData.homepage_features_title}
                 </h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  {['অভিজ্ঞ ও দ্বীনদার শিক্ষক মণ্ডলী', 'হিফজ ও বিশুদ্ধ ক্বিরাআত প্রশিক্ষণ', 'কম্পিউটার ও তথ্যপ্রযুক্তি শিক্ষা', 'নিরাপদ ও সিসিটিভি নিয়ন্ত্রিত ক্যাম্পাস', 'সুপরিসর ক্লাসরুম ও মনোরম পরিবেশ'].map((item, idx) => (
+                  {featuresList.map((item, idx) => (
                     <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '14px', color: '#334155' }}>
                       <span style={{ color: '#16a34a', fontWeight: 'bold' }}>✓</span>
-                      <span>{item}</span>
+                      <span dangerouslySetInnerHTML={{ __html: item }} />
                     </div>
                   ))}
                 </div>
@@ -614,14 +647,18 @@ function MainApp() {
 
             <section id="admission" className="card" style={{ maxWidth: '600px', margin: '0 auto', textAlign: 'center', padding: '35px 24px' }}>
               <span className="badge">সহজ নিয়ম</span>
-              <h3 style={{ fontSize: '22px', color: '#166534', margin: '10px 0 6px 0' }}>অনলাইন ভর্তি আবেদন</h3>
-              <p style={{ color: '#64748b', fontSize: '14px', margin: '0 0 20px 0' }}>আপনার সন্তানের ভর্তি নিশ্চিত করতে নিচের বাটনে ক্লিক করে ফরম পূরণ করুন</p>
+              <h3 style={{ fontSize: '22px', color: '#166534', margin: '10px 0 6px 0' }}>
+                {siteData.homepage_admission_title}
+              </h3>
+              <p style={{ color: '#64748b', fontSize: '14px', margin: '0 0 20px 0' }}>
+                {siteData.homepage_admission_subtitle}
+              </p>
               <button 
                 onClick={() => { resetForm(); setIsAdmissionModalOpen(true); }} 
                 className="btn-primary" 
                 style={{ fontSize: '16px', padding: '14px 28px', width: '100%', maxWidth: '300px', justifyContent: 'center' }}
               >
-                🎓 ভর্তি আবেদন করুন
+                {siteData.homepage_admission_btn_text}
               </button>
             </section>
           </main>
@@ -639,7 +676,7 @@ function MainApp() {
               <span className="badge">প্রধান শিক্ষক ও পরিচালক</span>
             </div>
             <p style={{ lineHeight: '1.8', color: '#334155', fontSize: '15px' }}>
-              "বিসমিল্লাহির রহমানির রহিম। চিলমারী প্রি ক্যাডেট মাদ্রাসায় আপনাকে জানাই আন্তরিক শুভেচ্ছা।"
+              {siteData.homepage_about_message}
             </p>
             <div style={{ marginTop: '20px', textAlign: 'center' }}>
               <button onClick={() => setCurrentView('home')} className="btn-primary" style={{ backgroundColor: '#64748b' }}>হোম পেজে ফিরে যান</button>
@@ -718,7 +755,7 @@ function MainApp() {
                 </div>
               ) : (
                 <div style={{ padding: '20px', textAlign: 'center', color: '#94a3b8', fontSize: '14px' }}>
-                  ⚠️ বর্তমানে কোনো নোটিশ নেই
+                  {siteData.homepage_notice_empty}
                 </div>
               )}
             </div>
