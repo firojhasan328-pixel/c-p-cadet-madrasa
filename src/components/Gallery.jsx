@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
+import ImageModal from './ImageModal';
 
 export default function Gallery() {
   const [categories, setCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [images, setImages] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalIndex, setModalIndex] = useState(0);
 
   useEffect(() => {
     fetchCategories();
@@ -70,6 +73,12 @@ export default function Gallery() {
     setImages([]);
   };
 
+  // ✅ ছবিতে ক্লিক করলে Modal খুলবে
+  const handleImageClick = (index) => {
+    setModalIndex(index);
+    setModalOpen(true);
+  };
+
   return (
     <div style={styles.container}>
       <h2 style={styles.heading}>📸 গ্যালারি</h2>
@@ -98,8 +107,12 @@ export default function Gallery() {
             </div>
           ) : (
             <div style={styles.imageGrid}>
-              {images.map(img => (
-                <div key={img.id} style={styles.imageCard}>
+              {images.map((img, index) => (
+                <div
+                  key={img.id}
+                  style={styles.imageCard}
+                  onClick={() => handleImageClick(index)}
+                >
                   {img.display_url ? (
                     <img src={img.display_url} alt={img.title} style={styles.image} />
                   ) : (
@@ -111,6 +124,15 @@ export default function Gallery() {
             </div>
           )}
         </div>
+      )}
+
+      {/* ✅ ইমেজ মোডাল */}
+      {modalOpen && (
+        <ImageModal
+          images={images}
+          currentIndex={modalIndex}
+          onClose={() => setModalOpen(false)}
+        />
       )}
     </div>
   );
@@ -133,7 +155,12 @@ const styles = {
   emptyState: { textAlign: 'center', padding: '40px 0', color: '#94a3b8' },
   emptyIcon: { fontSize: '48px', display: 'block', marginBottom: '8px' },
   imageGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' },
-  imageCard: { background: '#ffffff', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', border: '1px solid #e2e8f0' },
+  imageCard: {
+    background: '#ffffff', borderRadius: '12px', overflow: 'hidden',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.05)', border: '1px solid #e2e8f0',
+    cursor: 'pointer',
+    transition: 'transform 0.2s ease, boxShadow 0.2s ease',
+  },
   image: { width: '100%', height: '180px', objectFit: 'cover', display: 'block' },
   imagePlaceholder: { width: '100%', height: '180px', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '48px', color: '#94a3b8' },
   imageTitle: { padding: '8px 12px', fontSize: '13px', fontWeight: '500', color: '#334155', margin: 0, textAlign: 'center' },
