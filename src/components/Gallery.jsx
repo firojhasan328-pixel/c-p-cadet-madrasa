@@ -10,7 +10,6 @@ export default function Gallery() {
   useEffect(() => {
     fetchCategories();
 
-    // ✅ Realtime subscription for gallery images
     const galleryChannel = supabase
       .channel('gallery-realtime')
       .on('postgres_changes', {
