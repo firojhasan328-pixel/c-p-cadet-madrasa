@@ -7,35 +7,7 @@ export default function StudentList() {
   const [totalStudents, setTotalStudents] = useState(0);
 
   // =============================================
-  // ✅ ডেটা ফেচ + রিয়েল-টাইম সাবস্ক্রিপশন
-  // =============================================
-  useEffect(() => {
-    fetchStudents();
-
-    // ✅ Realtime subscription (শুধু অনুমোদিত ছাত্রদের জন্য)
-    const studentChannel = supabase
-      .channel('student-list-realtime')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'students',
-          filter: 'is_approved=eq.true',
-        },
-        () => {
-          fetchStudents(); // রিফ্রেশ ছাড়াই আপডেট
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(studentChannel);
-    };
-  }, []);
-
-  // =============================================
-  // ✅ ছাত্র ডেটা লোড (শুধু অনুমোদিত + রোল ১-৩)
+  // ✅ ডেটা ফেচ
   // =============================================
   const fetchStudents = async () => {
     setLoading(true);
@@ -59,7 +31,33 @@ export default function StudentList() {
   };
 
   // =============================================
-  // ✅ ক্লাস অনুযায়ী গ্রুপ করা
+  // ✅ Realtime subscription (পুরো টেবিল)
+  // =============================================
+  useEffect(() => {
+    fetchStudents();
+
+    const studentChannel = supabase
+      .channel('student-list-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'students',
+        },
+        () => {
+          fetchStudents(); // রিফ্রেশ ছাড়াই আপডেট
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(studentChannel);
+    };
+  }, []);
+
+  // =============================================
+  // ✅ ক্লাস অনুযায়ী গ্রুপ
   // =============================================
   const groupedStudents = students.reduce((acc, student) => {
     const className = student.class_name || 'অনির্ধারিত';
@@ -68,9 +66,6 @@ export default function StudentList() {
     return acc;
   }, {});
 
-  // =============================================
-  // ✅ ক্লাস সাজানো (প্লে, ১ম, ২য়, ৩য়, ৪র্থ, ৫ম)
-  // =============================================
   const classOrder = ['প্লে', '১ম', '২য়', '৩য়', '৪র্থ', '৫ম'];
   const sortedClassNames = Object.keys(groupedStudents).sort(
     (a, b) => classOrder.indexOf(a) - classOrder.indexOf(b)
@@ -109,79 +104,72 @@ export default function StudentList() {
         </div>
       </div>
 
-      {/* ✅ কোনো ছাত্র না থাকলে */}
-      {totalStudents === 0 ? (
-        <div style={styles.emptyState}>
-          <span style={styles.emptyIcon}>📭</span>
-          <p style={styles.emptyText}>বর্তমানে কোনো মেধাবী ছাত্র-ছাত্রী নেই</p>
-          <small style={styles.emptySubtext}>অ্যাডমিন প্যানেল থেকে ছাত্র যোগ করুন</small>
-        </div>
-      ) : (
-        // ✅ ক্লাস ভিত্তিক সেকশন
-        sortedClassNames.map((className) => {
-          const classStudents = groupedStudents[className] || [];
-          return (
-            <div key={className} style={styles.classSection}>
-              <h3 style={styles.classTitle}>📚 {className} শ্রেণী</h3>
+      {/* ✅ ক্লাস ভিত্তিক সেকশন (খালি থাকলেও দেখাবে না) */}
+      {sortedClassNames.map((className) => {
+        const classStudents = groupedStudents[className] || [];
+        if (classStudents.length === 0) return null; // ✅ খালি থাকলে দেখাবে না
 
-              <div style={styles.tableWrapper}>
-                <table style={styles.table}>
-                  <thead>
-                    <tr>
-                      <th style={styles.th}>ক্রম</th>
-                      <th style={styles.th}>ছবি</th>
-                      <th style={styles.th}>নাম</th>
-                      <th style={styles.th}>বাবার নাম</th>
-                      <th style={styles.th}>মায়ের নাম</th>
-                      <th style={styles.th}>রোল</th>
-                      <th style={styles.th}>গ্রাম</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {classStudents.map((student, index) => {
-                      const rank = getRankBadge(student.roll_number);
-                      return (
-                        <tr key={student.id} style={styles.tr}>
-                          <td style={styles.td}>
-                            <span style={styles.rankNumber}>{index + 1}</span>
-                          </td>
-                          <td style={styles.td}>
-                            {student.photo_url ? (
-                              <img
-                                src={student.photo_url}
-                                alt={student.name}
-                                style={styles.avatar}
-                              />
-                            ) : (
-                              <div style={styles.avatarPlaceholder}>
-                                {student.name?.charAt(0) || '?'}
-                              </div>
-                            )}
-                          </td>
-                          <td style={styles.td}>
-                            <div style={styles.nameContainer}>
-                              <span style={styles.studentName}>{student.name}</span>
-                              <span style={styles.rankBadge}>
-                                {rank.emoji} {rank.label}
-                              </span>
+        return (
+          <div key={className} style={styles.classSection}>
+            <h3 style={styles.classTitle}>📚 {className} শ্রেণী</h3>
+
+            <div style={styles.tableWrapper}>
+              <table style={styles.table}>
+                <thead>
+                  <tr>
+                    <th style={styles.th}>ক্রম</th>
+                    <th style={styles.th}>ছবি</th>
+                    <th style={styles.th}>নাম</th>
+                    <th style={styles.th}>বাবার নাম</th>
+                    <th style={styles.th}>মায়ের নাম</th>
+                    <th style={styles.th}>রোল</th>
+                    <th style={styles.th}>গ্রাম</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {classStudents.map((student, index) => {
+                    const rank = getRankBadge(student.roll_number);
+                    return (
+                      <tr key={student.id} style={styles.tr}>
+                        <td style={styles.td}>
+                          <span style={styles.rankNumber}>{index + 1}</span>
+                        </td>
+                        <td style={styles.td}>
+                          {student.photo_url ? (
+                            <img
+                              src={student.photo_url}
+                              alt={student.name}
+                              style={styles.avatar}
+                            />
+                          ) : (
+                            <div style={styles.avatarPlaceholder}>
+                              {student.name?.charAt(0) || '?'}
                             </div>
-                          </td>
-                          <td style={styles.td}>{student.father_name || '—'}</td>
-                          <td style={styles.td}>{student.mother_name || '—'}</td>
-                          <td style={styles.td}>
-                            <span style={styles.rollBadge}>#{student.roll_number}</span>
-                          </td>
-                          <td style={styles.td}>{student.village || student.address || '—'}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                          )}
+                        </td>
+                        <td style={styles.td}>
+                          <div style={styles.nameContainer}>
+                            <span style={styles.studentName}>{student.name}</span>
+                            <span style={styles.rankBadge}>
+                              {rank.emoji} {rank.label}
+                            </span>
+                          </div>
+                        </td>
+                        <td style={styles.td}>{student.father_name || '—'}</td>
+                        <td style={styles.td}>{student.mother_name || '—'}</td>
+                        <td style={styles.td}>
+                          <span style={styles.rollBadge}>#{student.roll_number}</span>
+                        </td>
+                        <td style={styles.td}>{student.village || student.address || '—'}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
-          );
-        })
-      )}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -240,29 +228,6 @@ const styles = {
     fontSize: '16px',
     opacity: 0.85,
     fontWeight: '500',
-  },
-  emptyState: {
-    textAlign: 'center',
-    padding: '60px 20px',
-    background: 'white',
-    borderRadius: '16px',
-    border: '2px dashed #e2e8f0',
-  },
-  emptyIcon: {
-    fontSize: '64px',
-    display: 'block',
-    marginBottom: '12px',
-  },
-  emptyText: {
-    fontSize: '18px',
-    color: '#334155',
-    margin: 0,
-    fontWeight: '600',
-  },
-  emptySubtext: {
-    fontSize: '14px',
-    color: '#94a3b8',
-    marginTop: '4px',
   },
   classSection: {
     marginBottom: '28px',
