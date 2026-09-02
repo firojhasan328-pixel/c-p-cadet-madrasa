@@ -3,6 +3,7 @@ import { supabase } from '../supabaseClient';
 
 export default function Footer() {
   const [footerData, setFooterData] = useState({
+    title: 'চিলমারী প্রি ক্যাডেট মাদ্রাসা',
     copyright: '© 2026 চিলমারী প্রি ক্যাডেট মাদ্রাসা। সর্বস্বত্ব সংরক্ষিত।',
     address: 'চিলমারী, কুড়িগ্রাম, বাংলাদেশ',
     phone: '+8801521-553003',
@@ -23,7 +24,6 @@ export default function Footer() {
   useEffect(() => {
     loadFooterData();
 
-    // ✅ Realtime subscription
     const footerChannel = supabase
       .channel('footer-realtime')
       .on('postgres_changes', {
@@ -52,6 +52,7 @@ export default function Footer() {
           )
         `)
         .in('cms_fields.field_key', [
+          'footer_title',
           'footer_copyright', 'footer_address', 'footer_phone', 'footer_email',
           'footer_dev_image', 'footer_dev_name', 'footer_dev_tagline', 'footer_dev_subtitle',
           'footer_whatsapp', 'footer_facebook', 'footer_call',
@@ -68,6 +69,7 @@ export default function Footer() {
           }
         });
         setFooterData({
+          title: formatted.footer_title || 'চিলমারী প্রি ক্যাডেট মাদ্রাসা',
           copyright: formatted.footer_copyright || '© 2026 চিলমারী প্রি ক্যাডেট মাদ্রাসা। সর্বস্বত্ব সংরক্ষিত।',
           address: formatted.footer_address || 'চিলমারী, কুড়িগ্রাম, বাংলাদেশ',
           phone: formatted.footer_phone || '+8801521-553003',
@@ -145,7 +147,9 @@ export default function Footer() {
 
       <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
         <div style={{ textAlign: 'center', marginBottom: '35px', borderBottom: '1px solid #1e293b', paddingBottom: '25px' }}>
-          <h4 style={{ color: '#ffffff', margin: '0 0 8px 0', fontSize: '20px', fontWeight: '700' }}>চিলমারী প্রি ক্যাডেট মাদ্রাসা</h4>
+          <h4 style={{ color: '#ffffff', margin: '0 0 8px 0', fontSize: '20px', fontWeight: '700' }}>
+            {footerData.title}
+          </h4>
           <p style={{ fontSize: '14px', margin: '0 0 8px 0', color: '#cbd5e1' }}>📍 {footerData.address}</p>
           <p style={{ fontSize: '14px', margin: 0, color: '#38bdf8' }}>
             📞 {footerData.phone}
