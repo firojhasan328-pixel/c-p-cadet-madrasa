@@ -7,7 +7,7 @@ export default function StudentList() {
   const [totalStudents, setTotalStudents] = useState(0);
 
   // =============================================
-  // ✅ ডেটা ফেচ
+  // ✅ ডেটা ফেচ (শুধু অনুমোদিত + রোল ১-৩)
   // =============================================
   const fetchStudents = async () => {
     setLoading(true);
@@ -15,8 +15,8 @@ export default function StudentList() {
       const { data, error } = await supabase
         .from('students')
         .select('*')
-        .eq('is_approved', true) // শুধু অনুমোদিত
-        .in('roll_number', [1, 2, 3]) // শুধু রোল ১-৩
+        .eq('is_approved', true)
+        .in('roll_number', [1, 2, 3])
         .order('class_name', { ascending: true })
         .order('roll_number', { ascending: true });
 
@@ -31,7 +31,7 @@ export default function StudentList() {
   };
 
   // =============================================
-  // ✅ Realtime subscription (পুরো টেবিল)
+  // ✅ Realtime subscription (রিফ্রেশ ছাড়া আপডেট)
   // =============================================
   useEffect(() => {
     fetchStudents();
@@ -104,10 +104,10 @@ export default function StudentList() {
         </div>
       </div>
 
-      {/* ✅ ক্লাস ভিত্তিক সেকশন (খালি থাকলেও দেখাবে না) */}
+      {/* ✅ ক্লাস ভিত্তিক সেকশন */}
       {sortedClassNames.map((className) => {
         const classStudents = groupedStudents[className] || [];
-        if (classStudents.length === 0) return null; // ✅ খালি থাকলে দেখাবে না
+        if (classStudents.length === 0) return null;
 
         return (
           <div key={className} style={styles.classSection}>
@@ -216,19 +216,9 @@ const styles = {
     color: 'white',
     boxShadow: '0 8px 24px rgba(22, 163, 74, 0.3)',
   },
-  totalIcon: {
-    fontSize: '48px',
-  },
-  totalNumber: {
-    fontSize: '32px',
-    fontWeight: '800',
-    lineHeight: 1.2,
-  },
-  totalLabel: {
-    fontSize: '16px',
-    opacity: 0.85,
-    fontWeight: '500',
-  },
+  totalIcon: { fontSize: '48px' },
+  totalNumber: { fontSize: '32px', fontWeight: '800', lineHeight: 1.2 },
+  totalLabel: { fontSize: '16px', opacity: 0.85, fontWeight: '500' },
   classSection: {
     marginBottom: '28px',
     background: 'white',
@@ -249,10 +239,7 @@ const styles = {
     alignItems: 'center',
     gap: '10px',
   },
-  tableWrapper: {
-    overflowX: 'auto',
-    WebkitOverflowScrolling: 'touch',
-  },
+  tableWrapper: { overflowX: 'auto', WebkitOverflowScrolling: 'touch' },
   table: {
     width: '100%',
     borderCollapse: 'collapse',
@@ -271,21 +258,9 @@ const styles = {
     letterSpacing: '0.3px',
     whiteSpace: 'nowrap',
   },
-  tr: {
-    borderBottom: '1px solid #f1f5f9',
-    transition: 'background 0.15s ease',
-  },
-  td: {
-    padding: '12px 16px',
-    verticalAlign: 'middle',
-    fontSize: '14px',
-    color: '#1e293b',
-  },
-  rankNumber: {
-    fontWeight: '700',
-    color: '#94a3b8',
-    fontSize: '14px',
-  },
+  tr: { borderBottom: '1px solid #f1f5f9', transition: 'background 0.15s ease' },
+  td: { padding: '12px 16px', verticalAlign: 'middle', fontSize: '14px', color: '#1e293b' },
+  rankNumber: { fontWeight: '700', color: '#94a3b8', fontSize: '14px' },
   avatar: {
     width: '56px',
     height: '56px',
@@ -307,16 +282,8 @@ const styles = {
     fontWeight: '700',
     border: '2px solid #e2e8f0',
   },
-  nameContainer: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-    flexWrap: 'wrap',
-  },
-  studentName: {
-    fontWeight: '600',
-    color: '#0f172a',
-  },
+  nameContainer: { display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' },
+  studentName: { fontWeight: '600', color: '#0f172a' },
   rankBadge: {
     display: 'inline-flex',
     alignItems: 'center',
