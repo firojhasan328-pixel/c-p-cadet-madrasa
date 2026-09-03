@@ -7,7 +7,7 @@ export default function StudentList() {
   const [totalStudents, setTotalStudents] = useState(0);
 
   // =============================================
-  // ✅ ডেটা ফেচ (শুধু অনুমোদিত + রোল ১-৩)
+  // ✅ ডেটা ফেচ (শুধু অনুমোদিত ছাত্র)
   // =============================================
   const fetchStudents = async () => {
     setLoading(true);
@@ -15,8 +15,7 @@ export default function StudentList() {
       const { data, error } = await supabase
         .from('students')
         .select('*')
-        .eq('is_approved', true)
-        .in('roll_number', [1, 2, 3])
+        .eq('is_approved', true) // ✅ শুধু অনুমোদিত
         .order('class_name', { ascending: true })
         .order('roll_number', { ascending: true });
 
@@ -170,7 +169,7 @@ export default function StudentList() {
 }
 
 // =============================================
-// 🎨 প্রিমিয়াম স্টাইল (শিক্ষক কার্ডের মতো)
+// 🎨 প্রিমিয়াম স্টাইল
 // =============================================
 const styles = {
   container: {
@@ -282,17 +281,9 @@ const styles = {
     borderRadius: '20px',
     backdropFilter: 'blur(4px)',
   },
-  rankEmoji: {
-    fontSize: '16px',
-  },
-  rankLabel: {
-    fontSize: '11px',
-    fontWeight: '600',
-    color: 'white',
-  },
-  studentInfo: {
-    padding: '16px',
-  },
+  rankEmoji: { fontSize: '16px' },
+  rankLabel: { fontSize: '11px', fontWeight: '600', color: 'white' },
+  studentInfo: { padding: '16px' },
   studentName: {
     fontSize: '18px',
     fontWeight: '700',
@@ -307,14 +298,8 @@ const styles = {
     fontSize: '13px',
     borderBottom: '1px solid #f1f5f9',
   },
-  detailLabel: {
-    color: '#64748b',
-    fontWeight: '500',
-  },
-  detailValue: {
-    color: '#0f172a',
-    fontWeight: '600',
-  },
+  detailLabel: { color: '#64748b', fontWeight: '500' },
+  detailValue: { color: '#0f172a', fontWeight: '600' },
 };
 
 // ✅ অ্যানিমেশন
