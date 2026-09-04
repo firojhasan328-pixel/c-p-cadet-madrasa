@@ -1,0 +1,209 @@
+import React, { useState, useEffect } from 'react';
+import { supabase } from '../../supabaseClient';
+import { usePortal } from '../../context/PortalContext';
+
+export default function RoutinePage() {
+  const { userProfile } = usePortal();
+  const [routine, setRoutine] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const days = ['শনিবার', 'রবিবার', 'সোমবার', 'মঙ্গলবার', 'বুধবার', 'বৃহস্পতিবার', 'শুক্রবার'];
+
+  useEffect(() => {
+    fetchRoutine();
+  }, [userProfile]);
+
+  const fetchRoutine = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('class_routines')
+        .select('*')
+        .eq('class_name', userProfile.class_name)
+        .order('day_of_week')
+        .order('start_time');
+
+      if (error) throw error;
+      setRoutine(data || []);
+    } catch (error) {
+      console.error('Fetch error:', error);
+    }
+    setLoading(false);
+  };
+
+  if (loading) {
+    return (
+      <div style={styles.loadingContainer}>
+        <div style={styles.loadingSpinner}></div>
+        <p>⏳ লোড হচ্ছে...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div style={styles.container}>
+      <div style={styles.header}>
+        <h2 style={styles.headerTitle}>📅 ক্লাস রুটিন</h2>
+        <button onClick={() => window.history.back()} style={styles.backBtn}>
+          ⬅ ফিরে যান
+        </button>
+      </div>
+
+      <div style={styles.classBadge}>
+        📚 {userProfile.class_name} শ্রেণীর রুটিন
+      </div>
+
+      {routine.length === 0 ? (
+        <div style={styles.emptyState}>
+          <span style={styles.emptyIcon}>📭</span>
+          <p>কোনো রুটিন পাওয়া যায়নি</p>
+        </div>
+      ) : (
+        <div style={styles.tableWrapper}>
+          <table style={styles.table}>
+            <thead>
+              <tr>
+                <th style={styles.th}>দিন</th>
+                <th style={styles.th}>বিষয়</th>
+                <th style={styles.th}>শিক্ষক</th>
+                <th style={styles.th}>সময়</th>
+              </tr>
+            </thead>
+            <tbody>
+              {routine.map((item, index) => (
+                <tr key={index} style={styles.tr}>
+                  <td style={styles.td}>
+                    <span style={styles.dayBadge}>
+                      {days[item.day_of_week] || item.day_of_week}
+                    </span>
+                  </td>
+                  <td style={styles.td}>
+                    <span style={styles.subjectBadge}>{item.subject}</span>
+                  </td>
+                  <td style={styles.td}>{item.teacher_name || '—'}</td>
+                  <td style={styles.td}>
+                    {item.start_time && item.end_time
+                      ? `${item.start_time} - ${item.end_time}`
+                      : '—'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+const styles = {
+  container: {
+    maxWidth: '1000px',
+    margin: '0 auto',
+    padding: '0 16px',
+    fontFamily: "'Hind Siliguri', sans-serif",
+  },
+  loadingContainer: {
+    textAlign: 'center',
+    padding: '60px 0',
+    color: '#64748b',
+  },
+  loadingSpinner: {
+    width: '48px',
+    height: '48px',
+    border: '4px solid #e2e8f0',
+    borderTop: '4px solid #16a34a',
+    borderRadius: '50%',
+    animation: 'spin 1s linear infinite',
+    margin: '0 auto 16px',
+  },
+  header: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '16px',
+    flexWrap: 'wrap',
+    gap: '12px',
+  },
+  headerTitle: {
+    fontSize: '24px',
+    fontWeight: '700',
+    color: '#0f172a',
+    margin: 0,
+  },
+  backBtn: {
+    background: '#f1f5f9',
+    border: 'none',
+    padding: '8px 16px',
+    borderRadius: '10px',
+    fontWeight: '600',
+    cursor: 'pointer',
+    fontSize: '14px',
+    color: '#64748b',
+  },
+  classBadge: {
+    background: '#dbeafe',
+    color: '#2563eb',
+    padding: '10px 16px',
+    borderRadius: '10px',
+    fontSize: '16px',
+    fontWeight: '600',
+    marginBottom: '20px',
+    textAlign: 'center',
+  },
+  emptyState: {
+    textAlign: 'center',
+    padding: '60px 0',
+    color: '#94a3b8',
+  },
+  emptyIcon: {
+    fontSize: '48px',
+    display: 'block',
+    marginBottom: '12px',
+  },
+  tableWrapper: {
+    overflowX: 'auto',
+    background: 'white',
+    borderRadius: '14px',
+    border: '1px solid #e2e8f0',
+  },
+  table: {
+    width: '100%',
+    borderCollapse: 'collapse',
+    fontSize: '14px',
+    minWidth: '400px',
+  },
+  th: {
+    padding: '12px 16px',
+    textAlign: 'left',
+    background: '#f8fafc',
+    fontWeight: '700',
+    color: '#334155',
+    borderBottom: '2px solid #e2e8f0',
+    whiteSpace: 'nowrap',
+  },
+  tr: { borderBottom: '1px solid #f1f5f9' },
+  td: { padding: '12px 16px', verticalAlign: 'middle' },
+  dayBadge: {
+    fontWeight: '600',
+    color: '#0f172a',
+  },
+  subjectBadge: {
+    background: '#dcfce7',
+    color: '#16a34a',
+    padding: '2px 12px',
+    borderRadius: '20px',
+    fontSize: '13px',
+    fontWeight: '600',
+    display: 'inline-block',
+  },
+};
+
+const styleSheet = document.createElement('style');
+styleSheet.textContent = `
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+`;
+document.head.appendChild(styleSheet);
