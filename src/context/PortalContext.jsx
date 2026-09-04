@@ -19,27 +19,24 @@ export function PortalProvider({ children }) {
       const { data: { session } } = await supabase.auth.getSession();
       
       if (session) {
-        // ✅ প্রথমে students টেবিলে চেক করুন
         let profile = null;
         let role = null;
 
-        // ১. students টেবিলে চেক
         const { data: studentData, error: studentError } = await supabase
           .from('students')
           .select('*')
           .eq('id', session.user.id)
-          .maybeSingle();  // ← .maybeSingle() ব্যবহার করুন
+          .maybeSingle();
 
         if (studentData && !studentError) {
           profile = studentData;
           role = 'student';
         } else {
-          // ২. teachers টেবিলে চেক
           const { data: teacherData, error: teacherError } = await supabase
             .from('teachers')
             .select('*')
             .eq('id', session.user.id)
-            .maybeSingle();  // ← .maybeSingle() ব্যবহার করুন
+            .maybeSingle();
 
           if (teacherData && !teacherError) {
             profile = teacherData;
@@ -59,6 +56,9 @@ export function PortalProvider({ children }) {
     setLoading(false);
   };
 
+  // =============================================
+  // ✅ Login ফাংশন (আপডেটেড - রিডাইরেক্ট সহ)
+  // =============================================
   const login = async (email, password) => {
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -69,7 +69,6 @@ export function PortalProvider({ children }) {
       if (error) throw error;
 
       if (data.user) {
-        // ✅ students টেবিলে চেক
         let profile = null;
         let role = null;
 
@@ -83,7 +82,6 @@ export function PortalProvider({ children }) {
           profile = studentData;
           role = 'student';
         } else {
-          // teachers টেবিলে চেক
           const { data: teacherData, error: teacherError } = await supabase
             .from('teachers')
             .select('*')
@@ -100,9 +98,14 @@ export function PortalProvider({ children }) {
           setUser(data.user);
           setUserProfile(profile);
           setUserRole(role);
+          
+          // ✅ লগইন成功后 /portal এ রিডাইরেক্ট করুন
+          window.location.href = '/portal';
+          
           return { success: true, profile };
         } else {
-          return { success: false, error: 'প্রোফাইল পাওয়া যায়নি' };
+          await supabase.auth.signOut();
+          return { success: false, error: 'প্রোফাইল পাওয়া যায়নি। দয়া করে রেজিস্ট্রেশন করুন।' };
         }
       }
       return { success: false, error: 'প্রোফাইল পাওয়া যায়নি' };
@@ -128,7 +131,6 @@ export function PortalProvider({ children }) {
       if (authError) throw authError;
 
       if (authData.user) {
-        // userData.role অনুযায়ী সঠিক টেবিলে ডেটা ইনসার্ট করুন
         const tableName = userData.role === 'student' ? 'students' : 'teachers';
         
         const profileData = {
@@ -173,6 +175,7 @@ export function PortalProvider({ children }) {
     setUser(null);
     setUserProfile(null);
     setUserRole(null);
+    window.location.href = '/';
   };
 
   const value = {
