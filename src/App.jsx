@@ -10,11 +10,11 @@ import ContactPage from './components/ContactPage';
 import SuccessStats from './components/SuccessStats';
 import PortalLogin from './components/auth/PortalLogin';
 import PortalRegister from './components/auth/PortalRegister';
-import StudentDashboard from './components/student-dashboard/StudentDashboard';
+import { StudentDashboard } from './components/student-dashboard';
 import TeacherDashboard from './components/portal/TeacherDashboard';
 import ResetPassword from './components/ResetPassword';
 
-// ছাত্র পোর্টাল পেজ ইমপোর্ট
+// ✅ ছাত্র পোর্টাল পেজ ইমপোর্ট
 import ProfilePage from './components/student-dashboard/ProfilePage';
 import ResultPage from './components/student-dashboard/ResultPage';
 import RoutinePage from './components/student-dashboard/RoutinePage';
@@ -71,6 +71,9 @@ function MainApp() {
   const [notices, setNotices] = useState([]);
   const [noticesLoading, setNoticesLoading] = useState(true);
 
+  // =============================================
+  // ✅ সব ডেটা ফেচ
+  // =============================================
   const fetchNotices = async () => {
     setNoticesLoading(true);
     try {
@@ -128,7 +131,6 @@ function MainApp() {
             formattedData[item.cms_fields.field_key] = item.value;
           }
         });
-        console.log('✅ CMS ডেটা লোড হয়েছে:', formattedData);
         setSiteData(prev => ({ ...prev, ...formattedData }));
       }
     } catch (err) {
@@ -151,6 +153,9 @@ function MainApp() {
     }
   };
 
+  // =============================================
+  // ✅ useEffect
+  // =============================================
   useEffect(() => {
     const path = window.location.pathname;
     if (path.includes('/reset-password') || path.includes('/rest-password')) {
@@ -273,32 +278,26 @@ function MainApp() {
   });
 
   // =============================================
-  // ✅ পোর্টালে যান হ্যান্ডেলার
+  // ✅ পোর্টাল হ্যান্ডেলার
   // =============================================
   const handleGoToPortal = () => {
     if (isAuthenticated) {
-      window.history.pushState(null, '', '/portal');
-      setCurrentView('portal');
-      setMobileMenuOpen(false);
-      window.location.reload(); // ফোর্স রিলোড
+      window.location.href = '/portal';
     } else {
-      setMobileMenuOpen(false);
       handleOpenSignIn();
     }
   };
 
   // =============================================
-  // ✅ রাউটিং ভিত্তিক কন্টেন্ট রেন্ডার
+  // ✅ ড্যাশবোর্ড রেন্ডার
   // =============================================
   const renderDashboard = () => {
     if (!isAuthenticated) {
-      handleOpenSignIn();
       return null;
     }
-    
+
     const path = window.location.pathname;
 
-    // ✅ /portal পাথে ড্যাশবোর্ড দেখান
     if (path === '/portal') {
       if (userRole === 'student') {
         return <StudentDashboard />;
@@ -308,7 +307,6 @@ function MainApp() {
       }
     }
 
-    // ✅ ছাত্র পোর্টাল পেজ
     if (userRole === 'student') {
       if (path.includes('/student/profile')) return <ProfilePage />;
       if (path.includes('/student/result')) return <ResultPage />;
@@ -320,35 +318,30 @@ function MainApp() {
       if (path.includes('/student/achievements')) return <AchievementPage />;
       if (path.includes('/student/certificates')) return <CertificatePage />;
       if (path.includes('/student/online-class')) return <OnlineClassPage />;
-      
       return <StudentDashboard />;
     }
-    
-    // ✅ শিক্ষক ড্যাশবোর্ড
+
     if (userRole === 'teacher') {
       return <TeacherDashboard />;
     }
-    
+
     return null;
   };
 
   // =============================================
-  // ✅ পেজ কন্টেন্ট রেন্ডার
+  // ✅ কন্টেন্ট রেন্ডার
   // =============================================
   const renderContent = () => {
     const path = window.location.pathname;
 
-    // ✅ পোর্টাল পেজ
     if (path === '/portal' || path.includes('/student/') || path.includes('/teacher/')) {
       return renderDashboard();
     }
 
-    // ✅ হোমপেজ
     if (currentView === 'home') {
       return renderHomepage();
     }
 
-    // ✅ অন্যান্য ভিউ
     if (currentView === 'about') return renderAboutPage();
     if (currentView === 'teachers') return renderTeachersPage();
     if (currentView === 'students') return renderStudentsPage();
@@ -356,12 +349,11 @@ function MainApp() {
     if (currentView === 'gallery') return <Gallery />;
     if (currentView === 'contact') return <ContactPage />;
 
-    // ✅ ডিফল্ট: হোমপেজ
     return renderHomepage();
   };
 
   // =============================================
-  // ✅ হোমপেজ রেন্ডার
+  // ✅ হোমপেজ
   // =============================================
   const renderHomepage = () => {
     const featuredNotice = notices.length > 0 ? notices[0] : null;
@@ -448,7 +440,7 @@ function MainApp() {
   };
 
   // =============================================
-  // ✅ অন্যান্য পেজ রেন্ডার
+  // ✅ অন্যান্য পেজ
   // =============================================
   const renderAboutPage = () => (
     <div style={{ maxWidth: '800px', margin: '40px auto', padding: '0 16px' }}>
@@ -599,7 +591,8 @@ function MainApp() {
         <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }} onClick={() => { setCurrentView('home'); window.history.pushState(null, '', '/'); }}>
             <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: 'linear-gradient(135deg, #16a34a, #15803d)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '22px', boxShadow: '0 4px 10px rgba(22, 163, 74, 0.3)' }}>
-              চ            </div>
+              চ
+            </div>
             <div>
               <h1 style={{ fontSize: '18px', fontWeight: '800', color: '#14532d', margin: 0, lineHeight: 1.2 }}>চিলমারী প্রি ক্যাডেট মাদ্রাসা</h1>
               <p style={{ fontSize: '11px', color: '#64748b', margin: 0, fontStyle: 'italic' }}>দ্বীন ও আধুনিক শিক্ষার অপূর্ব মেলবন্ধন</p>
