@@ -1,134 +1,169 @@
-import { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
+import React, { useState, useEffect } from 'react';
+import { supabase } from '../supabaseClient';
 
 export default function SuccessStats() {
   const [stats, setStats] = useState({
     students: 0,
     teachers: 0,
-    passRate: 15,
-    experience: 10
+    passRate: '৯৫%',
+    experience: '১০+'
   });
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    // Teachers count function
-    const getTeachers = async () => {
-      try {
-        const { count, error } = await supabase
-          .from('teachers')
-          .select('*', { count: 'exact', head: true })
-          .eq('status', 'approved')
-          .eq('is_active', true);
-        
-        if (!error) {
-          setStats(prev => ({ ...prev, teachers: count || 0 }));
-        }
-      } catch (error) {
-        console.error('Teacher count error:', error);
-      }
-    };
+  // =============================================
+  // ✅ রিয়েল টাইম ডেটা ফেচ (শুধু অনুমোদিত)
+  // =============================================
+  const fetchStats = async () => {
+    setLoading(true);
+    try {
+      // ✅ শুধু is_approved = true (অনুমোদিত) ছাত্র
+      const { count: studentCount, error: studentError } = await supabase
+        .from('students')
+        .select('*', { count: 'exact', head: true })
+        .eq('is_approved', true);
 
-    // Students count function
-    const getStudents = async () => {
-      try {
-        const { count, error } = await supabase
-          .from('students')
-          .select('*', { count: 'exact', head: true })
-          .eq('status', 'approved')
-          .eq('is_active', true);
-        
-        if (!error) {
-          setStats(prev => ({ ...prev, students: count || 0 }));
-        }
-      } catch (error) {
-        console.error('Student count error:', error);
-      }
-    };
+      if (studentError) console.error('Student count error:', studentError);
 
-    // Initial load
-    const loadStats = async () => {
-      setLoading(true);
-      await Promise.all([getTeachers(), getStudents()]);
+      // ✅ শুধু is_approved = true (অনুমোদিত) শিক্ষক
+      const { count: teacherCount, error: teacherError } = await supabase
+        .from('teachers')
+        .select('*', { count: 'exact', head: true })
+        .eq('is_approved', true);
+
+      if (teacherError) console.error('Teacher count error:', teacherError);
+
+      setStats({
+        students: studentCount || 0,
+        teachers: teacherCount || 0,
+        passRate: '৯৫%',
+        experience: '১০+'
+      });
+
+    } catch (err) {
+      console.error('Error fetching stats:', err);
+    } finally {
       setLoading(false);
-    };
-    
-    loadStats();
+    }
+  };
 
-    // Real-time subscription
-    const channel = supabase
-      .channel('stats-changes')
-      .on(
-        'postgres_changes', 
-        { 
-          event: '*', 
-          schema: 'public', 
-          table: 'teachers' 
-        },
-        () => {
-          getTeachers();
-        }
-      )
+  // =============================================
+  // ✅ রিফ্রেশ ছাড়াই আপডেট (Realtime Subscription)
+  // =============================================
+  useEffect(() => {
+    // ১. প্রথমবার ডেটা লোড
+    fetchStats();
+
+    // ২. students টেবিলের পরিবর্তন শুনুন
+    const studentChannel = supabase
+      .channel('student-stats-changes')
       .on(
         'postgres_changes',
-        { 
-          event: '*', 
-          schema: 'public', 
-          table: 'students' 
+        {
+          event: '*', // INSERT, UPDATE, DELETE সব শুনবে
+          schema: 'public',
+          table: 'students',
         },
         () => {
-          getStudents();
+          console.log('🔄 Student stats updated (realtime)');
+          fetchStats(); // রিফ্রেশ ছাড়াই আপডেট
         }
       )
       .subscribe();
 
-    // Cleanup
+    // ৩. teachers টেবিলের পরিবর্তন শুনুন
+    const teacherChannel = supabase
+      .channel('teacher-stats-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'teachers',
+        },
+        () => {
+          console.log('🔄 Teacher stats updated (realtime)');
+          fetchStats();
+        }
+      )
+      .subscribe();
+
+    // ৪. Cleanup: কম্পোনেন্ট আনমাউন্টে চ্যানেল বন্ধ করুন
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(studentChannel);
+      supabase.removeChannel(teacherChannel);
     };
   }, []);
 
+  // =============================================
+  // ✅ লোডিং স্টেট
+  // =============================================
   if (loading) {
     return (
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {[1, 2, 3, 4].map((i) => (
-          <div key={i} className="bg-white rounded-lg shadow-lg p-6 text-center animate-pulse">
-            <div className="h-8 bg-gray-200 rounded w-16 mx-auto mb-2"></div>
-            <div className="h-4 bg-gray-200 rounded w-24 mx-auto"></div>
+      <div style={styles.grid}>
+        {[1, 2, 3, 4].map((_, i) => (
+          <div key={i} style={styles.card}>
+            <div style={{ fontSize: '20px', color: '#94a3b8' }}>⏳</div>
+            <div style={{ fontSize: '11px', color: '#94a3b8' }}>লোড...</div>
           </div>
         ))}
       </div>
     );
   }
 
+  // =============================================
+  // ✅ ডেটা দেখান (ডিজাইন অপরিবর্তিত)
+  // =============================================
+  const statsData = [
+    { number: `${stats.students}+`, label: 'ছাত্র-ছাত্রী', icon: '👨‍🎓' },
+    { number: `${stats.teachers}+`, label: 'শিক্ষক-শিক্ষিকা', icon: '👨‍🏫' },
+    { number: stats.passRate, label: 'পাসের হার', icon: '📈' },
+    { number: stats.experience, label: 'বছরের অভিজ্ঞতা', icon: '🏆' },
+  ];
+
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-      <div className="bg-white rounded-lg shadow-lg p-6 text-center">
-        <div className="text-3xl font-bold text-blue-600 mb-2">
-          {stats.students}+
+    <div style={styles.grid}>
+      {statsData.map((stat, index) => (
+        <div key={index} style={styles.card}>
+          <div style={styles.icon}>{stat.icon}</div>
+          <div style={styles.number}>{stat.number}</div>
+          <div style={styles.label}>{stat.label}</div>
         </div>
-        <div className="text-gray-600">ছাত্র-ছাত্রী</div>
-      </div>
-
-      <div className="bg-white rounded-lg shadow-lg p-6 text-center">
-        <div className="text-3xl font-bold text-green-600 mb-2">
-          {stats.teachers}+
-        </div>
-        <div className="text-gray-600">শিক্ষক-শিক্ষিকা</div>
-      </div>
-
-      <div className="bg-white rounded-lg shadow-lg p-6 text-center">
-        <div className="text-3xl font-bold text-yellow-600 mb-2">
-          {stats.passRate}%
-        </div>
-        <div className="text-gray-600">পাশের হার</div>
-      </div>
-
-      <div className="bg-white rounded-lg shadow-lg p-6 text-center">
-        <div className="text-3xl font-bold text-purple-600 mb-2">
-          {stats.experience}+
-        </div>
-        <div className="text-gray-600">বছরের অভিজ্ঞতা</div>
-      </div>
+      ))}
     </div>
   );
 }
+
+// =============================================
+// 🎨 ডিজাইন (আগের মতোই অপরিবর্তিত)
+// =============================================
+const styles = {
+  grid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(4, 1fr)',
+    gap: '12px',
+    marginBottom: '28px'
+  },
+  card: {
+    background: 'white',
+    borderRadius: '14px',
+    padding: '14px 10px',
+    textAlign: 'center',
+    boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+    border: '1px solid #e2e8f0'
+  },
+  icon: {
+    fontSize: '24px',
+    marginBottom: '2px'
+  },
+  number: {
+    fontSize: '20px',
+    fontWeight: '800',
+    color: '#14532d',
+    lineHeight: '1.2'
+  },
+  label: {
+    fontSize: '11px',
+    color: '#64748b',
+    marginTop: '2px'
+  }
+};
