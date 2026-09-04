@@ -3,12 +3,14 @@ import { supabase } from '../../supabaseClient';
 import { usePortal } from '../../context/PortalContext';
 import DashboardCards from './DashboardCards';
 import ProfileCard from './ProfileCard';
+import NoticeCard from './NoticeCard';
 import QuickStats from './QuickStats';
 
 export default function StudentDashboard() {
-  const { userProfile } = usePortal();
+  const { userProfile, user } = usePortal();
   const [loading, setLoading] = useState(true);
   const [studentData, setStudentData] = useState(null);
+  const [activeTab, setActiveTab] = useState('dashboard');
 
   useEffect(() => {
     if (userProfile) {
@@ -45,6 +47,7 @@ export default function StudentDashboard() {
 
   return (
     <div style={styles.container}>
+      {/* Header */}
       <div style={styles.header}>
         <div>
           <h1 style={styles.headerTitle}>🎓 ছাত্র ড্যাশবোর্ড</h1>
@@ -58,11 +61,16 @@ export default function StudentDashboard() {
         </div>
       </div>
 
+      {/* Quick Stats */}
       <QuickStats studentData={studentData} />
+
+      {/* Dashboard Cards */}
       <DashboardCards studentData={studentData} />
 
+      {/* Profile & Notice */}
       <div style={styles.bottomRow}>
         <ProfileCard studentData={studentData} />
+        <NoticeCard studentData={studentData} />
       </div>
     </div>
   );
@@ -142,17 +150,8 @@ const styles = {
   },
   bottomRow: {
     display: 'grid',
-    gridTemplateColumns: '1fr',
+    gridTemplateColumns: '1fr 1fr',
     gap: '20px',
     marginTop: '20px'
   }
 };
-
-const styleSheet = document.createElement('style');
-styleSheet.textContent = `
-  @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-  }
-`;
-document.head.appendChild(styleSheet);
