@@ -12,15 +12,12 @@ export default function SignInModal({ isOpen, onClose }) {
   const [loginError, setLoginError] = useState('');
   const [loginLoading, setLoginLoading] = useState(false);
   
-  // =============================================
-  // ফরগেট পাসওয়ার্ড OTP স্টেট
-  // =============================================
   const [forgotEmail, setForgotEmail] = useState('');
   const [forgotOtp, setForgotOtp] = useState('');
   const [forgotError, setForgotError] = useState('');
   const [forgotSuccess, setForgotSuccess] = useState(false);
   const [forgotLoading, setForgotLoading] = useState(false);
-  const [forgotStep, setForgotStep] = useState(1); // 1=email, 2=otp, 3=reset
+  const [forgotStep, setForgotStep] = useState(1);
   const [otpVerified, setOtpVerified] = useState(false);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -32,6 +29,9 @@ export default function SignInModal({ isOpen, onClose }) {
     setStep('login');
   };
 
+  // =============================================
+  // ✅ লগইন হ্যান্ডেলার (আপডেটেড)
+  // =============================================
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoginError('');
@@ -51,9 +51,6 @@ export default function SignInModal({ isOpen, onClose }) {
     }
   };
 
-  // =============================================
-  // ফরগেট পাসওয়ার্ড OTP হ্যান্ডলার
-  // =============================================
   const handleOpenForgotPassword = () => {
     setStep('forgot-password');
     setForgotError('');
@@ -66,7 +63,6 @@ export default function SignInModal({ isOpen, onClose }) {
     setConfirmPassword('');
   };
 
-  // ধাপ ১: OTP ইমেইল পাঠান
   const handleSendOTP = async (e) => {
     e.preventDefault();
     setForgotError('');
@@ -79,7 +75,6 @@ export default function SignInModal({ isOpen, onClose }) {
     }
 
     try {
-      // ✅ Supabase-এ OTP রিকোয়েস্ট পাঠান
       const { error } = await supabase.auth.resetPasswordForEmail(
         forgotEmail.trim()
       );
@@ -101,7 +96,6 @@ export default function SignInModal({ isOpen, onClose }) {
     }
   };
 
-  // ধাপ ২: OTP Verify করুন
   const handleVerifyOTP = async (e) => {
     e.preventDefault();
     setForgotError('');
@@ -114,7 +108,6 @@ export default function SignInModal({ isOpen, onClose }) {
     }
 
     try {
-      // ✅ OTP Verify করুন
       const { data, error } = await supabase.auth.verifyOtp({
         email: forgotEmail.trim(),
         token: forgotOtp,
@@ -145,7 +138,6 @@ export default function SignInModal({ isOpen, onClose }) {
     }
   };
 
-  // ধাপ ৩: নতুন পাসওয়ার্ড সেট করুন
   const handleResetPassword = async (e) => {
     e.preventDefault();
     setForgotError('');
@@ -164,7 +156,6 @@ export default function SignInModal({ isOpen, onClose }) {
     }
 
     try {
-      // ✅ OTP Verify হওয়ার পরে password update করুন
       const { error } = await supabase.auth.updateUser({
         password: newPassword
       });
@@ -177,7 +168,6 @@ export default function SignInModal({ isOpen, onClose }) {
       setForgotSuccess(true);
       console.log('✅ পাসওয়ার্ড সফলভাবে আপডেট হয়েছে');
 
-      // ✅ ৩ সেকেন্ড পর লগইন পেজে ফিরে যান
       setTimeout(() => {
         setForgotStep(1);
         setForgotSuccess(false);
@@ -197,7 +187,6 @@ export default function SignInModal({ isOpen, onClose }) {
     }
   };
 
-  // OTP রিসেন্ড
   const handleResendOTP = async () => {
     setForgotError('');
     setForgotLoading(true);
@@ -338,7 +327,6 @@ export default function SignInModal({ isOpen, onClose }) {
   // স্টেপ ৩: ফরগেট পাসওয়ার্ড (OTP সিস্টেম)
   // =============================================
   if (step === 'forgot-password') {
-    // ধাপ ৩.১: ইমেইল ফর্ম
     if (forgotStep === 1) {
       return (
         <div style={styles.overlay}>
@@ -384,7 +372,6 @@ export default function SignInModal({ isOpen, onClose }) {
       );
     }
 
-    // ধাপ ৩.২: OTP ভেরিফিকেশন
     if (forgotStep === 2) {
       return (
         <div style={styles.overlay}>
@@ -438,7 +425,6 @@ export default function SignInModal({ isOpen, onClose }) {
       );
     }
 
-    // ধাপ ৩.৩: নতুন পাসওয়ার্ড সেট করুন
     if (forgotStep === 3) {
       return (
         <div style={styles.overlay}>
@@ -597,7 +583,6 @@ const styles = {
     fontWeight: '600',
     color: '#64748b'
   },
-  // Role Selection Styles
   roleContainer: { textAlign: 'center', padding: '20px 0' },
   heading: { fontSize: '26px', fontWeight: '800', color: '#0f172a', margin: '0 0 4px 0' },
   subHeading: { fontSize: '14px', color: '#64748b', margin: '0 0 24px 0' },
@@ -613,8 +598,6 @@ const styles = {
   roleIcon: { fontSize: '40px', display: 'block', marginBottom: '8px' },
   roleTitle: { fontSize: '16px', fontWeight: '700', color: '#0f172a', margin: '0 0 4px 0' },
   roleDesc: { fontSize: '12px', color: '#64748b', margin: 0 },
-  
-  // Login Styles
   loginContainer: { padding: '10px 0' },
   loginIcon: { fontSize: '48px', display: 'block', textAlign: 'center', marginBottom: '8px' },
   loginHeading: { fontSize: '24px', fontWeight: '800', color: '#0f172a', textAlign: 'center', margin: '0 0 4px 0' },
@@ -631,11 +614,7 @@ const styles = {
     outline: 'none',
     backgroundColor: '#ffffff'
   },
-  hint: {
-    fontSize: '12px',
-    color: '#94a3b8',
-    marginTop: '2px'
-  },
+  hint: { fontSize: '12px', color: '#94a3b8', marginTop: '2px' },
   loginBtn: {
     background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
     color: 'white',
