@@ -5,6 +5,7 @@ import DashboardCards from './DashboardCards';
 import ProfileCard from './ProfileCard';
 import NoticeCard from './NoticeCard';
 import QuickStats from './QuickStats';
+import ProfilePage from './ProfilePage'; // ✅ নতুন ইমপোর্ট
 
 export default function StudentDashboard() {
   const { userProfile, user } = usePortal();
@@ -36,6 +37,13 @@ export default function StudentDashboard() {
     setLoading(false);
   };
 
+  // =============================================
+  // ✅ প্রোফাইল পেজ দেখানোর জন্য
+  // =============================================
+  if (activeTab === 'profile') {
+    return <ProfilePage onBack={() => setActiveTab('dashboard')} />;
+  }
+
   if (loading) {
     return (
       <div style={styles.loadingContainer}>
@@ -65,7 +73,15 @@ export default function StudentDashboard() {
       <QuickStats studentData={studentData} />
 
       {/* Dashboard Cards */}
-      <DashboardCards studentData={studentData} />
+      <DashboardCards 
+        studentData={studentData} 
+        onFeatureClick={(featureId) => {
+          if (featureId === 'profile') {
+            setActiveTab('profile');
+          }
+          // অন্যান্য ফিচারের জন্য পরে যোগ করা হবে
+        }}
+      />
 
       {/* Profile & Notice */}
       <div style={styles.bottomRow}>
