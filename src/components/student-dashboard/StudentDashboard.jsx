@@ -45,7 +45,6 @@ export default function StudentDashboard() {
 
   return (
     <div style={styles.container}>
-      {/* Header */}
       <div style={styles.header}>
         <div>
           <h1 style={styles.headerTitle}>🎓 ছাত্র ড্যাশবোর্ড</h1>
@@ -59,13 +58,9 @@ export default function StudentDashboard() {
         </div>
       </div>
 
-      {/* Quick Stats */}
       <QuickStats studentData={studentData} />
-
-      {/* Dashboard Cards */}
       <DashboardCards studentData={studentData} />
 
-      {/* Profile Card */}
       <div style={styles.bottomRow}>
         <ProfileCard studentData={studentData} />
       </div>
@@ -73,9 +68,6 @@ export default function StudentDashboard() {
   );
 }
 
-// =============================================
-// 🎨 স্টাইলসমূহ
-// =============================================
 const styles = {
   container: {
     maxWidth: '1200px',
@@ -156,7 +148,6 @@ const styles = {
   }
 };
 
-// অ্যানিমেশন
 const styleSheet = document.createElement('style');
 styleSheet.textContent = `
   @keyframes spin {
