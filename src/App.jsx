@@ -154,7 +154,7 @@ function MainApp() {
   };
 
   // =============================================
-  // ✅ useEffect
+  // ✅ useEffect (সঠিক Cleanup সহ)
   // =============================================
   useEffect(() => {
     const path = window.location.pathname;
@@ -166,6 +166,9 @@ function MainApp() {
     fetchSiteContents();
     fetchTeachers();
     fetchNotices();
+
+    // ✅ সব চ্যানেল একসাথে সংরক্ষণ করুন
+    const channels = [];
 
     const cmsChannel = supabase
       .channel('cms-realtime')
@@ -214,12 +217,14 @@ function MainApp() {
       })
       .subscribe();
 
+    // ✅ সব চ্যানেল সংরক্ষণ করুন
+    channels.push(cmsChannel, siteChannel, noticeChannel, homepageChannel, teacherChannel);
+
+    // ✅ Cleanup: সব চ্যানেল আনসাবস্ক্রাইব করুন
     return () => {
-      supabase.removeChannel(cmsChannel);
-      supabase.removeChannel(siteChannel);
-      supabase.removeChannel(noticeChannel);
-      supabase.removeChannel(homepageChannel);
-      supabase.removeChannel(teacherChannel);
+      channels.forEach(channel => {
+        supabase.removeChannel(channel);
+      });
     };
   }, []);
 
@@ -278,10 +283,11 @@ function MainApp() {
   });
 
   // =============================================
-  // ✅ পোর্টাল হ্যান্ডেলার
+  // ✅ পোর্টাল হ্যান্ডেলার (আপডেটেড)
   // =============================================
   const handleGoToPortal = () => {
     if (isAuthenticated) {
+      // ✅ পোর্টালে রিডাইরেক্ট
       window.location.href = '/portal';
     } else {
       handleOpenSignIn();
@@ -289,16 +295,19 @@ function MainApp() {
   };
 
   // =============================================
-  // ✅ ড্যাশবোর্ড রেন্ডার
+  // ✅ পোর্টাল রাউটিং ফাংশন (আপডেটেড)
   // =============================================
   const renderDashboard = () => {
     if (!isAuthenticated) {
+      // ✅ ইউজার লগইন না থাকলে সাইনইন মডাল খুলুন
+      handleOpenSignIn();
       return null;
     }
 
     const path = window.location.pathname;
 
-    if (path === '/portal') {
+    // ✅ Student Dashboard
+    if (path === '/portal' || path === '/portal/') {
       if (userRole === 'student') {
         return <StudentDashboard />;
       }
@@ -307,6 +316,7 @@ function MainApp() {
       }
     }
 
+    // ✅ Student Sub-pages
     if (userRole === 'student') {
       if (path.includes('/student/profile')) return <ProfilePage />;
       if (path.includes('/student/result')) return <ResultPage />;
@@ -321,11 +331,18 @@ function MainApp() {
       return <StudentDashboard />;
     }
 
+    // ✅ Teacher Dashboard
     if (userRole === 'teacher') {
       return <TeacherDashboard />;
     }
 
-    return null;
+    // ✅ কোন রোল মেলেনি
+    return (
+      <div style={{ textAlign: 'center', padding: '60px 20px' }}>
+        <h3>⚠️ আপনার রোলের জন্য কোনো ড্যাশবোর্ড নেই</h3>
+        <p>অনুগ্রহ করে অ্যাডমিনের সাথে যোগাযোগ করুন</p>
+      </div>
+    );
   };
 
   // =============================================
