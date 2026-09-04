@@ -14,7 +14,7 @@ import StudentDashboard from './components/student-dashboard/StudentDashboard';
 import TeacherDashboard from './components/portal/TeacherDashboard';
 import ResetPassword from './components/ResetPassword';
 
-// ✅ ছাত্র পোর্টাল পেজ ইমপোর্ট
+// ছাত্র পোর্টাল পেজ ইমপোর্ট
 import ProfilePage from './components/student-dashboard/ProfilePage';
 import ResultPage from './components/student-dashboard/ResultPage';
 import RoutinePage from './components/student-dashboard/RoutinePage';
@@ -94,7 +94,7 @@ function MainApp() {
       const { data, error } = await supabase
         .from('teachers')
         .select('*')
-        .eq('is_approved', true) // ✅ শুধু অনুমোদিত
+        .eq('is_approved', true)
         .order('name', { ascending: true });
       if (data) {
         setTeachers(data);
@@ -273,12 +273,40 @@ function MainApp() {
   });
 
   // =============================================
+  // ✅ পোর্টালে যান হ্যান্ডেলার
+  // =============================================
+  const handleGoToPortal = () => {
+    if (isAuthenticated) {
+      window.history.pushState(null, '', '/portal');
+      setCurrentView('portal');
+      setMobileMenuOpen(false);
+      window.location.reload(); // ফোর্স রিলোড
+    } else {
+      setMobileMenuOpen(false);
+      handleOpenSignIn();
+    }
+  };
+
+  // =============================================
   // ✅ রাউটিং ভিত্তিক কন্টেন্ট রেন্ডার
   // =============================================
   const renderDashboard = () => {
-    if (!isAuthenticated) return null;
+    if (!isAuthenticated) {
+      handleOpenSignIn();
+      return null;
+    }
     
     const path = window.location.pathname;
+
+    // ✅ /portal পাথে ড্যাশবোর্ড দেখান
+    if (path === '/portal') {
+      if (userRole === 'student') {
+        return <StudentDashboard />;
+      }
+      if (userRole === 'teacher') {
+        return <TeacherDashboard />;
+      }
+    }
 
     // ✅ ছাত্র পোর্টাল পেজ
     if (userRole === 'student') {
@@ -293,56 +321,30 @@ function MainApp() {
       if (path.includes('/student/certificates')) return <CertificatePage />;
       if (path.includes('/student/online-class')) return <OnlineClassPage />;
       
-      // ডিফল্ট: ছাত্র ড্যাশবোর্ড
       return <StudentDashboard />;
     }
     
     // ✅ শিক্ষক ড্যাশবোর্ড
     if (userRole === 'teacher') {
-      return (
-        <div style={{ maxWidth: '1200px', margin: '40px auto', padding: '0 16px' }}>
-          <div className="card" style={{ padding: '30px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
-              <div>
-                <h2 style={{ color: '#14532d', margin: 0 }}>👋 স্বাগতম, {userProfile?.name || 'ইউজার'}!</h2>
-                <p style={{ color: '#64748b', margin: '4px 0 0 0' }}>👨‍🏫 শিক্ষক ড্যাশবোর্ড</p>
-              </div>
-              <button onClick={logout} style={{ background: '#dc2626', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '10px', fontWeight: '600', cursor: 'pointer' }}>
-                লগআউট
-              </button>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px', marginTop: '24px' }}>
-              <div style={{ background: '#f0fdf4', padding: '20px', borderRadius: '12px', border: '1px solid #bbf7d0' }}>
-                <h4 style={{ margin: '0 0 8px 0', color: '#166534' }}>📊 প্রোফাইল</h4>
-                <p style={{ margin: '4px 0', fontSize: '14px' }}><strong>নাম:</strong> {userProfile?.name}</p>
-                <p style={{ margin: '4px 0', fontSize: '14px' }}><strong>ইমেইল:</strong> {userProfile?.email}</p>
-                <p style={{ margin: '4px 0', fontSize: '14px' }}><strong>পদবি:</strong> {userProfile?.designation || 'নাই'}</p>
-                <p style={{ margin: '4px 0', fontSize: '14px' }}><strong>বিষয়:</strong> {userProfile?.subject || 'নাই'}</p>
-              </div>
-            </div>
-            <button onClick={() => { window.history.pushState(null, '', '/'); setCurrentView('home'); }} style={{ background: '#64748b', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '10px', fontWeight: '600', cursor: 'pointer', marginTop: '20px' }}>
-              ⬅ হোম পেজে ফিরে যান
-            </button>
-          </div>
-        </div>
-      );
+      return <TeacherDashboard />;
     }
+    
     return null;
   };
 
   // =============================================
-  // ✅ পেজ কন্টেন্ট রেন্ডার (রাউটিং অনুযায়ী)
+  // ✅ পেজ কন্টেন্ট রেন্ডার
   // =============================================
   const renderContent = () => {
     const path = window.location.pathname;
 
-    // ✅ যদি পোর্টাল পেজে থাকে
-    if (isAuthenticated && (path.includes('/student/') || path.includes('/portal'))) {
+    // ✅ পোর্টাল পেজ
+    if (path === '/portal' || path.includes('/student/') || path.includes('/teacher/')) {
       return renderDashboard();
     }
 
     // ✅ হোমপেজ
-    if (currentView === 'home' && !isAuthenticated) {
+    if (currentView === 'home') {
       return renderHomepage();
     }
 
@@ -459,7 +461,7 @@ function MainApp() {
         </div>
         <p style={{ lineHeight: '1.8', color: '#334155', fontSize: '15px' }}>{siteData.homepage_about_message}</p>
         <div style={{ marginTop: '20px', textAlign: 'center' }}>
-          <button onClick={() => setCurrentView('home')} className="btn-primary" style={{ backgroundColor: '#64748b' }}>হোম পেজে ফিরে যান</button>
+          <button onClick={() => { setCurrentView('home'); window.history.pushState(null, '', '/'); }} className="btn-primary" style={{ backgroundColor: '#64748b' }}>হোম পেজে ফিরে যান</button>
         </div>
       </div>
     </div>
@@ -490,7 +492,7 @@ function MainApp() {
         </div>
       )}
       <div style={{ marginTop: '30px', textAlign: 'center' }}>
-        <button onClick={() => setCurrentView('home')} className="btn-primary" style={{ backgroundColor: '#64748b' }}>হোম পেজে ফিরে যান</button>
+        <button onClick={() => { setCurrentView('home'); window.history.pushState(null, '', '/'); }} className="btn-primary" style={{ backgroundColor: '#64748b' }}>হোম পেজে ফিরে যান</button>
       </div>
     </div>
   );
@@ -503,7 +505,7 @@ function MainApp() {
       </div>
       <StudentList />
       <div style={{ marginTop: '30px', textAlign: 'center' }}>
-        <button onClick={() => setCurrentView('home')} className="btn-primary" style={{ backgroundColor: '#64748b' }}>হোম পেজে ফিরে যান</button>
+        <button onClick={() => { setCurrentView('home'); window.history.pushState(null, '', '/'); }} className="btn-primary" style={{ backgroundColor: '#64748b' }}>হোম পেজে ফিরে যান</button>
       </div>
     </div>
   );
@@ -527,7 +529,7 @@ function MainApp() {
           )}
         </div>
         <div style={{ marginTop: '20px', textAlign: 'center' }}>
-          <button onClick={() => setCurrentView('home')} className="btn-primary" style={{ backgroundColor: '#64748b' }}>হোম পেজে ফিরে যান</button>
+          <button onClick={() => { setCurrentView('home'); window.history.pushState(null, '', '/'); }} className="btn-primary" style={{ backgroundColor: '#64748b' }}>হোম পেজে ফিরে যান</button>
         </div>
       </div>
     </div>
@@ -597,8 +599,7 @@ function MainApp() {
         <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }} onClick={() => { setCurrentView('home'); window.history.pushState(null, '', '/'); }}>
             <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: 'linear-gradient(135deg, #16a34a, #15803d)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '22px', boxShadow: '0 4px 10px rgba(22, 163, 74, 0.3)' }}>
-              চ
-            </div>
+              চ            </div>
             <div>
               <h1 style={{ fontSize: '18px', fontWeight: '800', color: '#14532d', margin: 0, lineHeight: 1.2 }}>চিলমারী প্রি ক্যাডেট মাদ্রাসা</h1>
               <p style={{ fontSize: '11px', color: '#64748b', margin: 0, fontStyle: 'italic' }}>দ্বীন ও আধুনিক শিক্ষার অপূর্ব মেলবন্ধন</p>
@@ -618,7 +619,7 @@ function MainApp() {
             ))}
             {isAuthenticated ? (
               <>
-                <span className="nav-link" style={{ color: '#16a34a', fontWeight: 'bold' }} onClick={() => { window.history.pushState(null, '', '/portal'); setMobileMenuOpen(false); }}>
+                <span className="nav-link" style={{ color: '#16a34a', fontWeight: 'bold' }} onClick={handleGoToPortal}>
                   🎓 পোর্টালে যান
                 </span>
                 <button onClick={() => { logout(); setMobileMenuOpen(false); window.history.pushState(null, '', '/'); }} style={{ background: '#dc2626', color: 'white', border: 'none', padding: '10px', borderRadius: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: 'bold' }}>
