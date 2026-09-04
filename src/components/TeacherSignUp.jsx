@@ -15,7 +15,7 @@ export default function TeacherSignUp({ onBack, onClose }) {
     confirmPassword: '',
     photo: null,
     otp: '',
-    registrationCode: '', // ✅ ইউনিক কোড ফিল্ড
+    registrationCode: '',
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -79,9 +79,6 @@ export default function TeacherSignUp({ onBack, onClose }) {
     }
   };
 
-  // =============================================
-  // ✅ ১. কোড যাচাই ফাংশন (শিক্ষক)
-  // =============================================
   const handleVerifyCode = async (e) => {
     e.preventDefault();
     setError('');
@@ -104,14 +101,11 @@ export default function TeacherSignUp({ onBack, onClose }) {
     }
 
     try {
-      console.log('🔍 Searching for teacher code:', code);
-
-      // ✅ role = 'teacher' চেক সহ
       const { data, error } = await supabase
         .from('registration_codes')
         .select('*')
         .eq('code', code)
-        .eq('role', 'teacher') // ✅ শিক্ষকের কোড চেক
+        .eq('role', 'teacher')
         .maybeSingle();
 
       console.log('📦 Data:', data);
@@ -155,9 +149,6 @@ export default function TeacherSignUp({ onBack, onClose }) {
     setLoading(false);
   };
 
-  // =============================================
-  // ✅ ২. OTP পাঠান (শিক্ষক)
-  // =============================================
   const handleSendOTP = async (e) => {
     e.preventDefault();
     setError('');
@@ -238,9 +229,6 @@ export default function TeacherSignUp({ onBack, onClose }) {
     setLoading(false);
   };
 
-  // =============================================
-  // ✅ ৩. OTP ভেরিফাই ও রেজিস্ট্রেশন (শিক্ষক)
-  // =============================================
   const handleVerifyAndSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -306,7 +294,6 @@ export default function TeacherSignUp({ onBack, onClose }) {
         return;
       }
 
-      // ✅ registration_requests টেবিলে রেকর্ড (role = 'teacher')
       try {
         await supabase
           .from('registration_requests')
@@ -315,8 +302,8 @@ export default function TeacherSignUp({ onBack, onClose }) {
             student_name: formData.name,
             phone: formData.phone || '',
             email: formData.email.toLowerCase().trim(),
-            class_name: '—', // শিক্ষকের জন্য ক্লাস নেই
-            role: 'teacher', // ✅ role যোগ করুন
+            class_name: '—',
+            role: 'teacher',
             status: 'pending',
             otp_verified: true,
             otp_sent_at: new Date().toISOString(),
@@ -326,7 +313,6 @@ export default function TeacherSignUp({ onBack, onClose }) {
         console.error('⚠️ Registration request save error:', reqError);
       }
 
-      // ✅ registration_codes আপডেট
       try {
         await supabase
           .from('registration_codes')
@@ -341,7 +327,6 @@ export default function TeacherSignUp({ onBack, onClose }) {
         console.error('⚠️ Code update error:', codeError);
       }
 
-      // ✅ লগ তৈরি
       try {
         await supabase
           .from('registration_logs')
@@ -365,9 +350,7 @@ export default function TeacherSignUp({ onBack, onClose }) {
     setLoading(false);
   };
 
-  // =============================================
   // ✅ রেন্ডার: স্টেপ ১ - কোড যাচাই
-  // =============================================
   if (step === 1) {
     return (
       <div style={styles.container}>
@@ -440,9 +423,7 @@ export default function TeacherSignUp({ onBack, onClose }) {
     );
   }
 
-  // =============================================
   // ✅ রেন্ডার: স্টেপ ২ - ফর্ম + OTP পাঠান
-  // =============================================
   if (step === 2) {
     return (
       <form onSubmit={handleSendOTP} style={styles.form}>
@@ -522,9 +503,7 @@ export default function TeacherSignUp({ onBack, onClose }) {
     );
   }
 
-  // =============================================
   // ✅ রেন্ডার: স্টেপ ৩ - OTP ভেরিফিকেশন
-  // =============================================
   if (step === 3) {
     return (
       <div style={styles.otpContainer}>
@@ -559,13 +538,11 @@ export default function TeacherSignUp({ onBack, onClose }) {
     );
   }
 
-  // =============================================
   // ✅ রেন্ডার: স্টেপ ৪ - সাফল্য
-  // =============================================
   if (step === 4 && success) {
     return (
       <div style={styles.successContainer}>
-        <div style={styles.successIcon}>🎉</div>
+        <div style={styles.successIconLarge}>🎉</div>
         <h2 style={styles.successHeading}>আবেদন সফলভাবে জমা হয়েছে!</h2>
         <div style={styles.successMessageBox}>
           <p style={styles.successText}>
@@ -597,7 +574,7 @@ export default function TeacherSignUp({ onBack, onClose }) {
 }
 
 // =============================================
-// 🎨 স্টাইলসমূহ (StudentSignUp এর সাথে একই)
+// 🎨 প্রিমিয়াম স্টাইল (ডুপ্লিকেট কী ফিক্স করা হয়েছে)
 // =============================================
 const styles = {
   container: {
@@ -774,6 +751,7 @@ const styles = {
     gap: '8px',
     marginBottom: '12px',
   },
+  // ✅ successIcon এখন শুধু একবার ব্যবহার করা হয়েছে
   successIcon: { fontSize: '18px' },
   verifiedNotice: {
     backgroundColor: '#dcfce7',
@@ -797,6 +775,7 @@ const styles = {
     marginTop: '8px',
     display: 'inline-block',
   },
+  // OTP স্টেপ
   otpContainer: {
     textAlign: 'center',
     padding: '20px 0',
@@ -866,11 +845,13 @@ const styles = {
     fontWeight: '700',
     boxShadow: '0 4px 14px rgba(37, 99, 235, 0.3)',
   },
+  // সাফল্য স্টেপ
   successContainer: {
     textAlign: 'center',
     padding: '20px 10px',
   },
-  successIcon: {
+  // ✅ successIconLarge নামে নতুন কী (যাতে duplicate না হয়)
+  successIconLarge: {
     fontSize: '56px',
     marginBottom: '12px',
   },
