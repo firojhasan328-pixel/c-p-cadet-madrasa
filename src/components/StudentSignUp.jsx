@@ -17,7 +17,7 @@ export default function StudentSignUp({ onBack, onClose }) {
     password: '',
     confirmPassword: '',
     otp: '',
-    registrationCode: '', // ✅ নতুন: ইউনিক কোড ফিল্ড
+    registrationCode: '',
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -81,9 +81,6 @@ export default function StudentSignUp({ onBack, onClose }) {
     }
   };
 
-  // =============================================
-  // ✅ ১. কোড যাচাই ফাংশন
-  // =============================================
   const handleVerifyCode = async (e) => {
     e.preventDefault();
     setError('');
@@ -106,7 +103,6 @@ export default function StudentSignUp({ onBack, onClose }) {
     }
 
     try {
-      // ১. ডাটাবেজে কোড খুঁজুন
       const { data, error } = await supabase
         .from('registration_codes')
         .select('*')
@@ -123,14 +119,12 @@ export default function StudentSignUp({ onBack, onClose }) {
         return;
       }
 
-      // ২. কোড ব্যবহার করা হয়েছে কিনা চেক
       if (data.is_used) {
         setCodeErrorMessage('❌ এই কোডটি ইতিমধ্যে ব্যবহার করা হয়েছে।');
         setLoading(false);
         return;
       }
 
-      // ৩. কোডের মেয়াদ শেষ কিনা চেক
       const now = new Date();
       const expiresAt = new Date(data.expires_at);
       if (now > expiresAt) {
@@ -139,14 +133,9 @@ export default function StudentSignUp({ onBack, onClose }) {
         return;
       }
 
-      // ৪. ✅ কোড সঠিক
       setCodeVerified(true);
       setCodeMessage('✅ কোডটি সঠিক! এখন আপনার তথ্য দিন এবং OTP পান।');
-
-      // ৫. সুন্দর পপআপ মেসেজ
       alert('✅ আপনার কোডটি সঠিক! এখন ফর্ম পূরণ করে OTP নিন।');
-
-      // ৬. স্টেপ ২-এ যান (ফর্ম পূরণ)
       setStep(2);
 
     } catch (err) {
@@ -156,15 +145,11 @@ export default function StudentSignUp({ onBack, onClose }) {
     setLoading(false);
   };
 
-  // =============================================
-  // ✅ ২. OTP পাঠান (স্টেপ ২)
-  // =============================================
   const handleSendOTP = async (e) => {
     e.preventDefault();
     setError('');
     setLoading(true);
 
-    // ভ্যালিডেশন
     if (!formData.name || !formData.fatherName || !formData.motherName || 
         !formData.village || !formData.class || !formData.email) {
       setError('❌ সব ঘর পূরণ করুন');
@@ -191,7 +176,6 @@ export default function StudentSignUp({ onBack, onClose }) {
     }
 
     try {
-      // ইমেইল ডুপ্লিকেট চেক (students টেবিলে)
       const { data: existingStudent, error: checkError } = await supabase
         .from('students')
         .select('email')
@@ -208,7 +192,6 @@ export default function StudentSignUp({ onBack, onClose }) {
         return;
       }
 
-      // OTP জেনারেট ও ইমেইল পাঠান
       const otp = generateOTP();
       await saveOTP(formData.email, otp);
       
@@ -220,7 +203,6 @@ export default function StudentSignUp({ onBack, onClose }) {
         return;
       }
 
-      // ইমেইল সফল → স্টেপ ৩ (OTP ভেরিফিকেশন)
       setStep(3);
 
     } catch (err) {
@@ -229,16 +211,12 @@ export default function StudentSignUp({ onBack, onClose }) {
     setLoading(false);
   };
 
-  // =============================================
-  // ✅ ৩. OTP ভেরিফাই ও রেজিস্ট্রেশন (স্টেপ ৩)
-  // =============================================
   const handleVerifyAndSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setLoading(true);
 
     try {
-      // ১. OTP ভেরিফাই
       const result = await verifyOTP(formData.email, formData.otp);
       
       if (!result.success) {
@@ -247,7 +225,6 @@ export default function StudentSignUp({ onBack, onClose }) {
         return;
       }
 
-      // ২. Supabase Auth এ ইউজার তৈরি করুন
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.email.toLowerCase().trim(),
         password: formData.password,
@@ -271,10 +248,8 @@ export default function StudentSignUp({ onBack, onClose }) {
         return;
       }
 
-      // ৩. ছবি আপলোড
       const photoPath = await uploadPhoto();
 
-      // ৪. students টেবিলে ডেটা ইনসার্ট
       const { error: insertError } = await supabase
         .from('students')
         .insert([{
@@ -303,7 +278,6 @@ export default function StudentSignUp({ onBack, onClose }) {
         return;
       }
 
-      // ৫. ✅ registration_requests টেবিলে রেকর্ড তৈরি করুন
       try {
         await supabase
           .from('registration_requests')
@@ -325,7 +299,6 @@ export default function StudentSignUp({ onBack, onClose }) {
         console.error('⚠️ Registration request save error:', reqError);
       }
 
-      // ৬. ✅ registration_codes টেবিল আপডেট (is_used = true)
       try {
         await supabase
           .from('registration_codes')
@@ -340,7 +313,6 @@ export default function StudentSignUp({ onBack, onClose }) {
         console.error('⚠️ Code update error:', codeError);
       }
 
-      // ৭. ✅ লগ তৈরি
       try {
         await supabase
           .from('registration_logs')
@@ -354,7 +326,6 @@ export default function StudentSignUp({ onBack, onClose }) {
         console.error('⚠️ Log error:', logError);
       }
 
-      // ৮. সাফল্য (স্টেপ ৪)
       setStep(4);
       setSuccess(true);
 
@@ -365,9 +336,7 @@ export default function StudentSignUp({ onBack, onClose }) {
     setLoading(false);
   };
 
-  // =============================================
   // ✅ রেন্ডার: স্টেপ ১ - কোড যাচাই
-  // =============================================
   if (step === 1) {
     return (
       <div style={styles.container}>
@@ -440,9 +409,7 @@ export default function StudentSignUp({ onBack, onClose }) {
     );
   }
 
-  // =============================================
   // ✅ রেন্ডার: স্টেপ ২ - ফর্ম + OTP পাঠান
-  // =============================================
   if (step === 2) {
     return (
       <form onSubmit={handleSendOTP} style={styles.form}>
@@ -545,9 +512,7 @@ export default function StudentSignUp({ onBack, onClose }) {
     );
   }
 
-  // =============================================
   // ✅ রেন্ডার: স্টেপ ৩ - OTP ভেরিফিকেশন
-  // =============================================
   if (step === 3) {
     return (
       <div style={styles.otpContainer}>
@@ -582,9 +547,7 @@ export default function StudentSignUp({ onBack, onClose }) {
     );
   }
 
-  // =============================================
   // ✅ রেন্ডার: স্টেপ ৪ - সাফল্য
-  // =============================================
   if (step === 4 && success) {
     return (
       <div style={styles.successContainer}>
@@ -620,7 +583,7 @@ export default function StudentSignUp({ onBack, onClose }) {
 }
 
 // =============================================
-// 🎨 প্রিমিয়াম স্টাইল
+// 🎨 প্রিমিয়াম স্টাইল (ডুপ্লিকেট কী ফিক্স করা হয়েছে)
 // =============================================
 const styles = {
   container: {
@@ -797,6 +760,7 @@ const styles = {
     gap: '8px',
     marginBottom: '12px',
   },
+  // ✅ successIcon এখন শুধু একবার ব্যবহার করা হয়েছে
   successIcon: { fontSize: '18px' },
   verifiedNotice: {
     backgroundColor: '#dcfce7',
@@ -895,7 +859,8 @@ const styles = {
     textAlign: 'center',
     padding: '20px 10px',
   },
-  successIcon: {
+  // ✅ successIconLarge নামে নতুন কী (যাতে duplicate না হয়)
+  successIconLarge: {
     fontSize: '56px',
     marginBottom: '12px',
   },
