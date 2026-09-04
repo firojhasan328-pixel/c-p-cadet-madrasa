@@ -14,6 +14,18 @@ import StudentDashboard from './components/student-dashboard/StudentDashboard';
 import TeacherDashboard from './components/portal/TeacherDashboard';
 import ResetPassword from './components/ResetPassword';
 
+// ✅ ছাত্র পোর্টাল পেজ ইমপোর্ট
+import ProfilePage from './components/student-dashboard/ProfilePage';
+import ResultPage from './components/student-dashboard/ResultPage';
+import RoutinePage from './components/student-dashboard/RoutinePage';
+import AssignmentPage from './components/student-dashboard/AssignmentPage';
+import ExamRoutinePage from './components/student-dashboard/ExamRoutinePage';
+import AttendancePage from './components/student-dashboard/AttendancePage';
+import NoticePage from './components/student-dashboard/NoticePage';
+import AchievementPage from './components/student-dashboard/AchievementPage';
+import CertificatePage from './components/student-dashboard/CertificatePage';
+import OnlineClassPage from './components/student-dashboard/OnlineClassPage';
+
 // =============================================
 // মেইন App
 // =============================================
@@ -82,6 +94,7 @@ function MainApp() {
       const { data, error } = await supabase
         .from('teachers')
         .select('*')
+        .eq('is_approved', true) // ✅ শুধু অনুমোদিত
         .order('name', { ascending: true });
       if (data) {
         setTeachers(data);
@@ -185,11 +198,23 @@ function MainApp() {
       })
       .subscribe();
 
+    const teacherChannel = supabase
+      .channel('teacher-realtime')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'teachers',
+      }, () => {
+        fetchTeachers();
+      })
+      .subscribe();
+
     return () => {
       supabase.removeChannel(cmsChannel);
       supabase.removeChannel(siteChannel);
       supabase.removeChannel(noticeChannel);
       supabase.removeChannel(homepageChannel);
+      supabase.removeChannel(teacherChannel);
     };
   }, []);
 
@@ -247,13 +272,32 @@ function MainApp() {
     fatherNidPhoto: null
   });
 
+  // =============================================
+  // ✅ রাউটিং ভিত্তিক কন্টেন্ট রেন্ডার
+  // =============================================
   const renderDashboard = () => {
     if (!isAuthenticated) return null;
     
+    const path = window.location.pathname;
+
+    // ✅ ছাত্র পোর্টাল পেজ
     if (userRole === 'student') {
+      if (path.includes('/student/profile')) return <ProfilePage />;
+      if (path.includes('/student/result')) return <ResultPage />;
+      if (path.includes('/student/routine')) return <RoutinePage />;
+      if (path.includes('/student/assignments')) return <AssignmentPage />;
+      if (path.includes('/student/exam-routine')) return <ExamRoutinePage />;
+      if (path.includes('/student/attendance')) return <AttendancePage />;
+      if (path.includes('/student/notices')) return <NoticePage />;
+      if (path.includes('/student/achievements')) return <AchievementPage />;
+      if (path.includes('/student/certificates')) return <CertificatePage />;
+      if (path.includes('/student/online-class')) return <OnlineClassPage />;
+      
+      // ডিফল্ট: ছাত্র ড্যাশবোর্ড
       return <StudentDashboard />;
     }
     
+    // ✅ শিক্ষক ড্যাশবোর্ড
     if (userRole === 'teacher') {
       return (
         <div style={{ maxWidth: '1200px', margin: '40px auto', padding: '0 16px' }}>
@@ -276,7 +320,7 @@ function MainApp() {
                 <p style={{ margin: '4px 0', fontSize: '14px' }}><strong>বিষয়:</strong> {userProfile?.subject || 'নাই'}</p>
               </div>
             </div>
-            <button onClick={() => setCurrentView('home')} style={{ background: '#64748b', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '10px', fontWeight: '600', cursor: 'pointer', marginTop: '20px' }}>
+            <button onClick={() => { window.history.pushState(null, '', '/'); setCurrentView('home'); }} style={{ background: '#64748b', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '10px', fontWeight: '600', cursor: 'pointer', marginTop: '20px' }}>
               ⬅ হোম পেজে ফিরে যান
             </button>
           </div>
@@ -286,6 +330,225 @@ function MainApp() {
     return null;
   };
 
+  // =============================================
+  // ✅ পেজ কন্টেন্ট রেন্ডার (রাউটিং অনুযায়ী)
+  // =============================================
+  const renderContent = () => {
+    const path = window.location.pathname;
+
+    // ✅ যদি পোর্টাল পেজে থাকে
+    if (isAuthenticated && (path.includes('/student/') || path.includes('/portal'))) {
+      return renderDashboard();
+    }
+
+    // ✅ হোমপেজ
+    if (currentView === 'home' && !isAuthenticated) {
+      return renderHomepage();
+    }
+
+    // ✅ অন্যান্য ভিউ
+    if (currentView === 'about') return renderAboutPage();
+    if (currentView === 'teachers') return renderTeachersPage();
+    if (currentView === 'students') return renderStudentsPage();
+    if (currentView === 'notice') return renderNoticePage();
+    if (currentView === 'gallery') return <Gallery />;
+    if (currentView === 'contact') return <ContactPage />;
+
+    // ✅ ডিফল্ট: হোমপেজ
+    return renderHomepage();
+  };
+
+  // =============================================
+  // ✅ হোমপেজ রেন্ডার
+  // =============================================
+  const renderHomepage = () => {
+    const featuredNotice = notices.length > 0 ? notices[0] : null;
+    const featuresList = (siteData.homepage_features_list || '')
+      .split('\n')
+      .filter(item => item.trim() !== '');
+
+    return (
+      <>
+        <header id="home" style={{ background: 'linear-gradient(135deg, #064e3b 0%, #14532d 50%, #166534 100%)', color: 'white', padding: '50px 20px 70px 20px', textAlign: 'center', position: 'relative' }}>
+          <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+            <span className="badge" style={{ backgroundColor: 'rgba(255,255,255,0.2)', color: '#ffffff', marginBottom: '16px' }}>🎓 নতুন সেশনে ভর্তি চলছে</span>
+            <h2 style={{ fontSize: '2.1rem', fontWeight: '800', margin: '16px 0', lineHeight: '1.3' }}>{siteData.homepage_header_title}</h2>
+            <p style={{ fontSize: '15px', color: '#ecfdf5', lineHeight: '1.7', marginBottom: '28px' }}>{siteData.homepage_header_subtitle}</p>
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
+              <button onClick={() => { resetForm(); setIsAdmissionModalOpen(true); }} className="btn-primary" style={{ backgroundColor: '#ffffff', color: '#14532d', fontWeight: 'bold' }}>
+                ভর্তি আবেদন করুন
+              </button>
+              <a href={`tel:${siteData.contactNumber}`} className="btn-primary" style={{ backgroundColor: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)' }}>
+                📞 সরাসরি কল দিন
+              </a>
+            </div>
+          </div>
+        </header>
+
+        <main style={{ maxWidth: '1200px', margin: '-30px auto 40px auto', padding: '0 16px', position: 'relative', zIndex: 10 }}>
+          <SuccessStats />
+
+          <section id="about" style={{ marginBottom: '32px' }}>
+            <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '20px', alignItems: 'center' }}>
+              <div style={{ textAlign: 'center', flexShrink: 0 }}>
+                <img src="https://i.postimg.cc/xd8py0DW/1786523361131.jpg" alt={siteData.headmasterName} style={{ width: '130px', height: '130px', borderRadius: '50%', objectFit: 'cover', border: '4px solid #16a34a', boxShadow: '0 6px 16px rgba(0,0,0,0.15)' }} />
+                <h3 style={{ margin: '12px 0 2px 0', fontSize: '20px', color: '#0f172a', fontWeight: '700' }}>{siteData.headmasterName}</h3>
+                <span className="badge">প্রধান শিক্ষক ও পরিচালক</span>
+              </div>
+              <div style={{ textAlign: 'left', width: '100%' }}>
+                <h3 style={{ fontSize: '20px', color: '#166534', marginTop: 0, marginBottom: '12px', borderBottom: '2px solid #f1f5f9', paddingBottom: '8px' }}>{siteData.homepage_about_title}</h3>
+                <p style={{ lineHeight: '1.8', color: '#334155', margin: 0, fontSize: '15px' }}>{siteData.homepage_about_message}</p>
+              </div>
+            </div>
+          </section>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px', marginBottom: '32px' }}>
+            <div id="notice" className="card">
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', borderBottom: '2px solid #f1f5f9', paddingBottom: '10px' }}>
+                <h3 style={{ margin: 0, fontSize: '18px', color: '#166534', display: 'flex', alignItems: 'center', gap: '8px' }}>{siteData.homepage_notice_title}</h3>
+              </div>
+              {noticesLoading ? (
+                <p style={{ textAlign: 'center', color: '#94a3b8', padding: '12px 0' }}>⏳ লোড হচ্ছে...</p>
+              ) : featuredNotice ? (
+                <div style={{ padding: '12px', borderRadius: '10px', background: '#f8fafc', borderLeft: '4px solid #16a34a' }}>
+                  <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 'bold' }}>📢 গুরুত্বপূর্ণ</span>
+                  <p style={{ margin: '4px 0 0 0', fontSize: '14px', fontWeight: '600' }}>{featuredNotice.message}</p>
+                </div>
+              ) : (
+                <div style={{ padding: '20px', textAlign: 'center', color: '#94a3b8', fontSize: '14px', background: '#f8fafc', borderRadius: '10px', border: '1px dashed #cbd5e1' }}>{siteData.homepage_notice_empty}</div>
+              )}
+            </div>
+
+            <div className="card">
+              <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', color: '#166534', borderBottom: '2px solid #f1f5f9', paddingBottom: '10px' }}>{siteData.homepage_features_title}</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {featuresList.map((item, idx) => (
+                  <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '14px', color: '#334155' }}>
+                    <span style={{ color: '#16a34a', fontWeight: 'bold' }}>✓</span>
+                    <span dangerouslySetInnerHTML={{ __html: item }} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <section id="admission" className="card" style={{ maxWidth: '600px', margin: '0 auto', textAlign: 'center', padding: '35px 24px' }}>
+            <span className="badge">সহজ নিয়ম</span>
+            <h3 style={{ fontSize: '22px', color: '#166534', margin: '10px 0 6px 0' }}>{siteData.homepage_admission_title}</h3>
+            <p style={{ color: '#64748b', fontSize: '14px', margin: '0 0 20px 0' }}>{siteData.homepage_admission_subtitle}</p>
+            <button onClick={() => { resetForm(); setIsAdmissionModalOpen(true); }} className="btn-primary" style={{ fontSize: '16px', padding: '14px 28px', width: '100%', maxWidth: '300px', justifyContent: 'center' }}>
+              {siteData.homepage_admission_btn_text}
+            </button>
+          </section>
+        </main>
+      </>
+    );
+  };
+
+  // =============================================
+  // ✅ অন্যান্য পেজ রেন্ডার
+  // =============================================
+  const renderAboutPage = () => (
+    <div style={{ maxWidth: '800px', margin: '40px auto', padding: '0 16px' }}>
+      <div className="card">
+        <h2 style={{ color: '#14532d', borderBottom: '2px solid #f1f5f9', paddingBottom: '10px', marginTop: 0 }}>প্রধান শিক্ষকের বাণী</h2>
+        <div style={{ textAlign: 'center', margin: '20px 0' }}>
+          <img src="https://i.postimg.cc/xd8py0DW/1786523361131.jpg" alt={siteData.headmasterName} style={{ width: '140px', height: '140px', borderRadius: '50%', objectFit: 'cover', border: '4px solid #16a34a' }} />
+          <h3 style={{ margin: '10px 0 4px 0' }}>{siteData.headmasterName}</h3>
+          <span className="badge">প্রধান শিক্ষক ও পরিচালক</span>
+        </div>
+        <p style={{ lineHeight: '1.8', color: '#334155', fontSize: '15px' }}>{siteData.homepage_about_message}</p>
+        <div style={{ marginTop: '20px', textAlign: 'center' }}>
+          <button onClick={() => setCurrentView('home')} className="btn-primary" style={{ backgroundColor: '#64748b' }}>হোম পেজে ফিরে যান</button>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderTeachersPage = () => (
+    <div style={{ maxWidth: '1200px', margin: '40px auto', padding: '0 16px' }}>
+      <div style={{ textAlign: 'center', marginBottom: '30px' }}>
+        <span className="badge">সম্মানিত শিক্ষক মণ্ডলী</span>
+        <h2 style={{ color: '#14532d', margin: '10px 0 6px 0' }}>মাদ্রাসার শিক্ষক-শিক্ষিকাবৃন্দ</h2>
+      </div>
+      {teachersLoading ? (
+        <p style={{ textAlign: 'center' }}>⏳ লোড হচ্ছে...</p>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '24px', justifyItems: 'center' }}>
+          {teachers.map((teacher, index) => (
+            <div key={index} className="teacher-card">
+              <img src={teacher.photo_url || 'https://i.postimg.cc/gjktXPpH/1786523361131.jpg'} alt={teacher.name} className="teacher-photo" />
+              <h3 className="teacher-name">{teacher.name}</h3>
+              <div className="teacher-designation">{teacher.designation || 'শিক্ষক'}</div>
+              <div className="teacher-details">
+                <div>📞 {teacher.phone}</div>
+                <div>🎓 {teacher.edu || '—'}</div>
+                <div>📚 {teacher.subject || '—'}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      <div style={{ marginTop: '30px', textAlign: 'center' }}>
+        <button onClick={() => setCurrentView('home')} className="btn-primary" style={{ backgroundColor: '#64748b' }}>হোম পেজে ফিরে যান</button>
+      </div>
+    </div>
+  );
+
+  const renderStudentsPage = () => (
+    <div style={{ maxWidth: '1100px', margin: '40px auto', padding: '0 16px' }}>
+      <div style={{ textAlign: 'center', marginBottom: '30px' }}>
+        <span className="badge">মেধাবী মুখসমূহ</span>
+        <h2 style={{ color: '#14532d', margin: '10px 0 10px 0' }}>ছাত্র-ছাত্রী ও ক্লাসের শীর্ষ স্থানাধিকারীগণ</h2>
+      </div>
+      <StudentList />
+      <div style={{ marginTop: '30px', textAlign: 'center' }}>
+        <button onClick={() => setCurrentView('home')} className="btn-primary" style={{ backgroundColor: '#64748b' }}>হোম পেজে ফিরে যান</button>
+      </div>
+    </div>
+  );
+
+  const renderNoticePage = () => (
+    <div style={{ maxWidth: '800px', margin: '40px auto', padding: '0 16px' }}>
+      <div className="card">
+        <h2 style={{ color: '#14532d', borderBottom: '2px solid #f1f5f9', paddingBottom: '10px', marginTop: 0 }}>📌 নোটিশ বোর্ড</h2>
+        <div style={{ marginTop: '16px' }}>
+          {noticesLoading ? (
+            <p>⏳ লোড হচ্ছে...</p>
+          ) : notices.length > 0 ? (
+            notices.map((notice, index) => (
+              <div key={index} style={{ padding: '12px', borderRadius: '10px', background: '#f8fafc', borderLeft: '4px solid #16a34a', marginBottom: '10px' }}>
+                <p style={{ margin: '4px 0 0 0', fontSize: '14px', fontWeight: '600' }}>{notice.message}</p>
+                <small style={{ color: '#94a3b8' }}>{new Date(notice.created_at).toLocaleDateString('bn-BD')}</small>
+              </div>
+            ))
+          ) : (
+            <div style={{ padding: '20px', textAlign: 'center', color: '#94a3b8', fontSize: '14px' }}>{siteData.homepage_notice_empty}</div>
+          )}
+        </div>
+        <div style={{ marginTop: '20px', textAlign: 'center' }}>
+          <button onClick={() => setCurrentView('home')} className="btn-primary" style={{ backgroundColor: '#64748b' }}>হোম পেজে ফিরে যান</button>
+        </div>
+      </div>
+    </div>
+  );
+
+  // =============================================
+  // ✅ নেভিগেশন
+  // =============================================
+  const navLinks = [
+    { id: 'home', label: 'হোম' },
+    { id: 'about', label: 'প্রধান শিক্ষকের বাণী' },
+    { id: 'teachers', label: 'শিক্ষকবৃন্দ' },
+    { id: 'students', label: 'ছাত্র-ছাত্রী' },
+    { id: 'notice', label: 'নোটিশ বোর্ড' },
+    { id: 'gallery', label: 'গ্যালারি' },
+    { id: 'contact', label: 'যোগাযোগ' },
+  ];
+
+  // =============================================
+  // ✅ রেন্ডার
+  // =============================================
   if (isResetPassword) {
     return (
       <div style={{ fontFamily: "'Hind Siliguri', 'Segoe UI', sans-serif", backgroundColor: '#f8fafc', minHeight: '100vh', margin: 0, padding: 0 }}>
@@ -293,11 +556,6 @@ function MainApp() {
       </div>
     );
   }
-
-  const featuredNotice = notices.length > 0 ? notices[0] : null;
-  const featuresList = (siteData.homepage_features_list || '')
-    .split('\n')
-    .filter(item => item.trim() !== '');
 
   return (
     <div style={{ fontFamily: "'Hind Siliguri', 'Segoe UI', sans-serif", backgroundColor: '#f8fafc', color: '#0f172a', minHeight: '100vh', margin: 0, padding: 0, position: 'relative' }}>
@@ -324,6 +582,7 @@ function MainApp() {
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
       `}</style>
 
+      {/* টপ বার */}
       <div style={{ backgroundColor: '#14532d', color: '#f0fdf4', padding: '8px 20px', fontSize: '13px' }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
           <div>📍 চিলমারী, কুড়িগ্রাম, বাংলাদেশ</div>
@@ -333,9 +592,10 @@ function MainApp() {
         </div>
       </div>
 
+      {/* নেভিগেশন বার */}
       <nav style={{ backgroundColor: '#ffffff', position: 'sticky', top: 0, zIndex: 50, boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }} onClick={() => { setCurrentView('home'); }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }} onClick={() => { setCurrentView('home'); window.history.pushState(null, '', '/'); }}>
             <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: 'linear-gradient(135deg, #16a34a, #15803d)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '22px', boxShadow: '0 4px 10px rgba(22, 163, 74, 0.3)' }}>
               চ
             </div>
@@ -348,192 +608,45 @@ function MainApp() {
             {mobileMenuOpen ? '✕' : '☰'}
           </button>
         </div>
+
         {mobileMenuOpen && (
           <div style={{ backgroundColor: '#ffffff', borderTop: '1px solid #f1f5f9', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '12px', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}>
-            <span className="nav-link" onClick={() => { setCurrentView('home'); setMobileMenuOpen(false); }}>হোম</span>
-            <span className="nav-link" onClick={() => { setCurrentView('about'); setMobileMenuOpen(false); }}>প্রধান শিক্ষকের বাণী</span>
-            <span className="nav-link" onClick={() => { setCurrentView('teachers'); setMobileMenuOpen(false); }}>শিক্ষকবৃন্দ</span>
-            <span className="nav-link" onClick={() => { setCurrentView('students'); setMobileMenuOpen(false); }}>ছাত্র-ছাত্রী</span>
-            <span className="nav-link" onClick={() => { setCurrentView('notice'); setMobileMenuOpen(false); }}>নোটিশ বোর্ড</span>
-            <span className="nav-link" onClick={() => { setCurrentView('gallery'); setMobileMenuOpen(false); }}>গ্যালারি</span>
-            <span className="nav-link" onClick={() => { setCurrentView('contact'); setMobileMenuOpen(false); }}>যোগাযোগ</span>
+            {navLinks.map(link => (
+              <span key={link.id} className="nav-link" onClick={() => { setCurrentView(link.id); setMobileMenuOpen(false); window.history.pushState(null, '', '/'); }}>
+                {link.label}
+              </span>
+            ))}
             {isAuthenticated ? (
               <>
-                <span className="nav-link" style={{ color: '#16a34a', fontWeight: 'bold' }} onClick={() => { setCurrentView('portal'); setMobileMenuOpen(false); }}>🎓 পোর্টালে যান</span>
-                <button onClick={() => { logout(); setMobileMenuOpen(false); }} style={{ background: '#dc2626', color: 'white', border: 'none', padding: '10px', borderRadius: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: 'bold' }}>লগআউট করুন</button>
+                <span className="nav-link" style={{ color: '#16a34a', fontWeight: 'bold' }} onClick={() => { window.history.pushState(null, '', '/portal'); setMobileMenuOpen(false); }}>
+                  🎓 পোর্টালে যান
+                </span>
+                <button onClick={() => { logout(); setMobileMenuOpen(false); window.history.pushState(null, '', '/'); }} style={{ background: '#dc2626', color: 'white', border: 'none', padding: '10px', borderRadius: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: 'bold' }}>
+                  লগআউট করুন
+                </button>
               </>
             ) : (
-              <button onClick={() => { setMobileMenuOpen(false); handleOpenSignIn(); }} style={{ background: 'linear-gradient(135deg, #8b5cf6, #7c3aed)', color: 'white', border: 'none', padding: '12px', borderRadius: '10px', fontSize: '15px', fontWeight: '700', cursor: 'pointer', boxShadow: '0 4px 12px rgba(139, 92, 246, 0.4)', width: '100%' }}>🎓 Student & Teacher Portal</button>
+              <button onClick={() => { setMobileMenuOpen(false); handleOpenSignIn(); }} style={{ background: 'linear-gradient(135deg, #8b5cf6, #7c3aed)', color: 'white', border: 'none', padding: '12px', borderRadius: '10px', fontSize: '15px', fontWeight: '700', cursor: 'pointer', boxShadow: '0 4px 12px rgba(139, 92, 246, 0.4)', width: '100%' }}>
+                🎓 Student & Teacher Portal
+              </button>
             )}
-            <button onClick={() => { setMobileMenuOpen(false); setIsAdmissionModalOpen(true); }} className="btn-primary" style={{ width: '100%', textAlign: 'center', marginTop: '4px' }}>অনলাইন ভর্তি</button>
+            <button onClick={() => { setMobileMenuOpen(false); setIsAdmissionModalOpen(true); }} className="btn-primary" style={{ width: '100%', textAlign: 'center', marginTop: '4px' }}>
+              অনলাইন ভর্তি
+            </button>
           </div>
         )}
       </nav>
 
-      {currentView === 'portal' && isAuthenticated && renderDashboard()}
+      {/* কন্টেন্ট */}
+      {renderContent()}
 
-      {currentView === 'home' && !(currentView === 'portal' && isAuthenticated) && (
-        <>
-          <header id="home" style={{ background: 'linear-gradient(135deg, #064e3b 0%, #14532d 50%, #166534 100%)', color: 'white', padding: '50px 20px 70px 20px', textAlign: 'center', position: 'relative' }}>
-            <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-              <span className="badge" style={{ backgroundColor: 'rgba(255,255,255,0.2)', color: '#ffffff', marginBottom: '16px' }}>🎓 নতুন সেশনে ভর্তি চলছে</span>
-              <h2 style={{ fontSize: '2.1rem', fontWeight: '800', margin: '16px 0', lineHeight: '1.3' }}>{siteData.homepage_header_title}</h2>
-              <p style={{ fontSize: '15px', color: '#ecfdf5', lineHeight: '1.7', marginBottom: '28px' }}>{siteData.homepage_header_subtitle}</p>
-              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
-                <button onClick={() => { resetForm(); setIsAdmissionModalOpen(true); }} className="btn-primary" style={{ backgroundColor: '#ffffff', color: '#14532d', fontWeight: 'bold' }}>ভর্তি আবেদন করুন</button>
-                <a href={`tel:${siteData.contactNumber}`} className="btn-primary" style={{ backgroundColor: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)' }}>📞 সরাসরি কল দিন</a>
-              </div>
-            </div>
-          </header>
-
-          <main style={{ maxWidth: '1200px', margin: '-30px auto 40px auto', padding: '0 16px', position: 'relative', zIndex: 10 }}>
-            <SuccessStats />
-
-            <section id="about" style={{ marginBottom: '32px' }}>
-              <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '20px', alignItems: 'center' }}>
-                <div style={{ textAlign: 'center', flexShrink: 0 }}>
-                  <img src="https://i.postimg.cc/xd8py0DW/1786523361131.jpg" alt={siteData.headmasterName} style={{ width: '130px', height: '130px', borderRadius: '50%', objectFit: 'cover', border: '4px solid #16a34a', boxShadow: '0 6px 16px rgba(0,0,0,0.15)' }} />
-                  <h3 style={{ margin: '12px 0 2px 0', fontSize: '20px', color: '#0f172a', fontWeight: '700' }}>{siteData.headmasterName}</h3>
-                  <span className="badge">প্রধান শিক্ষক ও পরিচালক</span>
-                </div>
-                <div style={{ textAlign: 'left', width: '100%' }}>
-                  <h3 style={{ fontSize: '20px', color: '#166534', marginTop: 0, marginBottom: '12px', borderBottom: '2px solid #f1f5f9', paddingBottom: '8px' }}>{siteData.homepage_about_title}</h3>
-                  <p style={{ lineHeight: '1.8', color: '#334155', margin: 0, fontSize: '15px' }}>{siteData.homepage_about_message}</p>
-                </div>
-              </div>
-            </section>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px', marginBottom: '32px' }}>
-              <div id="notice" className="card">
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', borderBottom: '2px solid #f1f5f9', paddingBottom: '10px' }}>
-                  <h3 style={{ margin: 0, fontSize: '18px', color: '#166534', display: 'flex', alignItems: 'center', gap: '8px' }}>{siteData.homepage_notice_title}</h3>
-                </div>
-                {noticesLoading ? (
-                  <p style={{ textAlign: 'center', color: '#94a3b8', padding: '12px 0' }}>⏳ লোড হচ্ছে...</p>
-                ) : featuredNotice ? (
-                  <div style={{ padding: '12px', borderRadius: '10px', background: '#f8fafc', borderLeft: '4px solid #16a34a' }}>
-                    <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 'bold' }}>📢 গুরুত্বপূর্ণ</span>
-                    <p style={{ margin: '4px 0 0 0', fontSize: '14px', fontWeight: '600' }}>{featuredNotice.message}</p>
-                  </div>
-                ) : (
-                  <div style={{ padding: '20px', textAlign: 'center', color: '#94a3b8', fontSize: '14px', background: '#f8fafc', borderRadius: '10px', border: '1px dashed #cbd5e1' }}>{siteData.homepage_notice_empty}</div>
-                )}
-              </div>
-
-              <div className="card">
-                <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', color: '#166534', borderBottom: '2px solid #f1f5f9', paddingBottom: '10px' }}>{siteData.homepage_features_title}</h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  {featuresList.map((item, idx) => (
-                    <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '14px', color: '#334155' }}>
-                      <span style={{ color: '#16a34a', fontWeight: 'bold' }}>✓</span>
-                      <span dangerouslySetInnerHTML={{ __html: item }} />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <section id="admission" className="card" style={{ maxWidth: '600px', margin: '0 auto', textAlign: 'center', padding: '35px 24px' }}>
-              <span className="badge">সহজ নিয়ম</span>
-              <h3 style={{ fontSize: '22px', color: '#166534', margin: '10px 0 6px 0' }}>{siteData.homepage_admission_title}</h3>
-              <p style={{ color: '#64748b', fontSize: '14px', margin: '0 0 20px 0' }}>{siteData.homepage_admission_subtitle}</p>
-              <button onClick={() => { resetForm(); setIsAdmissionModalOpen(true); }} className="btn-primary" style={{ fontSize: '16px', padding: '14px 28px', width: '100%', maxWidth: '300px', justifyContent: 'center' }}>{siteData.homepage_admission_btn_text}</button>
-            </section>
-          </main>
-        </>
-      )}
-
-      {currentView === 'about' && (
-        <div style={{ maxWidth: '800px', margin: '40px auto', padding: '0 16px' }}>
-          <div className="card">
-            <h2 style={{ color: '#14532d', borderBottom: '2px solid #f1f5f9', paddingBottom: '10px', marginTop: 0 }}>প্রধান শিক্ষকের বাণী</h2>
-            <div style={{ textAlign: 'center', margin: '20px 0' }}>
-              <img src="https://i.postimg.cc/xd8py0DW/1786523361131.jpg" alt={siteData.headmasterName} style={{ width: '140px', height: '140px', borderRadius: '50%', objectFit: 'cover', border: '4px solid #16a34a' }} />
-              <h3 style={{ margin: '10px 0 4px 0' }}>{siteData.headmasterName}</h3>
-              <span className="badge">প্রধান শিক্ষক ও পরিচালক</span>
-            </div>
-            <p style={{ lineHeight: '1.8', color: '#334155', fontSize: '15px' }}>{siteData.homepage_about_message}</p>
-            <div style={{ marginTop: '20px', textAlign: 'center' }}>
-              <button onClick={() => setCurrentView('home')} className="btn-primary" style={{ backgroundColor: '#64748b' }}>হোম পেজে ফিরে যান</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {currentView === 'teachers' && (
-        <div style={{ maxWidth: '1200px', margin: '40px auto', padding: '0 16px' }}>
-          <div style={{ textAlign: 'center', marginBottom: '30px' }}>
-            <span className="badge">সম্মানিত শিক্ষক মণ্ডলী</span>
-            <h2 style={{ color: '#14532d', margin: '10px 0 6px 0' }}>মাদ্রাসার শিক্ষক-শিক্ষিকাবৃন্দ</h2>
-          </div>
-          {teachersLoading ? (
-            <p style={{ textAlign: 'center' }}>⏳ লোড হচ্ছে...</p>
-          ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '24px', justifyItems: 'center' }}>
-              {teachers.map((teacher, index) => (
-                <div key={index} className="teacher-card">
-                  <img src={teacher.photo_url || 'https://i.postimg.cc/gjktXPpH/1786523361131.jpg'} alt={teacher.name} className="teacher-photo" />
-                  <h3 className="teacher-name">{teacher.name}</h3>
-                  <div className="teacher-designation">{teacher.designation || 'শিক্ষক'}</div>
-                  <div className="teacher-details">
-                    <div>📞 {teacher.phone}</div>
-                    <div>🎓 {teacher.edu || '—'}</div>
-                    <div>📚 {teacher.subject || '—'}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-          <div style={{ marginTop: '30px', textAlign: 'center' }}>
-            <button onClick={() => setCurrentView('home')} className="btn-primary" style={{ backgroundColor: '#64748b' }}>হোম পেজে ফিরে যান</button>
-          </div>
-        </div>
-      )}
-
-      {currentView === 'students' && (
-        <div style={{ maxWidth: '1100px', margin: '40px auto', padding: '0 16px' }}>
-          <div style={{ textAlign: 'center', marginBottom: '30px' }}>
-            <span className="badge">মেধাবী মুখসমূহ</span>
-            <h2 style={{ color: '#14532d', margin: '10px 0 10px 0' }}>ছাত্র-ছাত্রী ও ক্লাসের শীর্ষ স্থানাধিকারীগণ</h2>
-          </div>
-          <StudentList />
-          <div style={{ marginTop: '30px', textAlign: 'center' }}>
-            <button onClick={() => setCurrentView('home')} className="btn-primary" style={{ backgroundColor: '#64748b' }}>হোম পেজে ফিরে যান</button>
-          </div>
-        </div>
-      )}
-
-      {currentView === 'notice' && (
-        <div style={{ maxWidth: '800px', margin: '40px auto', padding: '0 16px' }}>
-          <div className="card">
-            <h2 style={{ color: '#14532d', borderBottom: '2px solid #f1f5f9', paddingBottom: '10px', marginTop: 0 }}>📌 নোটিশ বোর্ড</h2>
-            <div style={{ marginTop: '16px' }}>
-              {noticesLoading ? (
-                <p>⏳ লোড হচ্ছে...</p>
-              ) : featuredNotice ? (
-                <div style={{ padding: '16px', borderRadius: '12px', background: '#f8fafc', borderLeft: '4px solid #16a34a' }}>
-                  <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 'bold' }}>📢 গুরুত্বপূর্ণ</span>
-                  <p style={{ margin: '6px 0 0 0', fontSize: '15px', fontWeight: '600' }}>{featuredNotice.message}</p>
-                </div>
-              ) : (
-                <div style={{ padding: '20px', textAlign: 'center', color: '#94a3b8', fontSize: '14px' }}>{siteData.homepage_notice_empty}</div>
-              )}
-            </div>
-            <div style={{ marginTop: '20px', textAlign: 'center' }}>
-              <button onClick={() => setCurrentView('home')} className="btn-primary" style={{ backgroundColor: '#64748b' }}>হোম পেজে ফিরে যান</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {currentView === 'gallery' && <Gallery />}
-      {currentView === 'contact' && <ContactPage />}
-
+      {/* মোডাল */}
       <SignInModal isOpen={isSignInModalOpen} onClose={handleCloseSignIn} />
       {isLoginModalOpen && <PortalLogin onSwitchToRegister={handleOpenRegister} onClose={handleCloseAuth} />}
       {isRegisterModalOpen && <PortalRegister onSwitchToLogin={handleOpenLogin} onClose={handleCloseAuth} />}
       {isAdmissionModalOpen && <AdmissionForm isOpen={isAdmissionModalOpen} onClose={() => setIsAdmissionModalOpen(false)} />}
 
+      {/* লাইভ চ্যাট */}
       <a href={`https://wa.me/${whatsappNumber}?text=${encodeURIComponent('হ্যালো ফিরোজ ভাই, সাহায্য প্রয়োজন।')}`} target="_blank" rel="noopener noreferrer" className="live-chat-btn">
         <span>💬</span><span>লাইভ চ্যাট</span>
       </a>
