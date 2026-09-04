@@ -1,19 +1,33 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
+// ✅ ১০টি কার্ডের ডেটা (অনলাইন ক্লাস যোগ করা হয়েছে)
 const features = [
-  { id: 'profile', icon: '👤', label: 'আমার প্রোফাইল', color: '#3b82f6', bg: '#eff6ff' },
-  { id: 'result', icon: '📊', label: 'আমার রেজাল্ট', color: '#8b5cf6', bg: '#f5f3ff' },
-  { id: 'routine', icon: '📅', label: 'ক্লাস রুটিন', color: '#16a34a', bg: '#f0fdf4' },
-  { id: 'assignments', icon: '📝', label: 'অ্যাসাইনমেন্ট', color: '#f59e0b', bg: '#fffbeb' },
-  { id: 'exam', icon: '📋', label: 'পরীক্ষার রুটিন', color: '#ef4444', bg: '#fef2f2' },
-  { id: 'attendance', icon: '📈', label: 'উপস্থিতি', color: '#06b6d4', bg: '#ecfeff' },
-  { id: 'notices', icon: '🔔', label: 'আমার নোটিশ', color: '#8b5cf6', bg: '#f5f3ff' },
-  { id: 'achievements', icon: '🏆', label: 'অর্জনসমূহ', color: '#f59e0b', bg: '#fffbeb' },
-  { id: 'certificates', icon: '📄', label: 'সার্টিফিকেট', color: '#3b82f6', bg: '#eff6ff' },
+  { id: 'profile', icon: '👤', label: 'আমার প্রোফাইল', color: '#3b82f6', bg: '#eff6ff', path: '/student/profile' },
+  { id: 'result', icon: '📊', label: 'আমার রেজাল্ট', color: '#8b5cf6', bg: '#f5f3ff', path: '/student/result' },
+  { id: 'routine', icon: '📅', label: 'ক্লাস রুটিন', color: '#16a34a', bg: '#f0fdf4', path: '/student/routine' },
+  { id: 'assignments', icon: '📝', label: 'অ্যাসাইনমেন্ট', color: '#f59e0b', bg: '#fffbeb', path: '/student/assignments' },
+  { id: 'exam', icon: '📋', label: 'পরীক্ষার রুটিন', color: '#ef4444', bg: '#fef2f2', path: '/student/exam-routine' },
+  { id: 'attendance', icon: '📈', label: 'উপস্থিতি', color: '#06b6d4', bg: '#ecfeff', path: '/student/attendance' },
+  { id: 'notices', icon: '🔔', label: 'আমার নোটিশ', color: '#8b5cf6', bg: '#f5f3ff', path: '/student/notices' },
+  { id: 'achievements', icon: '🏆', label: 'অর্জনসমূহ', color: '#f59e0b', bg: '#fffbeb', path: '/student/achievements' },
+  { id: 'certificates', icon: '📄', label: 'সার্টিফিকেট', color: '#3b82f6', bg: '#eff6ff', path: '/student/certificates' },
+  // ✅ নতুন: অনলাইন ক্লাস
+  { id: 'online_class', icon: '🎥', label: 'অনলাইন ক্লাস', color: '#ec4899', bg: '#fdf2f8', path: '/student/online-class' },
 ];
 
 export default function DashboardCards({ studentData, onFeatureClick }) {
+  const navigate = useNavigate();
   const [hovered, setHovered] = useState(null);
+
+  const handleCardClick = (feature) => {
+    if (feature.path) {
+      navigate(feature.path);
+    }
+    if (onFeatureClick) {
+      onFeatureClick(feature.id);
+    }
+  };
 
   return (
     <div style={styles.grid}>
@@ -29,7 +43,7 @@ export default function DashboardCards({ studentData, onFeatureClick }) {
           }}
           onMouseEnter={() => setHovered(feature.id)}
           onMouseLeave={() => setHovered(null)}
-          onClick={() => onFeatureClick?.(feature.id)}
+          onClick={() => handleCardClick(feature)}
         >
           <div style={{ ...styles.iconWrapper, backgroundColor: feature.color }}>
             <span style={styles.icon}>{feature.icon}</span>
