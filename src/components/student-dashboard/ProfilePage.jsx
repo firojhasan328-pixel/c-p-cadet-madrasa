@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { supabase } from '../../supabaseClient';
 import { usePortal } from '../../context/PortalContext';
@@ -19,6 +18,9 @@ export default function ProfilePage({ onBack }) {
     }
   }, [userProfile]);
 
+  // =============================================
+  // ✅ প্রোফাইল ডেটা লোড
+  // =============================================
   const fetchProfile = async () => {
     setLoading(true);
     try {
@@ -29,11 +31,17 @@ export default function ProfilePage({ onBack }) {
         .single();
 
       if (error) throw error;
+      
+      console.log('✅ প্রোফাইল ডেটা:', data);
+      console.log('📸 ছবির URL:', data?.photo_url);
+      
       setProfile(data);
       setPreviewImage(data?.photo_url || null);
+      
     } catch (error) {
-      console.error('Fetch error:', error);
+      console.error('❌ প্রোফাইল লোড করতে সমস্যা:', error);
       setErrorMessage('❌ প্রোফাইল লোড করতে সমস্যা');
+      setTimeout(() => setErrorMessage(''), 3000);
     }
     setLoading(false);
   };
@@ -65,13 +73,12 @@ export default function ProfilePage({ onBack }) {
   };
 
   // =============================================
-  // ✅ ছবি আপলোড
+  // ✅ ছবি আপলোড (সঠিক সমাধান)
   // =============================================
   const handlePhotoUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
-    // ফাইল সাইজ চেক (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
       setErrorMessage('❌ ফাইল সাইজ ৫MB এর বেশি!');
       setTimeout(() => setErrorMessage(''), 3000);
@@ -90,37 +97,56 @@ export default function ProfilePage({ onBack }) {
       const previewUrl = URL.createObjectURL(compressedFile);
       setPreviewImage(previewUrl);
 
-      // ৩. স্টোরেজে আপলোড
+      // ৩. ইউনিক ফাইল নাম
       const fileExt = compressedFile.name.split('.').pop();
-      const fileName = `profile_${Date.now()}.${fileExt}`;
-      const filePath = `student-photos/${fileName}`;
+      const fileName = `profile_${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+      const filePath = `student-profiles/${fileName}`;
 
+      console.log('📤 আপলোড হচ্ছে:', filePath);
+
+      // ৪. ✅ student-profiles bucket এ আপলোড (public bucket)
       const { error: uploadError } = await supabase.storage
-        .from('private-admission-files')
-        .upload(filePath, compressedFile);
+        .from('student-profiles')
+        .upload(filePath, compressedFile, {
+          cacheControl: '3600',
+          upsert: true,
+        });
 
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        console.error('❌ আপলোড এরর:', uploadError);
+        throw new Error(uploadError.message);
+      }
 
-      // ৪. পাবলিক URL পেতে
+      // ৫. পাবলিক URL
       const { data: urlData } = supabase.storage
-        .from('private-admission-files')
+        .from('student-profiles')
         .getPublicUrl(filePath);
 
-      // ৫. students টেবিল আপডেট
+      const publicUrl = urlData.publicUrl;
+      console.log('✅ পাবলিক URL:', publicUrl);
+
+      // ৬. students টেবিল আপডেট
       const { error: updateError } = await supabase
         .from('students')
-        .update({ photo_url: urlData.publicUrl })
+        .update({ photo_url: publicUrl })
         .eq('id', profile.id);
 
-      if (updateError) throw updateError;
+      if (updateError) {
+        console.error('❌ আপডেট এরর:', updateError);
+        throw new Error(updateError.message);
+      }
 
-      // ৬. লোকাল স্টেট আপডেট
-      setProfile({ ...profile, photo_url: urlData.publicUrl });
+      // ৭. লোকাল স্টেট আপডেট
+      setProfile({ ...profile, photo_url: publicUrl });
+      setPreviewImage(publicUrl);
+      
       setSuccessMessage('✅ প্রোফাইল ছবি সফলভাবে পরিবর্তন করা হয়েছে!');
+      console.log('✅ ছবি আপডেট সম্পূর্ণ!');
+      
       setTimeout(() => setSuccessMessage(''), 5000);
 
     } catch (error) {
-      console.error('Upload error:', error);
+      console.error('❌ আপলোড সমস্যা:', error);
       setErrorMessage('❌ ছবি আপলোড করতে সমস্যা: ' + error.message);
       setPreviewImage(profile?.photo_url || null);
       setTimeout(() => setErrorMessage(''), 5000);
@@ -146,7 +172,7 @@ export default function ProfilePage({ onBack }) {
   // =============================================
   return (
     <div style={styles.container}>
-      {/* ✅ হেডার */}
+      {/* হেডার */}
       <div style={styles.header}>
         <button onClick={onBack} style={styles.backBtn}>
           ⬅ ফিরে যান
@@ -155,7 +181,7 @@ export default function ProfilePage({ onBack }) {
         <div style={styles.headerSpacer}></div>
       </div>
 
-      {/* ✅ পপআপ মেসেজ */}
+      {/* পপআপ মেসেজ */}
       {successMessage && (
         <div style={styles.popupSuccess}>
           <span style={styles.popupIcon}>✅</span>
@@ -172,26 +198,40 @@ export default function ProfilePage({ onBack }) {
         </div>
       )}
 
-      {/* ✅ প্রোফাইল কার্ড */}
+      {/* প্রোফাইল কার্ড */}
       <div style={styles.profileCard}>
-        {/* ✅ ছবি সেকশন */}
+        {/* ছবি সেকশন */}
         <div style={styles.photoSection}>
           <div style={styles.photoWrapper}>
             {previewImage ? (
-              <img src={previewImage} alt={profile?.name} style={styles.profilePhoto} />
-            ) : (
-              <div style={styles.photoPlaceholder}>
-                {profile?.name?.charAt(0) || '?'}
-              </div>
-            )}
-            {/* ✅ ছবি পরিবর্তন বাটন */}
+              <img 
+                src={previewImage} 
+                alt={profile?.name} 
+                style={styles.profilePhoto}
+                onError={(e) => {
+                  e.target.style.display = 'none';
+                  e.target.parentElement.querySelector('.placeholder-fallback').style.display = 'flex';
+                }}
+              />
+            ) : null}
+            
+            <div 
+              className="placeholder-fallback"
+              style={{
+                ...styles.photoPlaceholder,
+                display: previewImage ? 'none' : 'flex',
+              }}
+            >
+              {profile?.name?.charAt(0) || '?'}
+            </div>
+
             <button
               onClick={() => fileInputRef.current?.click()}
               style={styles.editPhotoBtn}
               disabled={uploading}
               title="প্রোফাইল ছবি পরিবর্তন করুন"
             >
-              ✏️
+              {uploading ? '⏳' : '✏️'}
             </button>
             <input
               type="file"
@@ -207,7 +247,7 @@ export default function ProfilePage({ onBack }) {
           </p>
         </div>
 
-        {/* ✅ নাম ও ক্লাস */}
+        {/* নাম ও ক্লাস */}
         <div style={styles.nameSection}>
           <h2 style={styles.studentName}>{profile?.name}</h2>
           <div style={styles.badgeContainer}>
@@ -223,10 +263,9 @@ export default function ProfilePage({ onBack }) {
           </div>
         </div>
 
-        {/* ✅ ডিভাইডার */}
         <div style={styles.divider}></div>
 
-        {/* ✅ তথ্য সেকশন */}
+        {/* তথ্য সেকশন */}
         <div style={styles.infoSection}>
           <h3 style={styles.infoTitle}>📋 ব্যক্তিগত তথ্য</h3>
           
@@ -266,7 +305,6 @@ export default function ProfilePage({ onBack }) {
           </div>
         </div>
 
-        {/* ✅ ফুটার নোট */}
         <div style={styles.footerNote}>
           <p style={styles.noteText}>
             💡 <strong>শুধুমাত্র প্রোফাইল ছবি পরিবর্তন করা যাবে।</strong> অন্যান্য তথ্য পরিবর্তনের জন্য অ্যাডমিনের সাথে যোগাযোগ করুন।
@@ -335,7 +373,6 @@ const styles = {
   headerSpacer: {
     width: '80px',
   },
-  // ✅ পপআপ
   popupSuccess: {
     position: 'fixed',
     top: '20px',
@@ -379,7 +416,6 @@ const styles = {
     cursor: 'pointer',
     padding: '4px',
   },
-  // ✅ প্রোফাইল কার্ড
   profileCard: {
     background: 'white',
     borderRadius: '20px',
@@ -387,7 +423,6 @@ const styles = {
     border: '1px solid #e2e8f0',
     boxShadow: '0 4px 20px rgba(0,0,0,0.06)',
   },
-  // ✅ ছবি সেকশন
   photoSection: {
     textAlign: 'center',
     marginBottom: '20px',
@@ -446,7 +481,6 @@ const styles = {
     marginTop: '10px',
     fontWeight: '500',
   },
-  // ✅ নাম সেকশন
   nameSection: {
     textAlign: 'center',
     marginBottom: '20px',
@@ -485,13 +519,11 @@ const styles = {
     fontSize: '13px',
     fontWeight: '600',
   },
-  // ✅ ডিভাইডার
   divider: {
     height: '2px',
     background: 'linear-gradient(90deg, transparent, #e2e8f0, transparent)',
     margin: '16px 0 20px 0',
   },
-  // ✅ তথ্য সেকশন
   infoSection: {
     marginTop: '4px',
   },
@@ -529,7 +561,6 @@ const styles = {
     fontWeight: '600',
     color: '#0f172a',
   },
-  // ✅ ফুটার নোট
   footerNote: {
     marginTop: '20px',
     padding: '12px 16px',
@@ -545,7 +576,7 @@ const styles = {
   },
 };
 
-// ✅ অ্যানিমেশন
+// অ্যানিমেশন
 const styleSheet = document.createElement('style');
 styleSheet.textContent = `
   @keyframes spin {
