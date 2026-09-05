@@ -12,15 +12,15 @@ export default function ProfilePage({ onBack }) {
   const [previewImage, setPreviewImage] = useState(null);
   const fileInputRef = useRef(null);
 
+  // =============================================
+  // প্রোফাইল ডেটা লোড
+  // =============================================
   useEffect(() => {
     if (userProfile) {
       fetchProfile();
     }
   }, [userProfile]);
 
-  // =============================================
-  // ✅ প্রোফাইল ডেটা লোড
-  // =============================================
   const fetchProfile = async () => {
     setLoading(true);
     try {
@@ -31,23 +31,16 @@ export default function ProfilePage({ onBack }) {
         .single();
 
       if (error) throw error;
-      
-      console.log('✅ প্রোফাইল ডেটা:', data);
-      console.log('📸 ছবির URL:', data?.photo_url);
-      
       setProfile(data);
       setPreviewImage(data?.photo_url || null);
-      
     } catch (error) {
       console.error('❌ প্রোফাইল লোড করতে সমস্যা:', error);
-      setErrorMessage('❌ প্রোফাইল লোড করতে সমস্যা');
-      setTimeout(() => setErrorMessage(''), 3000);
     }
     setLoading(false);
   };
 
   // =============================================
-  // ✅ ছবি কম্প্রেস (200x200)
+  // ছবি কম্প্রেস (200x200)
   // =============================================
   const compressImage = (file) => {
     return new Promise((resolve) => {
@@ -62,8 +55,7 @@ export default function ProfilePage({ onBack }) {
           canvas.height = size;
           ctx.drawImage(img, 0, 0, size, size);
           canvas.toBlob((blob) => {
-            const compressedFile = new File([blob], file.name, { type: 'image/jpeg' });
-            resolve(compressedFile);
+            resolve(new File([blob], file.name, { type: 'image/jpeg' }));
           }, 'image/jpeg', 0.7);
         };
         img.src = e.target.result;
@@ -73,7 +65,7 @@ export default function ProfilePage({ onBack }) {
   };
 
   // =============================================
-  // ✅ ছবি আপলোড (সঠিক সমাধান)
+  // ✅ ছবি আপলোড (profile_images Bucket)
   // =============================================
   const handlePhotoUpload = async (e) => {
     const file = e.target.files[0];
@@ -100,13 +92,13 @@ export default function ProfilePage({ onBack }) {
       // ৩. ইউনিক ফাইল নাম
       const fileExt = compressedFile.name.split('.').pop();
       const fileName = `profile_${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
-      const filePath = `student-profiles/${fileName}`;
+      const filePath = `profile_images/${fileName}`;
 
       console.log('📤 আপলোড হচ্ছে:', filePath);
 
-      // ৪. ✅ student-profiles bucket এ আপলোড (public bucket)
+      // ৪. ✅ profile_images Bucket এ আপলোড (Public Bucket)
       const { error: uploadError } = await supabase.storage
-        .from('student-profiles')
+        .from('profile_images')  // ✅ নতুন Bucket নাম
         .upload(filePath, compressedFile, {
           cacheControl: '3600',
           upsert: true,
@@ -119,7 +111,7 @@ export default function ProfilePage({ onBack }) {
 
       // ৫. পাবলিক URL
       const { data: urlData } = supabase.storage
-        .from('student-profiles')
+        .from('profile_images')
         .getPublicUrl(filePath);
 
       const publicUrl = urlData.publicUrl;
@@ -140,9 +132,7 @@ export default function ProfilePage({ onBack }) {
       setProfile({ ...profile, photo_url: publicUrl });
       setPreviewImage(publicUrl);
       
-      setSuccessMessage('✅ প্রোফাইল ছবি সফলভাবে পরিবর্তন করা হয়েছে!');
-      console.log('✅ ছবি আপডেট সম্পূর্ণ!');
-      
+      setSuccessMessage('✅ প্রোফাইল ছবি পরিবর্তন করা হয়েছে!');
       setTimeout(() => setSuccessMessage(''), 5000);
 
     } catch (error) {
@@ -156,80 +146,58 @@ export default function ProfilePage({ onBack }) {
   };
 
   // =============================================
-  // ✅ লোডিং
+  // লোডিং
   // =============================================
   if (loading) {
     return (
       <div style={styles.loadingContainer}>
         <div style={styles.loadingSpinner}></div>
-        <p style={styles.loadingText}>⏳ লোড হচ্ছে...</p>
+        <p>⏳ লোড হচ্ছে...</p>
       </div>
     );
   }
 
   // =============================================
-  // ✅ রেন্ডার
+  // রেন্ডার
   // =============================================
   return (
     <div style={styles.container}>
       {/* হেডার */}
       <div style={styles.header}>
-        <button onClick={onBack} style={styles.backBtn}>
-          ⬅ ফিরে যান
-        </button>
+        <button onClick={onBack} style={styles.backBtn}>⬅ ফিরে যান</button>
         <h2 style={styles.headerTitle}>👤 আমার প্রোফাইল</h2>
-        <div style={styles.headerSpacer}></div>
       </div>
 
-      {/* পপআপ মেসেজ */}
+      {/* মেসেজ */}
       {successMessage && (
         <div style={styles.popupSuccess}>
-          <span style={styles.popupIcon}>✅</span>
-          <span style={styles.popupText}>{successMessage}</span>
+          <span>✅</span> {successMessage}
           <button onClick={() => setSuccessMessage('')} style={styles.popupClose}>✕</button>
         </div>
       )}
-
       {errorMessage && (
         <div style={styles.popupError}>
-          <span style={styles.popupIcon}>⚠️</span>
-          <span style={styles.popupText}>{errorMessage}</span>
+          <span>⚠️</span> {errorMessage}
           <button onClick={() => setErrorMessage('')} style={styles.popupClose}>✕</button>
         </div>
       )}
 
       {/* প্রোফাইল কার্ড */}
       <div style={styles.profileCard}>
-        {/* ছবি সেকশন */}
+        {/* ছবি */}
         <div style={styles.photoSection}>
           <div style={styles.photoWrapper}>
             {previewImage ? (
-              <img 
-                src={previewImage} 
-                alt={profile?.name} 
-                style={styles.profilePhoto}
-                onError={(e) => {
-                  e.target.style.display = 'none';
-                  e.target.parentElement.querySelector('.placeholder-fallback').style.display = 'flex';
-                }}
-              />
-            ) : null}
-            
-            <div 
-              className="placeholder-fallback"
-              style={{
-                ...styles.photoPlaceholder,
-                display: previewImage ? 'none' : 'flex',
-              }}
-            >
-              {profile?.name?.charAt(0) || '?'}
-            </div>
-
+              <img src={previewImage} alt={profile?.name} style={styles.profilePhoto} />
+            ) : (
+              <div style={styles.photoPlaceholder}>
+                {profile?.name?.charAt(0) || '?'}
+              </div>
+            )}
             <button
               onClick={() => fileInputRef.current?.click()}
               style={styles.editPhotoBtn}
               disabled={uploading}
-              title="প্রোফাইল ছবি পরিবর্তন করুন"
             >
               {uploading ? '⏳' : '✏️'}
             </button>
@@ -247,68 +215,62 @@ export default function ProfilePage({ onBack }) {
           </p>
         </div>
 
-        {/* নাম ও ক্লাস */}
-        <div style={styles.nameSection}>
-          <h2 style={styles.studentName}>{profile?.name}</h2>
-          <div style={styles.badgeContainer}>
-            <span style={styles.classBadge}>📚 {profile?.class_name || '—'}</span>
-            <span style={styles.rollBadge}>🔢 রোল: {profile?.roll_number || '—'}</span>
-            <span style={{
-              ...styles.statusBadge,
-              background: profile?.is_approved ? '#dcfce7' : '#fef3c7',
-              color: profile?.is_approved ? '#16a34a' : '#f59e0b',
-            }}>
-              {profile?.is_approved ? '✅ অনুমোদিত' : '⏳ Pending'}
-            </span>
-          </div>
+        {/* নাম */}
+        <h2 style={styles.studentName}>{profile?.name}</h2>
+
+        {/* ব্যাজ */}
+        <div style={styles.badgeContainer}>
+          <span style={styles.classBadge}>📚 {profile?.class_name || '—'}</span>
+          <span style={styles.rollBadge}>🔢 রোল: {profile?.roll_number || '—'}</span>
+          <span style={{
+            ...styles.statusBadge,
+            background: profile?.is_approved ? '#dcfce7' : '#fef3c7',
+            color: profile?.is_approved ? '#16a34a' : '#f59e0b',
+          }}>
+            {profile?.is_approved ? '✅ অনুমোদিত' : '⏳ Pending'}
+          </span>
         </div>
 
         <div style={styles.divider}></div>
 
-        {/* তথ্য সেকশন */}
-        <div style={styles.infoSection}>
-          <h3 style={styles.infoTitle}>📋 ব্যক্তিগত তথ্য</h3>
-          
-          <div style={styles.infoGrid}>
-            <div style={styles.infoItem}>
-              <span style={styles.infoLabel}>👤 নাম</span>
-              <span style={styles.infoValue}>{profile?.name}</span>
-            </div>
-            <div style={styles.infoItem}>
-              <span style={styles.infoLabel}>📚 ক্লাস</span>
-              <span style={styles.infoValue}>{profile?.class_name || '—'}</span>
-            </div>
-            <div style={styles.infoItem}>
-              <span style={styles.infoLabel}>🔢 রোল নম্বর</span>
-              <span style={styles.infoValue}>{profile?.roll_number || '—'}</span>
-            </div>
-            <div style={styles.infoItem}>
-              <span style={styles.infoLabel}>👨 বাবার নাম</span>
-              <span style={styles.infoValue}>{profile?.father_name || '—'}</span>
-            </div>
-            <div style={styles.infoItem}>
-              <span style={styles.infoLabel}>👩 মায়ের নাম</span>
-              <span style={styles.infoValue}>{profile?.mother_name || '—'}</span>
-            </div>
-            <div style={styles.infoItem}>
-              <span style={styles.infoLabel}>📍 গ্রাম</span>
-              <span style={styles.infoValue}>{profile?.village || '—'}</span>
-            </div>
-            <div style={styles.infoItem}>
-              <span style={styles.infoLabel}>📱 ফোন</span>
-              <span style={styles.infoValue}>{profile?.phone || '—'}</span>
-            </div>
-            <div style={styles.infoItem}>
-              <span style={styles.infoLabel}>📧 ইমেইল</span>
-              <span style={styles.infoValue}>{profile?.email}</span>
-            </div>
+        {/* তথ্য */}
+        <div style={styles.infoGrid}>
+          <div style={styles.infoItem}>
+            <span style={styles.infoLabel}>👤 নাম</span>
+            <span style={styles.infoValue}>{profile?.name}</span>
+          </div>
+          <div style={styles.infoItem}>
+            <span style={styles.infoLabel}>📚 ক্লাস</span>
+            <span style={styles.infoValue}>{profile?.class_name || '—'}</span>
+          </div>
+          <div style={styles.infoItem}>
+            <span style={styles.infoLabel}>🔢 রোল</span>
+            <span style={styles.infoValue}>{profile?.roll_number || '—'}</span>
+          </div>
+          <div style={styles.infoItem}>
+            <span style={styles.infoLabel}>👨 বাবার নাম</span>
+            <span style={styles.infoValue}>{profile?.father_name || '—'}</span>
+          </div>
+          <div style={styles.infoItem}>
+            <span style={styles.infoLabel}>👩 মায়ের নাম</span>
+            <span style={styles.infoValue}>{profile?.mother_name || '—'}</span>
+          </div>
+          <div style={styles.infoItem}>
+            <span style={styles.infoLabel}>📍 গ্রাম</span>
+            <span style={styles.infoValue}>{profile?.village || '—'}</span>
+          </div>
+          <div style={styles.infoItem}>
+            <span style={styles.infoLabel}>📱 ফোন</span>
+            <span style={styles.infoValue}>{profile?.phone || '—'}</span>
+          </div>
+          <div style={styles.infoItem}>
+            <span style={styles.infoLabel}>📧 ইমেইল</span>
+            <span style={styles.infoValue}>{profile?.email}</span>
           </div>
         </div>
 
         <div style={styles.footerNote}>
-          <p style={styles.noteText}>
-            💡 <strong>শুধুমাত্র প্রোফাইল ছবি পরিবর্তন করা যাবে।</strong> অন্যান্য তথ্য পরিবর্তনের জন্য অ্যাডমিনের সাথে যোগাযোগ করুন।
-          </p>
+          <p>💡 <strong>শুধুমাত্র প্রোফাইল ছবি পরিবর্তন করা যাবে।</strong></p>
         </div>
       </div>
     </div>
@@ -316,7 +278,7 @@ export default function ProfilePage({ onBack }) {
 }
 
 // =============================================
-// 🎨 প্রিমিয়াম স্টাইল
+// স্টাইল
 // =============================================
 const styles = {
   container: {
@@ -341,11 +303,6 @@ const styles = {
     borderRadius: '50%',
     animation: 'spin 1s linear infinite',
   },
-  loadingText: {
-    color: '#64748b',
-    fontSize: '16px',
-    fontWeight: '500',
-  },
   header: {
     display: 'flex',
     justifyContent: 'space-between',
@@ -362,7 +319,6 @@ const styles = {
     cursor: 'pointer',
     fontSize: '14px',
     color: '#64748b',
-    transition: 'all 0.2s ease',
   },
   headerTitle: {
     fontSize: '20px',
@@ -370,23 +326,18 @@ const styles = {
     color: '#0f172a',
     margin: 0,
   },
-  headerSpacer: {
-    width: '80px',
-  },
   popupSuccess: {
     position: 'fixed',
     top: '20px',
     right: '20px',
     zIndex: 9999,
-    background: 'linear-gradient(135deg, #dcfce7, #bbf7d0)',
+    background: '#dcfce7',
     color: '#166534',
-    padding: '16px 24px',
-    borderRadius: '14px',
-    boxShadow: '0 10px 30px rgba(22, 163, 74, 0.3)',
+    padding: '12px 20px',
+    borderRadius: '12px',
     display: 'flex',
     alignItems: 'center',
-    gap: '12px',
-    animation: 'slideIn 0.5s ease',
+    gap: '10px',
     border: '1px solid #86efac',
     maxWidth: '400px',
   },
@@ -395,26 +346,22 @@ const styles = {
     top: '20px',
     right: '20px',
     zIndex: 9999,
-    background: 'linear-gradient(135deg, #fee2e2, #fecaca)',
+    background: '#fee2e2',
     color: '#991b1b',
-    padding: '16px 24px',
-    borderRadius: '14px',
-    boxShadow: '0 10px 30px rgba(220, 38, 38, 0.3)',
+    padding: '12px 20px',
+    borderRadius: '12px',
     display: 'flex',
     alignItems: 'center',
-    gap: '12px',
-    animation: 'slideIn 0.5s ease',
+    gap: '10px',
     border: '1px solid #fca5a5',
     maxWidth: '400px',
   },
-  popupIcon: { fontSize: '24px' },
-  popupText: { fontSize: '15px', fontWeight: '600', flex: 1 },
   popupClose: {
     background: 'none',
     border: 'none',
     fontSize: '18px',
     cursor: 'pointer',
-    padding: '4px',
+    marginLeft: 'auto',
   },
   profileCard: {
     background: 'white',
@@ -425,7 +372,7 @@ const styles = {
   },
   photoSection: {
     textAlign: 'center',
-    marginBottom: '20px',
+    marginBottom: '16px',
   },
   photoWrapper: {
     position: 'relative',
@@ -438,7 +385,6 @@ const styles = {
     objectFit: 'cover',
     border: '4px solid #16a34a',
     boxShadow: '0 8px 24px rgba(22, 163, 74, 0.25)',
-    transition: 'all 0.3s ease',
   },
   photoPlaceholder: {
     width: '140px',
@@ -452,7 +398,6 @@ const styles = {
     fontSize: '48px',
     fontWeight: '700',
     border: '4px solid #16a34a',
-    boxShadow: '0 8px 24px rgba(22, 163, 74, 0.25)',
   },
   editPhotoBtn: {
     position: 'absolute',
@@ -467,10 +412,6 @@ const styles = {
     fontSize: '18px',
     cursor: 'pointer',
     boxShadow: '0 4px 14px rgba(22, 163, 74, 0.4)',
-    transition: 'all 0.2s ease',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   hiddenInput: {
     display: 'none',
@@ -481,14 +422,11 @@ const styles = {
     marginTop: '10px',
     fontWeight: '500',
   },
-  nameSection: {
-    textAlign: 'center',
-    marginBottom: '20px',
-  },
   studentName: {
     fontSize: '24px',
     fontWeight: '800',
     color: '#0f172a',
+    textAlign: 'center',
     margin: '0 0 10px 0',
   },
   badgeContainer: {
@@ -496,6 +434,7 @@ const styles = {
     justifyContent: 'center',
     gap: '10px',
     flexWrap: 'wrap',
+    marginBottom: '16px',
   },
   classBadge: {
     background: '#dbeafe',
@@ -524,17 +463,6 @@ const styles = {
     background: 'linear-gradient(90deg, transparent, #e2e8f0, transparent)',
     margin: '16px 0 20px 0',
   },
-  infoSection: {
-    marginTop: '4px',
-  },
-  infoTitle: {
-    fontSize: '16px',
-    fontWeight: '700',
-    color: '#0f172a',
-    margin: '0 0 16px 0',
-    borderBottom: '2px solid #f1f5f9',
-    paddingBottom: '10px',
-  },
   infoGrid: {
     display: 'grid',
     gridTemplateColumns: '1fr 1fr',
@@ -554,7 +482,6 @@ const styles = {
     color: '#94a3b8',
     fontWeight: '600',
     textTransform: 'uppercase',
-    letterSpacing: '0.3px',
   },
   infoValue: {
     fontSize: '14px',
@@ -567,12 +494,7 @@ const styles = {
     background: '#fef3c7',
     borderRadius: '10px',
     borderLeft: '4px solid #f59e0b',
-  },
-  noteText: {
-    fontSize: '13px',
-    color: '#92400e',
-    margin: 0,
-    lineHeight: '1.5',
+    textAlign: 'center',
   },
 };
 
@@ -582,10 +504,6 @@ styleSheet.textContent = `
   @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
-  }
-  @keyframes slideIn {
-    from { opacity: 0; transform: translateX(20px); }
-    to { opacity: 1; transform: translateX(0); }
   }
 `;
 document.head.appendChild(styleSheet);
