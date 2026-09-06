@@ -6,7 +6,8 @@ import ProfileCard from './ProfileCard';
 import NoticeCard from './NoticeCard';
 import QuickStats from './QuickStats';
 import ProfilePage from './ProfilePage';
-import ResultPage from './ResultPage'; // ✅ নতুন
+import ResultPage from './ResultPage';
+import RoutinePage from './RoutinePage';
 
 export default function StudentDashboard() {
   const { userProfile, user } = usePortal();
@@ -38,16 +39,28 @@ export default function StudentDashboard() {
     setLoading(false);
   };
 
-  // ✅ প্রোফাইল পেজ
+  // =============================================
+  // ✅ বিভিন্ন পেজ দেখানোর জন্য কন্ডিশন
+  // =============================================
+
+  // ১. প্রোফাইল পেজ
   if (activeTab === 'profile') {
     return <ProfilePage onBack={() => setActiveTab('dashboard')} />;
   }
 
-  // ✅ রেজাল্ট পেজ
+  // ২. রেজাল্ট পেজ
   if (activeTab === 'result') {
     return <ResultPage onBack={() => setActiveTab('dashboard')} />;
   }
 
+  // ৩. রুটিন পেজ
+  if (activeTab === 'routine') {
+    return <RoutinePage onBack={() => setActiveTab('dashboard')} />;
+  }
+
+  // =============================================
+  // ✅ লোডিং
+  // =============================================
   if (loading) {
     return (
       <div style={styles.loadingContainer}>
@@ -57,8 +70,12 @@ export default function StudentDashboard() {
     );
   }
 
+  // =============================================
+  // ✅ ড্যাশবোর্ড
+  // =============================================
   return (
     <div style={styles.container}>
+      {/* হেডার */}
       <div style={styles.header}>
         <div>
           <h1 style={styles.headerTitle}>🎓 ছাত্র ড্যাশবোর্ড</h1>
@@ -72,8 +89,10 @@ export default function StudentDashboard() {
         </div>
       </div>
 
+      {/* কুইক স্ট্যাটস */}
       <QuickStats studentData={studentData} />
 
+      {/* ড্যাশবোর্ড কার্ড */}
       <DashboardCards 
         studentData={studentData} 
         onFeatureClick={(featureId) => {
@@ -81,11 +100,13 @@ export default function StudentDashboard() {
             setActiveTab('profile');
           } else if (featureId === 'result') {
             setActiveTab('result');
+          } else if (featureId === 'routine') {
+            setActiveTab('routine');
           }
-          // অন্যান্য ফিচারের জন্য পরে যোগ করা হবে
         }}
       />
 
+      {/* প্রোফাইল ও নোটিশ */}
       <div style={styles.bottomRow}>
         <ProfileCard studentData={studentData} />
         <NoticeCard studentData={studentData} />
@@ -94,6 +115,9 @@ export default function StudentDashboard() {
   );
 }
 
+// =============================================
+// 🎨 স্টাইল
+// =============================================
 const styles = {
   container: {
     maxWidth: '1200px',
@@ -173,3 +197,13 @@ const styles = {
     marginTop: '20px'
   }
 };
+
+// অ্যানিমেশন
+const styleSheet = document.createElement('style');
+styleSheet.textContent = `
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+`;
+document.head.appendChild(styleSheet);
