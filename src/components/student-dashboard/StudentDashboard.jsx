@@ -5,12 +5,22 @@ import DashboardCards from './DashboardCards';
 import ProfileCard from './ProfileCard';
 import NoticeCard from './NoticeCard';
 import QuickStats from './QuickStats';
+
+// =============================================
+// ✅ সব পেজ ইমপোর্ট
+// =============================================
 import ProfilePage from './ProfilePage';
 import ResultPage from './ResultPage';
 import RoutinePage from './RoutinePage';
+import AssignmentPage from './AssignmentPage';
+import ExamRoutinePage from './ExamRoutinePage';
+import AttendancePage from './AttendancePage';
+import NoticePage from './NoticePage';
+import AchievementPage from './AchievementPage';
+import CertificatePage from './CertificatePage';
 
 export default function StudentDashboard() {
-  const { userProfile, user } = usePortal();
+  const { userProfile } = usePortal();
   const [loading, setLoading] = useState(true);
   const [studentData, setStudentData] = useState(null);
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -40,7 +50,7 @@ export default function StudentDashboard() {
   };
 
   // =============================================
-  // ✅ বিভিন্ন পেজ দেখানোর জন্য কন্ডিশন
+  // ✅ সব পেজের জন্য কন্ডিশন
   // =============================================
 
   // ১. প্রোফাইল পেজ
@@ -56,6 +66,36 @@ export default function StudentDashboard() {
   // ৩. রুটিন পেজ
   if (activeTab === 'routine') {
     return <RoutinePage onBack={() => setActiveTab('dashboard')} />;
+  }
+
+  // ৪. অ্যাসাইনমেন্ট পেজ
+  if (activeTab === 'assignments') {
+    return <AssignmentPage onBack={() => setActiveTab('dashboard')} />;
+  }
+
+  // ৫. পরীক্ষার রুটিন পেজ
+  if (activeTab === 'exam') {
+    return <ExamRoutinePage onBack={() => setActiveTab('dashboard')} />;
+  }
+
+  // ৬. উপস্থিতি পেজ
+  if (activeTab === 'attendance') {
+    return <AttendancePage onBack={() => setActiveTab('dashboard')} />;
+  }
+
+  // ৭. নোটিশ পেজ
+  if (activeTab === 'notices') {
+    return <NoticePage onBack={() => setActiveTab('dashboard')} />;
+  }
+
+  // ৮. অর্জন পেজ
+  if (activeTab === 'achievements') {
+    return <AchievementPage onBack={() => setActiveTab('dashboard')} />;
+  }
+
+  // ৯. সার্টিফিকেট পেজ
+  if (activeTab === 'certificates') {
+    return <CertificatePage onBack={() => setActiveTab('dashboard')} />;
   }
 
   // =============================================
@@ -96,12 +136,13 @@ export default function StudentDashboard() {
       <DashboardCards 
         studentData={studentData} 
         onFeatureClick={(featureId) => {
-          if (featureId === 'profile') {
-            setActiveTab('profile');
-          } else if (featureId === 'result') {
-            setActiveTab('result');
-          } else if (featureId === 'routine') {
-            setActiveTab('routine');
+          // ✅ সব ফিচারের জন্য কন্ডিশন
+          const validTabs = [
+            'profile', 'result', 'routine', 'assignments', 
+            'exam', 'attendance', 'notices', 'achievements', 'certificates'
+          ];
+          if (validTabs.includes(featureId)) {
+            setActiveTab(featureId);
           }
         }}
       />
