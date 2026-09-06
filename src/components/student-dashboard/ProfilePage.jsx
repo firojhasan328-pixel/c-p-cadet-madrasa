@@ -7,8 +7,7 @@ export default function ProfilePage({ onBack }) {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
-  const [successMessage, setSuccessMessage] = useState('');
-  const [errorMessage, setErrorMessage] = useState('');
+  const [message, setMessage] = useState({ text: '', type: '' });
   const [previewImage, setPreviewImage] = useState(null);
   const fileInputRef = useRef(null);
 
@@ -72,14 +71,13 @@ export default function ProfilePage({ onBack }) {
     if (!file) return;
 
     if (file.size > 5 * 1024 * 1024) {
-      setErrorMessage('❌ ফাইল সাইজ ৫MB এর বেশি!');
-      setTimeout(() => setErrorMessage(''), 3000);
+      setMessage({ text: '❌ ফাইল সাইজ ৫MB এর বেশি!', type: 'error' });
+      setTimeout(() => setMessage({ text: '', type: '' }), 3000);
       return;
     }
 
     setUploading(true);
-    setErrorMessage('');
-    setSuccessMessage('');
+    setMessage({ text: '', type: '' });
 
     try {
       // ১. ছবি কম্প্রেস
@@ -96,9 +94,9 @@ export default function ProfilePage({ onBack }) {
 
       console.log('📤 আপলোড হচ্ছে:', filePath);
 
-      // ৪. ✅ profile_images Bucket এ আপলোড (Public Bucket)
+      // ৪. ✅ profile_images Bucket এ আপলোড
       const { error: uploadError } = await supabase.storage
-        .from('profile_images')  // ✅ নতুন Bucket নাম
+        .from('profile_images')
         .upload(filePath, compressedFile, {
           cacheControl: '3600',
           upsert: true,
@@ -132,14 +130,14 @@ export default function ProfilePage({ onBack }) {
       setProfile({ ...profile, photo_url: publicUrl });
       setPreviewImage(publicUrl);
       
-      setSuccessMessage('✅ প্রোফাইল ছবি পরিবর্তন করা হয়েছে!');
-      setTimeout(() => setSuccessMessage(''), 5000);
+      setMessage({ text: '✅ প্রোফাইল ছবি পরিবর্তন করা হয়েছে!', type: 'success' });
+      setTimeout(() => setMessage({ text: '', type: '' }), 5000);
 
     } catch (error) {
       console.error('❌ আপলোড সমস্যা:', error);
-      setErrorMessage('❌ ছবি আপলোড করতে সমস্যা: ' + error.message);
+      setMessage({ text: '❌ ছবি আপলোড করতে সমস্যা: ' + error.message, type: 'error' });
       setPreviewImage(profile?.photo_url || null);
-      setTimeout(() => setErrorMessage(''), 5000);
+      setTimeout(() => setMessage({ text: '', type: '' }), 5000);
     }
     setUploading(false);
     e.target.value = '';
@@ -169,16 +167,15 @@ export default function ProfilePage({ onBack }) {
       </div>
 
       {/* মেসেজ */}
-      {successMessage && (
-        <div style={styles.popupSuccess}>
-          <span>✅</span> {successMessage}
-          <button onClick={() => setSuccessMessage('')} style={styles.popupClose}>✕</button>
-        </div>
-      )}
-      {errorMessage && (
-        <div style={styles.popupError}>
-          <span>⚠️</span> {errorMessage}
-          <button onClick={() => setErrorMessage('')} style={styles.popupClose}>✕</button>
+      {message.text && (
+        <div style={{
+          ...styles.messageBox,
+          background: message.type === 'success' ? '#dcfce7' : '#fee2e2',
+          color: message.type === 'success' ? '#166534' : '#991b1b',
+          borderColor: message.type === 'success' ? '#86efac' : '#fca5a5',
+        }}>
+          <span>{message.text}</span>
+          <button onClick={() => setMessage({ text: '', type: '' })} style={styles.messageClose}>✕</button>
         </div>
       )}
 
@@ -326,42 +323,27 @@ const styles = {
     color: '#0f172a',
     margin: 0,
   },
-  popupSuccess: {
+  messageBox: {
+    padding: '12px 20px',
+    borderRadius: '12px',
+    marginBottom: '16px',
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    border: '1px solid',
     position: 'fixed',
     top: '20px',
     right: '20px',
     zIndex: 9999,
-    background: '#dcfce7',
-    color: '#166534',
-    padding: '12px 20px',
-    borderRadius: '12px',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '10px',
-    border: '1px solid #86efac',
     maxWidth: '400px',
+    boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
   },
-  popupError: {
-    position: 'fixed',
-    top: '20px',
-    right: '20px',
-    zIndex: 9999,
-    background: '#fee2e2',
-    color: '#991b1b',
-    padding: '12px 20px',
-    borderRadius: '12px',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '10px',
-    border: '1px solid #fca5a5',
-    maxWidth: '400px',
-  },
-  popupClose: {
+  messageClose: {
     background: 'none',
     border: 'none',
     fontSize: '18px',
     cursor: 'pointer',
-    marginLeft: 'auto',
+    marginLeft: '12px',
   },
   profileCard: {
     background: 'white',
@@ -412,6 +394,7 @@ const styles = {
     fontSize: '18px',
     cursor: 'pointer',
     boxShadow: '0 4px 14px rgba(22, 163, 74, 0.4)',
+    transition: 'all 0.2s ease',
   },
   hiddenInput: {
     display: 'none',
