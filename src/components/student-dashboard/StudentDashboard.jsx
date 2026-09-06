@@ -5,7 +5,8 @@ import DashboardCards from './DashboardCards';
 import ProfileCard from './ProfileCard';
 import NoticeCard from './NoticeCard';
 import QuickStats from './QuickStats';
-import ProfilePage from './ProfilePage'; // ✅ নতুন ইমপোর্ট
+import ProfilePage from './ProfilePage';
+import ResultPage from './ResultPage'; // ✅ নতুন
 
 export default function StudentDashboard() {
   const { userProfile, user } = usePortal();
@@ -37,11 +38,14 @@ export default function StudentDashboard() {
     setLoading(false);
   };
 
-  // =============================================
-  // ✅ প্রোফাইল পেজ দেখানোর জন্য
-  // =============================================
+  // ✅ প্রোফাইল পেজ
   if (activeTab === 'profile') {
     return <ProfilePage onBack={() => setActiveTab('dashboard')} />;
+  }
+
+  // ✅ রেজাল্ট পেজ
+  if (activeTab === 'result') {
+    return <ResultPage onBack={() => setActiveTab('dashboard')} />;
   }
 
   if (loading) {
@@ -55,7 +59,6 @@ export default function StudentDashboard() {
 
   return (
     <div style={styles.container}>
-      {/* Header */}
       <div style={styles.header}>
         <div>
           <h1 style={styles.headerTitle}>🎓 ছাত্র ড্যাশবোর্ড</h1>
@@ -69,21 +72,20 @@ export default function StudentDashboard() {
         </div>
       </div>
 
-      {/* Quick Stats */}
       <QuickStats studentData={studentData} />
 
-      {/* Dashboard Cards */}
       <DashboardCards 
         studentData={studentData} 
         onFeatureClick={(featureId) => {
           if (featureId === 'profile') {
             setActiveTab('profile');
+          } else if (featureId === 'result') {
+            setActiveTab('result');
           }
           // অন্যান্য ফিচারের জন্য পরে যোগ করা হবে
         }}
       />
 
-      {/* Profile & Notice */}
       <div style={styles.bottomRow}>
         <ProfileCard studentData={studentData} />
         <NoticeCard studentData={studentData} />
