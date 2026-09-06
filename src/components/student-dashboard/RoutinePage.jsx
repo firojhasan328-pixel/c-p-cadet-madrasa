@@ -7,7 +7,7 @@ export default function RoutinePage({ onBack }) {
   const [routine, setRoutine] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedDay, setSelectedDay] = useState(null);
-  const [viewMode, setViewMode] = useState('day'); // 'day' or 'week'
+  const [viewMode, setViewMode] = useState('day');
   const [currentTime, setCurrentTime] = useState(new Date());
   const [cmsSettings, setCmsSettings] = useState({
     showTeacher: true,
@@ -16,7 +16,8 @@ export default function RoutinePage({ onBack }) {
     weekStart: 'শনিবার',
   });
 
-  const days = ['শনিবার', 'রবিবার', 'সোমবার', 'মঙ্গলবার', 'বুধবার', 'বৃহস্পতিবার', 'শুক্রবার'];
+  // দিনের নামের তালিকা (ইংরেজি থেকে বাংলা ম্যাপিং)
+  const dayNames = ['শনিবার', 'রবিবার', 'সোমবার', 'মঙ্গলবার', 'বুধবার', 'বৃহস্পতিবার', 'শুক্রবার'];
   const today = new Date().getDay(); // 0=শনিবার, 1=রবিবার...
 
   // =============================================
@@ -70,7 +71,7 @@ export default function RoutinePage({ onBack }) {
       fetchRoutine();
       const interval = setInterval(() => {
         setCurrentTime(new Date());
-      }, 30000); // প্রতি 30 সেকেন্ডে আপডেট
+      }, 30000);
       return () => clearInterval(interval);
     }
   }, [userProfile]);
@@ -78,24 +79,28 @@ export default function RoutinePage({ onBack }) {
   const fetchRoutine = async () => {
     setLoading(true);
     try {
+      // ✅ day কলাম ব্যবহার করে ডেটা ফেচ
       const { data, error } = await supabase
         .from('class_routines')
         .select('*')
         .eq('class_name', userProfile.class_name)
         .eq('is_active', true)
-        .order('day_of_week')
+        .order('day')
         .order('start_time');
 
       if (error) throw error;
       setRoutine(data || []);
       
-      // ডিফল্ট সিলেক্টেড ডে = আজ
       if (data && data.length > 0) {
-        const todayRoutine = data.filter(r => r.day_of_week === today);
+        const todayName = dayNames[today];
+        const todayRoutine = data.filter(r => r.day === todayName);
         if (todayRoutine.length > 0) {
           setSelectedDay(today);
         } else {
-          setSelectedDay(data[0].day_of_week);
+          // আজকের রুটিন না থাকলে প্রথম দিনটি সিলেক্ট করো
+          const firstDayName = data[0].day;
+          const firstDayIndex = dayNames.indexOf(firstDayName);
+          setSelectedDay(firstDayIndex >= 0 ? firstDayIndex : 0);
         }
       }
     } catch (error) {
@@ -105,10 +110,11 @@ export default function RoutinePage({ onBack }) {
   };
 
   // =============================================
-  // ✅ দিনের রুটিন ফিল্টার
+  // ✅ দিনের রুটিন ফিল্টার (day নাম ব্যবহার করে)
   // =============================================
   const getDayRoutine = (dayIndex) => {
-    return routine.filter(r => r.day_of_week === dayIndex);
+    const dayName = dayNames[dayIndex];
+    return routine.filter(r => r.day === dayName);
   };
 
   // =============================================
@@ -121,6 +127,7 @@ export default function RoutinePage({ onBack }) {
     const currentTimeMinutes = currentHour * 60 + currentMinute;
 
     for (const cls of dayRoutine) {
+      if (!cls.start_time || !cls.end_time) continue;
       const [startHour, startMinute] = cls.start_time.split(':').map(Number);
       const [endHour, endMinute] = cls.end_time.split(':').map(Number);
       const startTotal = startHour * 60 + startMinute;
@@ -143,6 +150,7 @@ export default function RoutinePage({ onBack }) {
     const currentTimeMinutes = currentHour * 60 + currentMinute;
 
     for (const cls of dayRoutine) {
+      if (!cls.start_time) continue;
       const [startHour, startMinute] = cls.start_time.split(':').map(Number);
       const startTotal = startHour * 60 + startMinute;
       if (startTotal > currentTimeMinutes) {
@@ -202,7 +210,7 @@ export default function RoutinePage({ onBack }) {
 
       {/* ডে সিলেক্টর */}
       <div style={styles.daySelector}>
-        {days.map((day, index) => {
+        {dayNames.map((day, index) => {
           const hasRoutine = getDayRoutine(index).length > 0;
           const isToday = index === today;
           const isSelected = index === selectedDay;
@@ -314,7 +322,7 @@ export default function RoutinePage({ onBack }) {
           {/* দিনের রুটিন লিস্ট */}
           <div style={styles.dayRoutineList}>
             <h3 style={styles.dayTitle}>
-              📌 {days[selectedDay]}বারের রুটিন
+              📌 {dayNames[selectedDay]}বারের রুটিন
               {selectedDay === today && <span style={styles.todayTag}> (আজ)</span>}
             </h3>
 
@@ -380,7 +388,7 @@ export default function RoutinePage({ onBack }) {
                 <tr>
                   <th style={styles.weekTh}>দিন</th>
                   {routine.length > 0 && routine
-                    .filter(r => r.day_of_week === selectedDay)
+                    .filter(r => r.day === dayNames[selectedDay])
                     .map((_, index) => (
                       <th key={index} style={styles.weekTh}>
                         পিরিয়ড {index + 1}
@@ -390,7 +398,7 @@ export default function RoutinePage({ onBack }) {
                 </tr>
               </thead>
               <tbody>
-                {days.map((day, dayIndex) => {
+                {dayNames.map((day, dayIndex) => {
                   const dayRoutine = getDayRoutine(dayIndex);
                   const isToday = dayIndex === today;
                   return (
