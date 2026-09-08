@@ -16,9 +16,60 @@ export default function RoutinePage({ onBack }) {
     weekStart: 'শনিবার',
   });
 
-  // দিনের নামের তালিকা (ইংরেজি থেকে বাংলা ম্যাপিং)
+  // ✅ সঠিক দিনের নাম + বাংলাদেশ সময় (GMT+6)
   const dayNames = ['শনিবার', 'রবিবার', 'সোমবার', 'মঙ্গলবার', 'বুধবার', 'বৃহস্পতিবার', 'শুক্রবার'];
-  const today = new Date().getDay(); // 0=শনিবার, 1=রবিবার...
+  const monthNames = ['জানুয়ারি', 'ফেব্রুয়ারি', 'মার্চ', 'এপ্রিল', 'মে', 'জুন', 'জুলাই', 'আগস্ট', 'সেপ্টেম্বর', 'অক্টোবর', 'নভেম্বর', 'ডিসেম্বর'];
+
+  // =============================================
+  // ✅ বাংলাদেশ সময় (GMT+6) ফাংশন
+  // =============================================
+  const getBangladeshTime = (date = new Date()) => {
+    const bdTime = new Date(date.getTime() + (6 * 60 * 60 * 1000));
+    return bdTime;
+  };
+
+  // ✅ বর্তমান বাংলাদেশ সময়
+  const bdNow = getBangladeshTime();
+  const todayIndex = bdNow.getDay(); // 0=শনিবার, 1=রবিবার...
+  const todayName = dayNames[todayIndex];
+
+  // ✅ ফরম্যাট করা সময়
+  const formatTime = (date) => {
+    const bd = getBangladeshTime(date);
+    return bd.toLocaleTimeString('bn-BD', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: true,
+    });
+  };
+
+  const formatDate = (date) => {
+    const bd = getBangladeshTime(date);
+    return `${bd.getDate()} ${monthNames[bd.getMonth()]} ${bd.getFullYear()}`;
+  };
+
+  // =============================================
+  // ✅ লাইভ টাইম আপডেট (প্রতি সেকেন্ড)
+  // =============================================
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const now = new Date();
+      const bd = getBangladeshTime(now);
+      setCurrentTime(bd);
+      
+      // ✅ রাত ১২টায় দিন পরিবর্তন হলে সিলেক্টেড ডে আপডেট
+      const newDayIndex = bd.getDay();
+      if (newDayIndex !== selectedDay && selectedDay !== null) {
+        const hasRoutine = routine.some(r => r.day === dayNames[newDayIndex]);
+        if (hasRoutine) {
+          setSelectedDay(newDayIndex);
+        }
+      }
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [selectedDay, routine]);
 
   // =============================================
   // ✅ CMS সেটিংস লোড
@@ -69,17 +120,12 @@ export default function RoutinePage({ onBack }) {
   useEffect(() => {
     if (userProfile) {
       fetchRoutine();
-      const interval = setInterval(() => {
-        setCurrentTime(new Date());
-      }, 30000);
-      return () => clearInterval(interval);
     }
   }, [userProfile]);
 
   const fetchRoutine = async () => {
     setLoading(true);
     try {
-      // ✅ day কলাম ব্যবহার করে ডেটা ফেচ
       const { data, error } = await supabase
         .from('class_routines')
         .select('*')
@@ -92,10 +138,10 @@ export default function RoutinePage({ onBack }) {
       setRoutine(data || []);
       
       if (data && data.length > 0) {
-        const todayName = dayNames[today];
+        // ✅ আজকের দিনের রুটিন চেক
         const todayRoutine = data.filter(r => r.day === todayName);
         if (todayRoutine.length > 0) {
-          setSelectedDay(today);
+          setSelectedDay(todayIndex);
         } else {
           // আজকের রুটিন না থাকলে প্রথম দিনটি সিলেক্ট করো
           const firstDayName = data[0].day;
@@ -110,7 +156,7 @@ export default function RoutinePage({ onBack }) {
   };
 
   // =============================================
-  // ✅ দিনের রুটিন ফিল্টার (day নাম ব্যবহার করে)
+  // ✅ দিনের রুটিন ফিল্টার
   // =============================================
   const getDayRoutine = (dayIndex) => {
     const dayName = dayNames[dayIndex];
@@ -118,10 +164,10 @@ export default function RoutinePage({ onBack }) {
   };
 
   // =============================================
-  // ✅ বর্তমান ক্লাস চেক
+  // ✅ বর্তমান ক্লাস চেক (BDT অনুযায়ী)
   // =============================================
   const getCurrentClass = (dayRoutine) => {
-    const now = new Date();
+    const now = currentTime;
     const currentHour = now.getHours();
     const currentMinute = now.getMinutes();
     const currentTimeMinutes = currentHour * 60 + currentMinute;
@@ -144,7 +190,7 @@ export default function RoutinePage({ onBack }) {
   // ✅ পরবর্তী ক্লাস চেক
   // =============================================
   const getNextClass = (dayRoutine) => {
-    const now = new Date();
+    const now = currentTime;
     const currentHour = now.getHours();
     const currentMinute = now.getMinutes();
     const currentTimeMinutes = currentHour * 60 + currentMinute;
@@ -178,7 +224,7 @@ export default function RoutinePage({ onBack }) {
   };
 
   // =============================================
-  // ✅ রেন্ডার
+  // ✅ লোডিং
   // =============================================
   if (loading) {
     return (
@@ -193,6 +239,11 @@ export default function RoutinePage({ onBack }) {
   const currentClass = getCurrentClass(selectedDayRoutine);
   const nextClass = getNextClass(selectedDayRoutine);
 
+  // ✅ লাইভ সময় ও তারিখ
+  const liveTime = formatTime(currentTime);
+  const liveDate = formatDate(currentTime);
+  const liveDay = dayNames[currentTime.getDay()];
+
   return (
     <div style={styles.container}>
       {/* হেডার */}
@@ -202,17 +253,34 @@ export default function RoutinePage({ onBack }) {
         <div style={styles.headerSpacer}></div>
       </div>
 
+      {/* ✅ লাইভ টাইম উইজেট */}
+      <div style={styles.liveWidget}>
+        <div style={styles.liveClock}>
+          <span style={styles.clockIcon}>🕐</span>
+          <span style={styles.clockTime}>{liveTime}</span>
+        </div>
+        <div style={styles.liveDate}>
+          <span style={styles.dateDay}>{liveDay}</span>
+          <span style={styles.dateText}>{liveDate}</span>
+        </div>
+        <div style={styles.liveBadge}>
+          <span style={styles.liveDot}></span>
+          লাইভ
+        </div>
+      </div>
+
       {/* ক্লাস তথ্য */}
       <div style={styles.classInfo}>
         <span style={styles.classBadge}>📚 {userProfile.class_name} শ্রেণী</span>
         <span style={styles.weekBadge}>🕐 সপ্তাহ {Math.ceil((new Date() - new Date(new Date().getFullYear(), 0, 1)) / (7 * 24 * 60 * 60 * 1000))}</span>
+        <span style={styles.todayBadge}>📌 আজ: {todayName}</span>
       </div>
 
       {/* ডে সিলেক্টর */}
       <div style={styles.daySelector}>
         {dayNames.map((day, index) => {
           const hasRoutine = getDayRoutine(index).length > 0;
-          const isToday = index === today;
+          const isToday = index === todayIndex;
           const isSelected = index === selectedDay;
           return (
             <button
@@ -226,7 +294,7 @@ export default function RoutinePage({ onBack }) {
               }}
             >
               {day}
-              {isToday && <span style={styles.todayBadge}>আজ</span>}
+              {isToday && <span style={styles.todayBadgeSmall}>আজ</span>}
             </button>
           );
         })}
@@ -323,7 +391,7 @@ export default function RoutinePage({ onBack }) {
           <div style={styles.dayRoutineList}>
             <h3 style={styles.dayTitle}>
               📌 {dayNames[selectedDay]}বারের রুটিন
-              {selectedDay === today && <span style={styles.todayTag}> (আজ)</span>}
+              {selectedDay === todayIndex && <span style={styles.todayTag}> (আজ)</span>}
             </h3>
 
             {selectedDayRoutine.length === 0 ? (
@@ -400,7 +468,7 @@ export default function RoutinePage({ onBack }) {
               <tbody>
                 {dayNames.map((day, dayIndex) => {
                   const dayRoutine = getDayRoutine(dayIndex);
-                  const isToday = dayIndex === today;
+                  const isToday = dayIndex === todayIndex;
                   return (
                     <tr key={dayIndex} style={{
                       ...styles.weekTr,
@@ -472,7 +540,7 @@ const styles = {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: '20px',
+    marginBottom: '16px',
     paddingTop: '12px',
   },
   backBtn: {
@@ -494,11 +562,72 @@ const styles = {
   headerSpacer: {
     width: '80px',
   },
+  // ✅ লাইভ উইজেট
+  liveWidget: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: '12px',
+    padding: '14px 20px',
+    background: 'linear-gradient(135deg, #0f172a, #1e293b)',
+    borderRadius: '14px',
+    marginBottom: '16px',
+    color: 'white',
+    border: '1px solid #334155',
+  },
+  liveClock: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+  },
+  clockIcon: {
+    fontSize: '24px',
+  },
+  clockTime: {
+    fontSize: '24px',
+    fontWeight: '700',
+    fontFamily: 'monospace',
+    color: '#38bdf8',
+    letterSpacing: '1px',
+  },
+  liveDate: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+  },
+  dateDay: {
+    fontSize: '16px',
+    fontWeight: '700',
+    color: '#16a34a',
+  },
+  dateText: {
+    fontSize: '14px',
+    color: '#94a3b8',
+  },
+  liveBadge: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    fontSize: '12px',
+    fontWeight: '600',
+    color: '#16a34a',
+    background: 'rgba(22, 163, 74, 0.15)',
+    padding: '4px 12px',
+    borderRadius: '20px',
+  },
+  liveDot: {
+    width: '8px',
+    height: '8px',
+    borderRadius: '50%',
+    background: '#16a34a',
+    animation: 'pulse 1.5s ease-in-out infinite',
+  },
   classInfo: {
     display: 'flex',
     gap: '12px',
     flexWrap: 'wrap',
-    marginBottom: '20px',
+    marginBottom: '16px',
     padding: '12px 16px',
     background: 'white',
     borderRadius: '12px',
@@ -512,6 +641,14 @@ const styles = {
   weekBadge: {
     fontSize: '14px',
     color: '#64748b',
+  },
+  todayBadge: {
+    fontSize: '14px',
+    fontWeight: '600',
+    color: '#2563eb',
+    background: '#dbeafe',
+    padding: '2px 12px',
+    borderRadius: '12px',
   },
   daySelector: {
     display: 'grid',
@@ -540,7 +677,7 @@ const styles = {
     borderColor: '#2563eb',
     background: '#eff6ff',
   },
-  todayBadge: {
+  todayBadgeSmall: {
     display: 'block',
     fontSize: '9px',
     color: '#2563eb',
@@ -662,11 +799,7 @@ const styles = {
     padding: '40px 0',
     color: '#94a3b8',
   },
-  emptyIcon: {
-    fontSize: '48px',
-    display: 'block',
-    marginBottom: '8px',
-  },
+  emptyIcon: { fontSize: '48px', display: 'block', marginBottom: '8px' },
   routineItem: {
     display: 'flex',
     gap: '16px',
@@ -780,12 +913,6 @@ const styles = {
     fontWeight: '600',
     display: 'inline-block',
   },
-  todayBadgeSmall: {
-    display: 'block',
-    fontSize: '9px',
-    color: '#2563eb',
-    fontWeight: '700',
-  },
   footerNote: {
     marginTop: '20px',
     padding: '12px 16px',
@@ -802,6 +929,10 @@ styleSheet.textContent = `
   @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
   }
 `;
 document.head.appendChild(styleSheet);
