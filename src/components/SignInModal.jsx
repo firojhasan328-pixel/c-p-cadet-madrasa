@@ -12,6 +12,9 @@ export default function SignInModal({ isOpen, onClose }) {
   const [loginError, setLoginError] = useState('');
   const [loginLoading, setLoginLoading] = useState(false);
   
+  // ✅ নতুন স্টেট: পেন্ডিং অনুমোদনের পপআপ
+  const [pendingModal, setPendingModal] = useState(null);
+  
   const [forgotEmail, setForgotEmail] = useState('');
   const [forgotOtp, setForgotOtp] = useState('');
   const [forgotError, setForgotError] = useState('');
@@ -30,7 +33,7 @@ export default function SignInModal({ isOpen, onClose }) {
   };
 
   // =============================================
-  // ✅ লগইন হ্যান্ডেলার (আপডেটেড)
+  // ✅ লগইন হ্যান্ডেলার (আপডেটেড — pending popup সহ)
   // =============================================
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -39,10 +42,21 @@ export default function SignInModal({ isOpen, onClose }) {
 
     try {
       const result = await login(loginData.email, loginData.password);
+      
       if (result.success) {
         onClose();
       } else {
-        setLoginError(result.error || 'লগইন ব্যর্থ হয়েছে');
+        // ✅ Pending approval হলে সুন্দর পপআপ দেখাও
+        if (result.errorType === 'pending') {
+          setPendingModal({
+            userName: result.userName || 'ব্যবহারকারী',
+            userType: result.userType || 'ব্যবহারকারী',
+            message: result.message || 'আপনার অ্যাকাউন্ট এখনো অনুমোদিত হয়নি',
+          });
+        } else {
+          // অন্য error হলে সাধারণ ভাবে দেখাও
+          setLoginError(result.message || result.error || 'লগইন ব্যর্থ হয়েছে');
+        }
       }
     } catch (err) {
       setLoginError(err.message || 'লগইন করতে সমস্যা');
@@ -144,13 +158,13 @@ export default function SignInModal({ isOpen, onClose }) {
     setForgotLoading(true);
 
     if (newPassword.length < 6) {
-      setForgotError('❌ পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে');
+      setForgotError('❌ পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে');
       setForgotLoading(false);
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      setForgotError('❌ পাসওয়ার্ড এবং কনফার্ম পাসওয়ার্ড মিলছে না');
+      setForgotError('❌ পাসওয়ার্ড এবং কনফার্ম পাসওয়ার্ড মিলছে না');
       setForgotLoading(false);
       return;
     }
@@ -166,7 +180,7 @@ export default function SignInModal({ isOpen, onClose }) {
       }
 
       setForgotSuccess(true);
-      console.log('✅ পাসওয়ার্ড সফলভাবে আপডেট হয়েছে');
+      console.log('✅ পাসওয়ার্ড সফলভাবে আপডেট হয়েছে');
 
       setTimeout(() => {
         setForgotStep(1);
@@ -181,7 +195,7 @@ export default function SignInModal({ isOpen, onClose }) {
 
     } catch (err) {
       console.error('❌ Reset Error:', err);
-      setForgotError(err.message || '❌ পাসওয়ার্ড আপডেট করতে সমস্যা');
+      setForgotError(err.message || '❌ পাসওয়ার্ড আপডেট করতে সমস্যা');
     } finally {
       setForgotLoading(false);
     }
@@ -226,31 +240,89 @@ export default function SignInModal({ isOpen, onClose }) {
   };
 
   // =============================================
+  // ✅ Pending Approval Modal — সুন্দর পপআপ
+  // =============================================
+  const PendingApprovalModal = () => {
+    if (!pendingModal) return null;
+    return (
+      <div style={styles.pendingOverlay} onClick={() => setPendingModal(null)}>
+        <div style={styles.pendingModal} onClick={(e) => e.stopPropagation()}>
+          <div style={styles.pendingIconWrapper}>
+            <span style={styles.pendingIcon}>⏳</span>
+          </div>
+          
+          <h2 style={styles.pendingTitle}>অ্যাকাউন্ট অনুমোদনের অপেক্ষায়</h2>
+          
+          <p style={styles.pendingGreeting}>
+            আসসালামু আলাইকুম, <strong>{pendingModal.userName}</strong>!
+          </p>
+          
+          <div style={styles.pendingMessageBox}>
+            <p style={styles.pendingMessage}>
+              আপনার <strong>{pendingModal.userType}</strong> অ্যাকাউন্টটি এখনো <strong style={{ color: '#f59e0b' }}>প্রধান শিক্ষকের অনুমোদনের</strong> অপেক্ষায় আছে।
+            </p>
+            <p style={styles.pendingSubMessage}>
+              অনুগ্রহ করে অপেক্ষা করুন। অনুমোদন পেলে আপনি ইমেইলে জানতে পারবেন এবং লগইন করতে পারবেন।
+            </p>
+          </div>
+
+          <div style={styles.pendingInfoBox}>
+            <div style={styles.pendingInfoRow}>
+              <span style={styles.pendingInfoIcon}>📞</span>
+              <span style={styles.pendingInfoLabel}>যোগাযোগ:</span>
+              <a href="tel:+8801521-553003" style={styles.pendingInfoLink}>+8801521-553003</a>
+            </div>
+            <div style={styles.pendingInfoRow}>
+              <span style={styles.pendingInfoIcon}>⏰</span>
+              <span style={styles.pendingInfoLabel}>সময় লাগতে পারে:</span>
+              <span style={styles.pendingInfoValue}>২৪-৪৮ ঘণ্টা</span>
+            </div>
+          </div>
+
+          <button 
+            onClick={() => setPendingModal(null)} 
+            style={styles.pendingCloseBtn}
+          >
+            ✅ বুঝতে পেরেছি
+          </button>
+
+          <p style={styles.pendingFooter}>
+            💡 অনুমোদন পেতে প্রধান শিক্ষকের সাথে যোগাযোগ করুন
+          </p>
+        </div>
+      </div>
+    );
+  };
+
+  // =============================================
   // স্টেপ ১: রোল সিলেকশন
   // =============================================
   if (step === 'role') {
     return (
-      <div style={styles.overlay}>
-        <div style={styles.modal}>
-          <button onClick={onClose} style={styles.closeBtn}>✕</button>
-          <div style={styles.roleContainer}>
-            <h2 style={styles.heading}>👋 স্বাগতম!</h2>
-            <p style={styles.subHeading}>আপনি কে? নিচ থেকে নির্বাচন করুন</p>
-            <div style={styles.roleGrid}>
-              <div style={styles.roleCard} onClick={() => handleRoleSelect('student')}>
-                <span style={styles.roleIcon}>🎓</span>
-                <h3 style={styles.roleTitle}>ছাত্র/ছাত্রী</h3>
-                <p style={styles.roleDesc}>ছাত্র হিসেবে লগইন বা নিবন্ধন</p>
-              </div>
-              <div style={styles.roleCard} onClick={() => handleRoleSelect('teacher')}>
-                <span style={styles.roleIcon}>👨‍🏫</span>
-                <h3 style={styles.roleTitle}>শিক্ষক/শিক্ষিকা</h3>
-                <p style={styles.roleDesc}>শিক্ষক হিসেবে লগইন বা নিবন্ধন</p>
+      <>
+        <div style={styles.overlay}>
+          <div style={styles.modal}>
+            <button onClick={onClose} style={styles.closeBtn}>✕</button>
+            <div style={styles.roleContainer}>
+              <h2 style={styles.heading}>👋 স্বাগতম!</h2>
+              <p style={styles.subHeading}>আপনি কে? নিচ থেকে নির্বাচন করুন</p>
+              <div style={styles.roleGrid}>
+                <div style={styles.roleCard} onClick={() => handleRoleSelect('student')}>
+                  <span style={styles.roleIcon}>🎓</span>
+                  <h3 style={styles.roleTitle}>ছাত্র/ছাত্রী</h3>
+                  <p style={styles.roleDesc}>ছাত্র হিসেবে লগইন বা নিবন্ধন</p>
+                </div>
+                <div style={styles.roleCard} onClick={() => handleRoleSelect('teacher')}>
+                  <span style={styles.roleIcon}>👨‍🏫</span>
+                  <h3 style={styles.roleTitle}>শিক্ষক/শিক্ষিকা</h3>
+                  <p style={styles.roleDesc}>শিক্ষক হিসেবে লগইন বা নিবন্ধন</p>
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
+        <PendingApprovalModal />
+      </>
     );
   }
 
@@ -259,238 +331,250 @@ export default function SignInModal({ isOpen, onClose }) {
   // =============================================
   if (step === 'login') {
     return (
-      <div style={styles.overlay}>
-        <div style={styles.modal}>
-          <button onClick={onClose} style={styles.closeBtn}>✕</button>
-          <button onClick={handleBackToRole} style={styles.backBtn}>⬅ পিছনে</button>
-          
-          <div style={styles.loginContainer}>
-            <span style={styles.loginIcon}>🔐</span>
-            <h2 style={styles.loginHeading}>সাইন ইন করুন</h2>
-            <p style={styles.loginSubText}>
-              {role === 'student' ? '🎓 ছাত্র' : '👨‍🏫 শিক্ষক'} অ্যাকাউন্টে লগইন করুন
-            </p>
-
-            {loginError && <div style={styles.errorBox}>{loginError}</div>}
-
-            <form onSubmit={handleLogin} style={styles.loginForm}>
-              <div style={styles.field}>
-                <label style={styles.label}>📧 ইমেইল</label>
-                <input 
-                  type="email" 
-                  required 
-                  placeholder="your@email.com" 
-                  value={loginData.email} 
-                  onChange={(e) => setLoginData({...loginData, email: e.target.value})}
-                  style={styles.input} 
-                />
-              </div>
-
-              <div style={styles.field}>
-                <label style={styles.label}>🔑 পাসওয়ার্ড</label>
-                <input 
-                  type="password" 
-                  required 
-                  placeholder="••••••••" 
-                  value={loginData.password} 
-                  onChange={(e) => setLoginData({...loginData, password: e.target.value})}
-                  style={styles.input} 
-                />
-              </div>
-
-              <div style={styles.forgotLinkContainer}>
-                <span style={styles.forgotLink} onClick={handleOpenForgotPassword}>
-                  পাসওয়ার্ড ভুলে গেছেন?
-                </span>
-              </div>
-
-              <button type="submit" disabled={loginLoading || authLoading} style={styles.loginBtn}>
-                {loginLoading || authLoading ? '⏳ লগইন হচ্ছে...' : '🚀 লগইন করুন'}
-              </button>
-            </form>
-
-            <div style={styles.switchContainer}>
-              <p style={styles.switchText}>
-                নতুন ব্যবহারকারী? 
-                <span style={styles.switchLink} onClick={handleSwitchToRegister}>
-                  {role === 'student' ? ' ছাত্র হিসেবে নিবন্ধন' : ' শিক্ষক হিসেবে নিবন্ধন'}
-                </span>
+      <>
+        <div style={styles.overlay}>
+          <div style={styles.modal}>
+            <button onClick={onClose} style={styles.closeBtn}>✕</button>
+            <button onClick={handleBackToRole} style={styles.backBtn}>⬅ পিছনে</button>
+            
+            <div style={styles.loginContainer}>
+              <span style={styles.loginIcon}>🔐</span>
+              <h2 style={styles.loginHeading}>সাইন ইন করুন</h2>
+              <p style={styles.loginSubText}>
+                {role === 'student' ? '🎓 ছাত্র' : '👨‍🏫 শিক্ষক'} অ্যাকাউন্টে লগইন করুন
               </p>
+
+              {loginError && <div style={styles.errorBox}>{loginError}</div>}
+
+              <form onSubmit={handleLogin} style={styles.loginForm}>
+                <div style={styles.field}>
+                  <label style={styles.label}>📧 ইমেইল</label>
+                  <input 
+                    type="email" 
+                    required 
+                    placeholder="your@email.com" 
+                    value={loginData.email} 
+                    onChange={(e) => setLoginData({...loginData, email: e.target.value})}
+                    style={styles.input} 
+                  />
+                </div>
+
+                <div style={styles.field}>
+                  <label style={styles.label}>🔑 পাসওয়ার্ড</label>
+                  <input 
+                    type="password" 
+                    required 
+                    placeholder="••••••••" 
+                    value={loginData.password} 
+                    onChange={(e) => setLoginData({...loginData, password: e.target.value})}
+                    style={styles.input} 
+                  />
+                </div>
+
+                <div style={styles.forgotLinkContainer}>
+                  <span style={styles.forgotLink} onClick={handleOpenForgotPassword}>
+                    পাসওয়ার্ড ভুলে গেছেন?
+                  </span>
+                </div>
+
+                <button type="submit" disabled={loginLoading || authLoading} style={styles.loginBtn}>
+                  {loginLoading || authLoading ? '⏳ লগইন হচ্ছে...' : '🚀 লগইন করুন'}
+                </button>
+              </form>
+
+              <div style={styles.switchContainer}>
+                <p style={styles.switchText}>
+                  নতুন ব্যবহারকারী? 
+                  <span style={styles.switchLink} onClick={handleSwitchToRegister}>
+                    {role === 'student' ? ' ছাত্র হিসেবে নিবন্ধন' : ' শিক্ষক হিসেবে নিবন্ধন'}
+                  </span>
+                </p>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+        <PendingApprovalModal />
+      </>
     );
   }
 
   // =============================================
-  // স্টেপ ৩: ফরগেট পাসওয়ার্ড (OTP সিস্টেম)
+  // স্টেপ ৩: ফরগেট পাসওয়ার্ড (OTP সিস্টেম)
   // =============================================
   if (step === 'forgot-password') {
     if (forgotStep === 1) {
       return (
-        <div style={styles.overlay}>
-          <div style={styles.modal}>
-            <button onClick={onClose} style={styles.closeBtn}>✕</button>
-            <button onClick={handleBackToLogin} style={styles.backBtn}>⬅ পিছনে</button>
+        <>
+          <div style={styles.overlay}>
+            <div style={styles.modal}>
+              <button onClick={onClose} style={styles.closeBtn}>✕</button>
+              <button onClick={handleBackToLogin} style={styles.backBtn}>⬅ পিছনে</button>
 
-            <div style={styles.loginContainer}>
-              <span style={styles.loginIcon}>🔑</span>
-              <h2 style={styles.loginHeading}>পাসওয়ার্ড রিসেট</h2>
-              <p style={styles.loginSubText}>
-                আপনার ইমেইলে ৬ ডিজিটের একটি কোড পাঠানো হবে
-              </p>
+              <div style={styles.loginContainer}>
+                <span style={styles.loginIcon}>🔑</span>
+                <h2 style={styles.loginHeading}>পাসওয়ার্ড রিসেট</h2>
+                <p style={styles.loginSubText}>
+                  আপনার ইমেইলে ৬ ডিজিটের একটি কোড পাঠানো হবে
+                </p>
 
-              {forgotError && <div style={styles.errorBox}>{forgotError}</div>}
-              {forgotSuccess && (
-                <div style={styles.successBox}>
-                  ✅ OTP পাঠানো হয়েছে! আপনার ইমেইল চেক করুন।
-                </div>
-              )}
+                {forgotError && <div style={styles.errorBox}>{forgotError}</div>}
+                {forgotSuccess && (
+                  <div style={styles.successBox}>
+                    ✅ OTP পাঠানো হয়েছে! আপনার ইমেইল চেক করুন।
+                  </div>
+                )}
 
-              <form onSubmit={handleSendOTP} style={styles.loginForm}>
-                <div style={styles.field}>
-                  <label style={styles.label}>📧 ইমেইল</label>
-                  <input
-                    type="email"
-                    required
-                    placeholder="your@email.com"
-                    value={forgotEmail}
-                    onChange={(e) => setForgotEmail(e.target.value)}
-                    style={styles.input}
-                    disabled={forgotLoading}
-                  />
-                </div>
+                <form onSubmit={handleSendOTP} style={styles.loginForm}>
+                  <div style={styles.field}>
+                    <label style={styles.label}>📧 ইমেইল</label>
+                    <input
+                      type="email"
+                      required
+                      placeholder="your@email.com"
+                      value={forgotEmail}
+                      onChange={(e) => setForgotEmail(e.target.value)}
+                      style={styles.input}
+                      disabled={forgotLoading}
+                    />
+                  </div>
 
-                <button type="submit" disabled={forgotLoading} style={styles.loginBtn}>
-                  {forgotLoading ? '⏳ পাঠাচ্ছি...' : '📧 OTP পাঠান'}
-                </button>
-              </form>
+                  <button type="submit" disabled={forgotLoading} style={styles.loginBtn}>
+                    {forgotLoading ? '⏳ পাঠাচ্ছি...' : '📧 OTP পাঠান'}
+                  </button>
+                </form>
+              </div>
             </div>
           </div>
-        </div>
+          <PendingApprovalModal />
+        </>
       );
     }
 
     if (forgotStep === 2) {
       return (
-        <div style={styles.overlay}>
-          <div style={styles.modal}>
-            <button onClick={onClose} style={styles.closeBtn}>✕</button>
-            <button onClick={() => setForgotStep(1)} style={styles.backBtn}>⬅ পিছনে</button>
+        <>
+          <div style={styles.overlay}>
+            <div style={styles.modal}>
+              <button onClick={onClose} style={styles.closeBtn}>✕</button>
+              <button onClick={() => setForgotStep(1)} style={styles.backBtn}>⬅ পিছনে</button>
 
-            <div style={styles.loginContainer}>
-              <span style={styles.loginIcon}>📱</span>
-              <h2 style={styles.loginHeading}>OTP ভেরিফাই করুন</h2>
-              <p style={styles.loginSubText}>
-                আপনার ইমেইলে পাঠানো ৬ ডিজিটের কোড দিন
-              </p>
+              <div style={styles.loginContainer}>
+                <span style={styles.loginIcon}>📱</span>
+                <h2 style={styles.loginHeading}>OTP ভেরিফাই করুন</h2>
+                <p style={styles.loginSubText}>
+                  আপনার ইমেইলে পাঠানো ৬ ডিজিটের কোড দিন
+                </p>
 
-              {forgotError && <div style={styles.errorBox}>{forgotError}</div>}
+                {forgotError && <div style={styles.errorBox}>{forgotError}</div>}
 
-              <form onSubmit={handleVerifyOTP} style={styles.loginForm}>
-                <div style={styles.field}>
-                  <label style={styles.label}>🔢 OTP কোড</label>
-                  <input
-                    type="text"
-                    maxLength="6"
-                    required
-                    placeholder="১ ২ ৩ ৪ ৫ ৬"
-                    value={forgotOtp}
-                    onChange={(e) => setForgotOtp(e.target.value.replace(/\D/g, ''))}
-                    style={{ ...styles.input, textAlign: 'center', fontSize: '24px', letterSpacing: '8px' }}
+                <form onSubmit={handleVerifyOTP} style={styles.loginForm}>
+                  <div style={styles.field}>
+                    <label style={styles.label}>🔢 OTP কোড</label>
+                    <input
+                      type="text"
+                      maxLength="6"
+                      required
+                      placeholder="১ ২ ৩ ৪ ৫ ৬"
+                      value={forgotOtp}
+                      onChange={(e) => setForgotOtp(e.target.value.replace(/\D/g, ''))}
+                      style={{ ...styles.input, textAlign: 'center', fontSize: '24px', letterSpacing: '8px' }}
+                      disabled={forgotLoading}
+                    />
+                    <small style={styles.hint}>
+                      ⏳ ১০ মিনিটের মধ্যে কোডটি ব্যবহার করুন
+                    </small>
+                  </div>
+
+                  <button type="submit" disabled={forgotLoading} style={styles.loginBtn}>
+                    {forgotLoading ? '⏳ ভেরিফাই করছি...' : '✅ OTP ভেরিফাই করুন'}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleResendOTP}
+                    style={styles.resendBtn}
                     disabled={forgotLoading}
-                  />
-                  <small style={styles.hint}>
-                    ⏳ ১০ মিনিটের মধ্যে কোডটি ব্যবহার করুন
-                  </small>
-                </div>
-
-                <button type="submit" disabled={forgotLoading} style={styles.loginBtn}>
-                  {forgotLoading ? '⏳ ভেরিফাই করছি...' : '✅ OTP ভেরিফাই করুন'}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleResendOTP}
-                  style={styles.resendBtn}
-                  disabled={forgotLoading}
-                >
-                  🔄 নতুন OTP পাঠান
-                </button>
-              </form>
+                  >
+                    🔄 নতুন OTP পাঠান
+                  </button>
+                </form>
+              </div>
             </div>
           </div>
-        </div>
+          <PendingApprovalModal />
+        </>
       );
     }
 
     if (forgotStep === 3) {
       return (
-        <div style={styles.overlay}>
-          <div style={styles.modal}>
-            <button onClick={onClose} style={styles.closeBtn}>✕</button>
+        <>
+          <div style={styles.overlay}>
+            <div style={styles.modal}>
+              <button onClick={onClose} style={styles.closeBtn}>✕</button>
 
-            <div style={styles.loginContainer}>
-              {forgotSuccess ? (
-                <>
-                  <span style={styles.loginIcon}>🎉</span>
-                  <h2 style={styles.loginHeading}>পাসওয়ার্ড পরিবর্তন সফল!</h2>
-                  <p style={styles.loginSubText}>
-                    আপনার পাসওয়ার্ড সফলভাবে পরিবর্তন করা হয়েছে।
-                    <br />
-                    ⏳ ৩ সেকেন্ডের মধ্যে লগইন পেজে ফিরে যাচ্ছেন...
-                  </p>
-                </>
-              ) : (
-                <>
-                  <span style={styles.loginIcon}>🔐</span>
-                  <h2 style={styles.loginHeading}>নতুন পাসওয়ার্ড সেট করুন</h2>
-                  <p style={styles.loginSubText}>
-                    আপনার অ্যাকাউন্টের জন্য নতুন পাসওয়ার্ড দিন
-                  </p>
+              <div style={styles.loginContainer}>
+                {forgotSuccess ? (
+                  <>
+                    <span style={styles.loginIcon}>🎉</span>
+                    <h2 style={styles.loginHeading}>পাসওয়ার্ড পরিবর্তন সফল!</h2>
+                    <p style={styles.loginSubText}>
+                      আপনার পাসওয়ার্ড সফলভাবে পরিবর্তন করা হয়েছে।
+                      <br />
+                      ⏳ ৩ সেকেন্ডের মধ্যে লগইন পেজে ফিরে যাচ্ছেন...
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <span style={styles.loginIcon}>🔐</span>
+                    <h2 style={styles.loginHeading}>নতুন পাসওয়ার্ড সেট করুন</h2>
+                    <p style={styles.loginSubText}>
+                      আপনার অ্যাকাউন্টের জন্য নতুন পাসওয়ার্ড দিন
+                    </p>
 
-                  {forgotError && <div style={styles.errorBox}>{forgotError}</div>}
+                    {forgotError && <div style={styles.errorBox}>{forgotError}</div>}
 
-                  <form onSubmit={handleResetPassword} style={styles.loginForm}>
-                    <div style={styles.field}>
-                      <label style={styles.label}>🔑 নতুন পাসওয়ার্ড</label>
-                      <input
-                        type="password"
-                        required
-                        placeholder="কমপক্ষে ৬ অক্ষর"
-                        value={newPassword}
-                        onChange={(e) => setNewPassword(e.target.value)}
-                        style={styles.input}
-                        disabled={forgotLoading}
-                      />
-                      <small style={styles.hint}>
-                        ⚠️ পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে
-                      </small>
-                    </div>
+                    <form onSubmit={handleResetPassword} style={styles.loginForm}>
+                      <div style={styles.field}>
+                        <label style={styles.label}>🔑 নতুন পাসওয়ার্ড</label>
+                        <input
+                          type="password"
+                          required
+                          placeholder="কমপক্ষে ৬ অক্ষর"
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                          style={styles.input}
+                          disabled={forgotLoading}
+                        />
+                        <small style={styles.hint}>
+                          ⚠️ পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে
+                        </small>
+                      </div>
 
-                    <div style={styles.field}>
-                      <label style={styles.label}>🔑 কনফার্ম পাসওয়ার্ড</label>
-                      <input
-                        type="password"
-                        required
-                        placeholder="আবার পাসওয়ার্ড দিন"
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        style={styles.input}
-                        disabled={forgotLoading}
-                      />
-                    </div>
+                      <div style={styles.field}>
+                        <label style={styles.label}>🔑 কনফার্ম পাসওয়ার্ড</label>
+                        <input
+                          type="password"
+                          required
+                          placeholder="আবার পাসওয়ার্ড দিন"
+                          value={confirmPassword}
+                          onChange={(e) => setConfirmPassword(e.target.value)}
+                          style={styles.input}
+                          disabled={forgotLoading}
+                        />
+                      </div>
 
-                    <button type="submit" disabled={forgotLoading} style={styles.loginBtn}>
-                      {forgotLoading ? '⏳ আপডেট হচ্ছে...' : '✅ পাসওয়ার্ড আপডেট করুন'}
-                    </button>
-                  </form>
-                </>
-              )}
+                      <button type="submit" disabled={forgotLoading} style={styles.loginBtn}>
+                        {forgotLoading ? '⏳ আপডেট হচ্ছে...' : '✅ পাসওয়ার্ড আপডেট করুন'}
+                      </button>
+                    </form>
+                  </>
+                )}
+              </div>
             </div>
           </div>
-        </div>
+          <PendingApprovalModal />
+        </>
       );
     }
   }
@@ -500,12 +584,15 @@ export default function SignInModal({ isOpen, onClose }) {
   // =============================================
   if (step === 'student-register') {
     return (
-      <div style={styles.overlay}>
-        <div style={styles.modal}>
-          <button onClick={onClose} style={styles.closeBtn}>✕</button>
-          <StudentSignUp onBack={handleBackToLogin} onClose={onClose} />
+      <>
+        <div style={styles.overlay}>
+          <div style={styles.modal}>
+            <button onClick={onClose} style={styles.closeBtn}>✕</button>
+            <StudentSignUp onBack={handleBackToLogin} onClose={onClose} />
+          </div>
         </div>
-      </div>
+        <PendingApprovalModal />
+      </>
     );
   }
 
@@ -514,12 +601,15 @@ export default function SignInModal({ isOpen, onClose }) {
   // =============================================
   if (step === 'teacher-register') {
     return (
-      <div style={styles.overlay}>
-        <div style={styles.modal}>
-          <button onClick={onClose} style={styles.closeBtn}>✕</button>
-          <TeacherSignUp onBack={handleBackToLogin} onClose={onClose} />
+      <>
+        <div style={styles.overlay}>
+          <div style={styles.modal}>
+            <button onClick={onClose} style={styles.closeBtn}>✕</button>
+            <TeacherSignUp onBack={handleBackToLogin} onClose={onClose} />
+          </div>
         </div>
-      </div>
+        <PendingApprovalModal />
+      </>
     );
   }
 
@@ -669,5 +759,147 @@ const styles = {
     color: '#64748b',
     cursor: 'pointer',
     fontWeight: '500'
-  }
+  },
+
+  // =============================================
+  // ✅ Pending Approval Popup Styles
+  // =============================================
+  pendingOverlay: {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    width: '100%',
+    height: '100%',
+    backgroundColor: 'rgba(0,0,0,0.75)',
+    backdropFilter: 'blur(8px)',
+    zIndex: 3000,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: '16px',
+    animation: 'fadeIn 0.3s ease',
+  },
+  pendingModal: {
+    backgroundColor: '#ffffff',
+    borderRadius: '24px',
+    padding: '32px 28px',
+    width: '100%',
+    maxWidth: '440px',
+    textAlign: 'center',
+    boxShadow: '0 30px 60px -12px rgba(0,0,0,0.4)',
+    position: 'relative',
+    animation: 'slideUp 0.4s ease',
+  },
+  pendingIconWrapper: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '80px',
+    height: '80px',
+    borderRadius: '50%',
+    background: 'linear-gradient(135deg, #fef3c7, #fde68a)',
+    marginBottom: '16px',
+    boxShadow: '0 8px 24px rgba(245, 158, 11, 0.3)',
+  },
+  pendingIcon: {
+    fontSize: '44px',
+  },
+  pendingTitle: {
+    fontSize: '22px',
+    fontWeight: '800',
+    color: '#0f172a',
+    margin: '0 0 12px 0',
+  },
+  pendingGreeting: {
+    fontSize: '15px',
+    color: '#334155',
+    margin: '0 0 16px 0',
+  },
+  pendingMessageBox: {
+    background: '#fffbeb',
+    borderRadius: '14px',
+    padding: '16px 20px',
+    marginBottom: '16px',
+    border: '1px solid #fde68a',
+  },
+  pendingMessage: {
+    fontSize: '15px',
+    color: '#78350f',
+    margin: '0 0 8px 0',
+    lineHeight: '1.6',
+  },
+  pendingSubMessage: {
+    fontSize: '13px',
+    color: '#92400e',
+    margin: 0,
+    lineHeight: '1.6',
+  },
+  pendingInfoBox: {
+    background: '#f8fafc',
+    borderRadius: '14px',
+    padding: '14px 18px',
+    marginBottom: '20px',
+    border: '1px solid #e2e8f0',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px',
+  },
+  pendingInfoRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    fontSize: '13px',
+    justifyContent: 'center',
+    flexWrap: 'wrap',
+  },
+  pendingInfoIcon: {
+    fontSize: '16px',
+  },
+  pendingInfoLabel: {
+    color: '#64748b',
+    fontWeight: '500',
+  },
+  pendingInfoValue: {
+    color: '#0f172a',
+    fontWeight: '700',
+  },
+  pendingInfoLink: {
+    color: '#16a34a',
+    fontWeight: '700',
+    textDecoration: 'none',
+  },
+  pendingCloseBtn: {
+    background: 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)',
+    color: 'white',
+    border: 'none',
+    padding: '14px 32px',
+    borderRadius: '14px',
+    fontWeight: '700',
+    fontSize: '15px',
+    cursor: 'pointer',
+    boxShadow: '0 8px 20px rgba(22, 163, 74, 0.35)',
+    transition: 'all 0.2s ease',
+    width: '100%',
+  },
+  pendingFooter: {
+    fontSize: '12px',
+    color: '#94a3b8',
+    margin: '14px 0 0 0',
+  },
 };
+
+// =============================================
+// ✅ Animation Inject
+// =============================================
+const styleSheet = document.createElement('style');
+styleSheet.textContent = `
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(20px) scale(0.95); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+`;
+document.head.appendChild(styleSheet);
