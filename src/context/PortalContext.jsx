@@ -45,6 +45,19 @@ export function PortalProvider({ children }) {
         }
 
         if (profile) {
+          // ✅ নতুন চেক: অনুমোদিত না হলে সেশন ক্লিয়ার
+          const isApproved = profile.is_approved === true;
+          
+          if (!isApproved) {
+            console.log('⚠️ User not approved yet, clearing session');
+            await supabase.auth.signOut();
+            setUser(null);
+            setUserProfile(null);
+            setUserRole(null);
+            setLoading(false);
+            return;
+          }
+
           setUser(session.user);
           setUserProfile(profile);
           setUserRole(role);
@@ -57,7 +70,7 @@ export function PortalProvider({ children }) {
   };
 
   // =============================================
-  // ✅ Login ফাংশন (আপডেটেড - রিডাইরেক্ট সহ)
+  // ✅ Login ফাংশন (আপডেটেড - is_approved চেক সহ)
   // =============================================
   const login = async (email, password) => {
     try {
@@ -95,23 +108,55 @@ export function PortalProvider({ children }) {
         }
 
         if (profile) {
+          // ✅ নতুন চেক: অনুমোদিত কি না
+          const isApproved = profile.is_approved === true;
+          
+          if (!isApproved) {
+            // লগইন হয়ে গেছে কিন্তু অনুমোদিত না — সেশন বাতিল
+            await supabase.auth.signOut();
+            
+            return { 
+              success: false, 
+              error: 'PENDING_APPROVAL',
+              errorType: 'pending',
+              message: 'আপনার অ্যাকাউন্ট এখনো অনুমোদিত হয়নি',
+              userType: role === 'teacher' ? 'শিক্ষক' : 'ছাত্র',
+              userName: profile.name || ''
+            };
+          }
+
+          // ✅ অনুমোদিত — লগইন সফল
           setUser(data.user);
           setUserProfile(profile);
           setUserRole(role);
           
-          // ✅ লগইন成功后 /portal এ রিডাইরেক্ট করুন
           window.location.href = '/portal';
           
           return { success: true, profile };
         } else {
           await supabase.auth.signOut();
-          return { success: false, error: 'প্রোফাইল পাওয়া যায়নি। দয়া করে রেজিস্ট্রেশন করুন।' };
+          return { 
+            success: false, 
+            error: 'PROFILE_NOT_FOUND',
+            errorType: 'notfound',
+            message: 'প্রোফাইল পাওয়া যায়নি। দয়া করে রেজিস্ট্রেশন করুন।'
+          };
         }
       }
-      return { success: false, error: 'প্রোফাইল পাওয়া যায়নি' };
+      return { 
+        success: false, 
+        error: 'NO_USER',
+        errorType: 'notfound',
+        message: 'ব্যবহারকারী পাওয়া যায়নি' 
+      };
     } catch (error) {
       console.error('Login error:', error);
-      return { success: false, error: error.message };
+      return { 
+        success: false, 
+        error: error.message,
+        errorType: 'auth',
+        message: error.message 
+      };
     }
   };
 
@@ -166,7 +211,12 @@ export function PortalProvider({ children }) {
       }
     } catch (error) {
       console.error('Register error:', error);
-      return { success: false, error: error.message };
+      return { 
+        success: false, 
+        error: error.message,
+        errorType: 'auth',
+        message: error.message 
+      };
     }
   };
 
