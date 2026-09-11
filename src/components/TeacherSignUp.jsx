@@ -60,21 +60,39 @@ export default function TeacherSignUp({ onBack, onClose }) {
     reader.readAsDataURL(file);
   };
 
+  // =============================================
+  // ✅ ছবি আপলোড + পাবলিক URL (১০০% ফিক্সড)
+  // =============================================
   const uploadPhoto = async () => {
     if (!formData.photo) return null;
+
     const fileExt = formData.photo.name.split('.').pop();
-    const fileName = `teacher_${Date.now()}.${fileExt}`;
+    const fileName = `teacher_${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
     const filePath = `teacher-photos/${fileName}`;
-    
+
     try {
-      const { data, error } = await supabase.storage
-        .from('private-admission-files')
-        .upload(filePath, formData.photo);
-      
+      // ১. public bucket-এ আপলোড
+      const { error } = await supabase.storage
+        .from('profile_images')
+        .upload(filePath, formData.photo, {
+          cacheControl: '3600',
+          upsert: false,
+        });
+
       if (error) throw error;
-      return data.path;
+
+      // ২. Full Public URL তৈরি
+      const { data: urlData } = supabase.storage
+        .from('profile_images')
+        .getPublicUrl(filePath);
+
+      console.log('✅ শিক্ষক ছবি আপলোড সফল, URL:', urlData.publicUrl);
+
+      // ৩. পুরো URL রিটার্ন
+      return urlData.publicUrl;
+
     } catch (err) {
-      console.error('ছবি আপলোড সমস্যা:', err);
+      console.error('❌ ছবি আপলোড সমস্যা:', err);
       return null;
     }
   };
@@ -174,13 +192,13 @@ export default function TeacherSignUp({ onBack, onClose }) {
     }
 
     if (formData.password.length < 6) {
-      setError('❌ পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে');
+      setError('❌ পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে');
       setLoading(false);
       return;
     }
 
     if (formData.password !== formData.confirmPassword) {
-      setError('❌ পাসওয়ার্ড এবং কনফার্ম পাসওয়ার্ড মিলছে না');
+      setError('❌ পাসওয়ার্ড এবং কনফার্ম পাসওয়ার্ড মিলছে না');
       setLoading(false);
       return;
     }
@@ -430,7 +448,7 @@ export default function TeacherSignUp({ onBack, onClose }) {
         <div style={styles.header}>
           <span style={styles.headerIcon}>👨‍🏫</span>
           <h2 style={styles.heading}>শিক্ষক নিবন্ধন</h2>
-          <p style={styles.subHeading}>আপনার তথ্য দিয়ে ফরম পূরণ করুন</p>
+          <p style={styles.subHeading}>আপনার তথ্য দিয়ে ফরম পূরণ করুন</p>
           <div style={styles.codeVerifiedBadge}>
             <span>✅ কোড যাচাইকৃত: </span>
             <strong>{formData.registrationCode}</strong>
@@ -477,18 +495,18 @@ export default function TeacherSignUp({ onBack, onClose }) {
           <label style={styles.label}>📸 ছবি <span style={{color: '#ef4444'}}>*</span></label>
           <div style={styles.fileWrapper}>
             <input type="file" ref={photoInputRef} accept="image/*" capture="environment" required onChange={handleFileChange} style={styles.fileInput} />
-            <span style={styles.filePlaceholder}>{formData.photo ? '✅ নির্বাচিত' : 'ক্যামেরা দিয়ে ছবি তুলুন'}</span>
+            <span style={styles.filePlaceholder}>{formData.photo ? '✅ নির্বাচিত' : 'ক্যামেরা দিয়ে ছবি তুলুন'}</span>
           </div>
         </div>
 
         <div style={styles.field}>
-          <label style={styles.label}>🔑 পাসওয়ার্ড <span style={{color: '#ef4444'}}>*</span></label>
+          <label style={styles.label}>🔑 পাসওয়ার্ড <span style={{color: '#ef4444'}}>*</span></label>
           <input type="password" name="password" required placeholder="কমপক্ষে ৬ অক্ষর" value={formData.password} onChange={handleInputChange} style={styles.input} />
         </div>
 
         <div style={styles.field}>
-          <label style={styles.label}>🔑 কনফার্ম পাসওয়ার্ড <span style={{color: '#ef4444'}}>*</span></label>
-          <input type="password" name="confirmPassword" required placeholder="আবার পাসওয়ার্ড দিন" value={formData.confirmPassword} onChange={handleInputChange} style={styles.input} />
+          <label style={styles.label}>🔑 কনফার্ম পাসওয়ার্ড <span style={{color: '#ef4444'}}>*</span></label>
+          <input type="password" name="confirmPassword" required placeholder="আবার পাসওয়ার্ড দিন" value={formData.confirmPassword} onChange={handleInputChange} style={styles.input} />
         </div>
 
         <div style={styles.buttonGroup}>
@@ -574,7 +592,7 @@ export default function TeacherSignUp({ onBack, onClose }) {
 }
 
 // =============================================
-// 🎨 প্রিমিয়াম স্টাইল (ডুপ্লিকেট কী ফিক্স করা হয়েছে)
+// 🎨 প্রিমিয়াম স্টাইল (অপরিবর্তিত)
 // =============================================
 const styles = {
   container: {
@@ -751,7 +769,6 @@ const styles = {
     gap: '8px',
     marginBottom: '12px',
   },
-  // ✅ successIcon এখন শুধু একবার ব্যবহার করা হয়েছে
   successIcon: { fontSize: '18px' },
   verifiedNotice: {
     backgroundColor: '#dcfce7',
@@ -775,7 +792,6 @@ const styles = {
     marginTop: '8px',
     display: 'inline-block',
   },
-  // OTP স্টেপ
   otpContainer: {
     textAlign: 'center',
     padding: '20px 0',
@@ -845,12 +861,10 @@ const styles = {
     fontWeight: '700',
     boxShadow: '0 4px 14px rgba(37, 99, 235, 0.3)',
   },
-  // সাফল্য স্টেপ
   successContainer: {
     textAlign: 'center',
     padding: '20px 10px',
   },
-  // ✅ successIconLarge নামে নতুন কী (যাতে duplicate না হয়)
   successIconLarge: {
     fontSize: '56px',
     marginBottom: '12px',
