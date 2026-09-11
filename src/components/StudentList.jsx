@@ -1,692 +1,946 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { supabase } from '../supabaseClient';
+import { generateOTP, saveOTP, verifyOTP, sendOTPEmail } from '../utils/otpService';
 
-export default function StudentList() {
-  const [students, setStudents] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [totalStudents, setTotalStudents] = useState(0);
-  const [selectedStudent, setSelectedStudent] = useState(null);
-  const [modalOpen, setModalOpen] = useState(false);
+export default function StudentSignUp({ onBack, onClose }) {
+  const [step, setStep] = useState(1);
+  const [formData, setFormData] = useState({
+    name: '',
+    fatherName: '',
+    motherName: '',
+    village: '',
+    class: '',
+    roll: '',
+    photo: null,
+    email: '',
+    phone: '',
+    password: '',
+    confirmPassword: '',
+    otp: '',
+    registrationCode: '',
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState(false);
+  const [codeVerified, setCodeVerified] = useState(false);
+  const [codeMessage, setCodeMessage] = useState('');
+  const [codeErrorMessage, setCodeErrorMessage] = useState('');
+  const photoInputRef = useRef(null);
 
-  // ক্লাসের ক্রম
-  const classOrder = ['প্লে', '১ম', '২য়', '৩য়', '৪র্থ', '৫ম'];
-  // যেসব রোল দেখাবে
-  const allowedRolls = [1, 2, 3];
-  // টেবিল হেডার (অপশন A)
-  const rollHeaders = ['সর্বোচ্চ রোল ১', 'সর্বোচ্চ রোল ২', 'সর্বোচ্চ রোল ৩'];
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
+  };
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      compressImage(file, (compressedFile) => {
+        setFormData({ ...formData, photo: compressedFile });
+      });
+    }
+  };
+
+  const compressImage = (file, callback) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        const size = 200;
+        canvas.width = size;
+        canvas.height = size;
+        ctx.drawImage(img, 0, 0, size, size);
+        canvas.toBlob((blob) => {
+          const compressedFile = new File([blob], file.name, { type: 'image/jpeg' });
+          callback(compressedFile);
+        }, 'image/jpeg', 0.7);
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  };
 
   // =============================================
-  // ✅ ডেটা ফেচ (শুধু অনুমোদিত + রোল ১-৩)
+  // ✅ ছবি আপলোড + পাবলিক URL (১০০% ফিক্সড)
   // =============================================
-  const fetchStudents = async () => {
-    setLoading(true);
+  const uploadPhoto = async () => {
+    if (!formData.photo) return null;
+
+    const fileExt = formData.photo.name.split('.').pop();
+    const fileName = `student_${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+    const filePath = `student-photos/${fileName}`;
+
     try {
-      const { data, error } = await supabase
-        .from('students')
-        .select('*')
-        .eq('is_approved', true)
-        .in('roll_number', allowedRolls)
-        .order('class_name', { ascending: true })
-        .order('roll_number', { ascending: true });
+      // ১. public bucket-এ আপলোড
+      const { error } = await supabase.storage
+        .from('profile_images')
+        .upload(filePath, formData.photo, {
+          cacheControl: '3600',
+          upsert: false,
+        });
 
       if (error) throw error;
 
-      const filtered = data || [];
-      setStudents(filtered);
-      setTotalStudents(filtered.length);
+      // ২. Full Public URL তৈরি
+      const { data: urlData } = supabase.storage
+        .from('profile_images')
+        .getPublicUrl(filePath);
+
+      console.log('✅ ছবি আপলোড সফল, URL:', urlData.publicUrl);
+
+      // ৩. পুরো URL রিটার্ন
+      return urlData.publicUrl;
+
     } catch (err) {
-      console.error('Error fetching students:', err);
+      console.error('❌ ছবি আপলোড সমস্যা:', err);
+      return null;
+    }
+  };
+
+  const handleVerifyCode = async (e) => {
+    e.preventDefault();
+    setError('');
+    setCodeErrorMessage('');
+    setCodeMessage('');
+    setLoading(true);
+
+    const code = formData.registrationCode.trim().toUpperCase();
+
+    if (!code) {
+      setCodeErrorMessage('❌ দয়া করে একটি কোড দিন');
+      setLoading(false);
+      return;
+    }
+
+    if (code.length < 6) {
+      setCodeErrorMessage('❌ কোডটি কমপক্ষে ৬ অক্ষরের হতে হবে');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('registration_codes')
+        .select('*')
+        .eq('code', code)
+        .single();
+
+      if (error) {
+        if (error.code === 'PGRST116') {
+          setCodeErrorMessage('❌ এই কোডটি সঠিক নয়। দয়া করে সঠিক কোড দিন।');
+        } else {
+          setCodeErrorMessage('❌ কোড যাচাই করতে সমস্যা: ' + error.message);
+        }
+        setLoading(false);
+        return;
+      }
+
+      if (data.is_used) {
+        setCodeErrorMessage('❌ এই কোডটি ইতিমধ্যে ব্যবহার করা হয়েছে।');
+        setLoading(false);
+        return;
+      }
+
+      const now = new Date();
+      const expiresAt = new Date(data.expires_at);
+      if (now > expiresAt) {
+        setCodeErrorMessage('⏰ এই কোডের মেয়াদ শেষ হয়ে গেছে।');
+        setLoading(false);
+        return;
+      }
+
+      setCodeVerified(true);
+      setCodeMessage('✅ কোডটি সঠিক! এখন আপনার তথ্য দিন এবং OTP পান।');
+      alert('✅ আপনার কোডটি সঠিক! এখন ফর্ম পূরণ করে OTP নিন।');
+      setStep(2);
+
+    } catch (err) {
+      console.error('❌ Code verification error:', err);
+      setCodeErrorMessage('❌ কোড যাচাই করতে সমস্যা: ' + err.message);
     }
     setLoading(false);
   };
 
-  // =============================================
-  // ✅ Realtime subscription
-  // =============================================
-  useEffect(() => {
-    fetchStudents();
+  const handleSendOTP = async (e) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
 
-    const studentChannel = supabase
-      .channel('student-list-realtime')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'students' },
-        () => {
-          fetchStudents();
+    if (!formData.name || !formData.fatherName || !formData.motherName || 
+        !formData.village || !formData.class || !formData.email) {
+      setError('❌ সব ঘর পূরণ করুন');
+      setLoading(false);
+      return;
+    }
+
+    if (!formData.photo) {
+      setError('❌ ছবি আপলোড করুন');
+      setLoading(false);
+      return;
+    }
+
+    if (formData.password.length < 6) {
+      setError('❌ পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে');
+      setLoading(false);
+      return;
+    }
+
+    if (formData.password !== formData.confirmPassword) {
+      setError('❌ পাসওয়ার্ড এবং কনফার্ম পাসওয়ার্ড মিলছে না');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const { data: existingStudent, error: checkError } = await supabase
+        .from('students')
+        .select('email')
+        .eq('email', formData.email.toLowerCase().trim())
+        .maybeSingle();
+
+      if (checkError) {
+        console.error('ডুপ্লিকেট চেক সমস্যা:', checkError);
+      }
+
+      if (existingStudent) {
+        setError('❌ এই ইমেইলটি ইতিমধ্যে ব্যবহার করা হয়েছে।');
+        setLoading(false);
+        return;
+      }
+
+      const otp = generateOTP();
+      await saveOTP(formData.email, otp);
+      
+      const emailResult = await sendOTPEmail(formData.email, otp);
+      
+      if (!emailResult.success) {
+        setError('OTP পাঠাতে সমস্যা: ' + (emailResult.error || 'অজানা সমস্যা'));
+        setLoading(false);
+        return;
+      }
+
+      setStep(3);
+
+    } catch (err) {
+      setError(err.message || 'OTP পাঠাতে সমস্যা');
+    }
+    setLoading(false);
+  };
+
+  const handleVerifyAndSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+
+    try {
+      const result = await verifyOTP(formData.email, formData.otp);
+      
+      if (!result.success) {
+        setError(result.message);
+        setLoading(false);
+        return;
+      }
+
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: formData.email.toLowerCase().trim(),
+        password: formData.password,
+        options: {
+          data: {
+            name: formData.name,
+            role: 'student'
+          }
         }
-      )
-      .subscribe();
+      });
 
-    return () => {
-      supabase.removeChannel(studentChannel);
-    };
-  }, []);
+      if (authError) {
+        setError('অথেন্টিকেশন সমস্যা: ' + authError.message);
+        setLoading(false);
+        return;
+      }
 
-  // =============================================
-  // ✅ ক্লাস + রোল অনুযায়ী গ্রুপ
-  // =============================================
-  const getStudentsByClassAndRoll = (className, rollNumber) => {
-    return students.filter(
-      (s) =>
-        s.class_name === className &&
-        parseInt(s.roll_number) === rollNumber
-    );
+      if (!authData.user) {
+        setError('ইউজার তৈরি করতে সমস্যা হয়েছে');
+        setLoading(false);
+        return;
+      }
+
+      const photoPath = await uploadPhoto();
+
+      const { error: insertError } = await supabase
+        .from('students')
+        .insert([{
+          id: authData.user.id,
+          name: formData.name,
+          father_name: formData.fatherName,
+          mother_name: formData.motherName,
+          village: formData.village,
+          class_name: formData.class,
+          roll_number: formData.roll || null,
+          photo_url: photoPath,
+          email: formData.email.toLowerCase().trim(),
+          phone: formData.phone || null,
+          is_verified: true,
+          is_approved: false,
+        }]);
+
+      if (insertError) {
+        console.error('Insert Error:', insertError);
+        if (insertError.code === '23505') {
+          setError('❌ এই ইমেইলটি ইতিমধ্যে ব্যবহার করা হয়েছে।');
+        } else {
+          setError('ডেটা জমা দিতে সমস্যা: ' + insertError.message);
+        }
+        setLoading(false);
+        return;
+      }
+
+      try {
+        await supabase
+          .from('registration_requests')
+          .insert([{
+            code: formData.registrationCode.trim().toUpperCase(),
+            student_name: formData.name,
+            phone: formData.phone || '',
+            email: formData.email.toLowerCase().trim(),
+            class_name: formData.class,
+            father_name: formData.fatherName,
+            mother_name: formData.motherName,
+            student_photo: photoPath,
+            status: 'pending',
+            otp_verified: true,
+            otp_sent_at: new Date().toISOString(),
+          }]);
+        console.log('✅ Registration request saved!');
+      } catch (reqError) {
+        console.error('⚠️ Registration request save error:', reqError);
+      }
+
+      try {
+        await supabase
+          .from('registration_codes')
+          .update({
+            is_used: true,
+            used_by: formData.email.toLowerCase().trim(),
+            used_at: new Date().toISOString(),
+          })
+          .eq('code', formData.registrationCode.trim().toUpperCase());
+        console.log('✅ Code marked as used!');
+      } catch (codeError) {
+        console.error('⚠️ Code update error:', codeError);
+      }
+
+      try {
+        await supabase
+          .from('registration_logs')
+          .insert([{
+            code: formData.registrationCode.trim().toUpperCase(),
+            action: 'verified',
+            email: formData.email.toLowerCase().trim(),
+          }]);
+        console.log('✅ Log created!');
+      } catch (logError) {
+        console.error('⚠️ Log error:', logError);
+      }
+
+      setStep(4);
+      setSuccess(true);
+
+    } catch (err) {
+      console.error('Error:', err);
+      setError(err.message || 'সাবমিট করতে সমস্যা');
+    }
+    setLoading(false);
   };
 
-  // ✅ কোন ক্লাসে ডেটা আছে চেক
-  const classesWithData = classOrder.filter((cls) =>
-    students.some((s) => s.class_name === cls)
-  );
-
-  // =============================================
-  // ✅ রোল ব্যাজ
-  // =============================================
-  const getRankBadge = (roll) => {
-    if (roll === 1) return { emoji: '🥇', label: 'প্রথম', color: '#fbbf24' };
-    if (roll === 2) return { emoji: '🥈', label: 'দ্বিতীয়', color: '#94a3b8' };
-    if (roll === 3) return { emoji: '🥉', label: 'তৃতীয়', color: '#d97706' };
-    return { emoji: '🏅', label: 'শীর্ষ', color: '#16a34a' };
-  };
-
-  // =============================================
-  // ✅ মোডাল খোলা
-  // =============================================
-  const openModal = (student) => {
-    setSelectedStudent(student);
-    setModalOpen(true);
-  };
-
-  const closeModal = () => {
-    setModalOpen(false);
-    setSelectedStudent(null);
-  };
-
-  // =============================================
-  // ✅ লোডিং
-  // =============================================
-  if (loading) {
+  // ✅ রেন্ডার: স্টেপ ১ - কোড যাচাই
+  if (step === 1) {
     return (
-      <div style={styles.loadingContainer}>
-        <div style={styles.loadingSpinner}></div>
-        <p style={styles.loadingText}>⏳ লোড হচ্ছে...</p>
+      <div style={styles.container}>
+        <div style={styles.header}>
+          <span style={styles.headerIcon}>🔑</span>
+          <h2 style={styles.heading}>রেজিস্ট্রেশন কোড যাচাই</h2>
+          <p style={styles.subHeading}>
+            আপনার প্রাপ্ত ইউনিক কোডটি দিন। 
+            <br />
+            <small style={styles.smallText}>কোডটি ৬-৮ অক্ষরের হতে পারে</small>
+          </p>
+        </div>
+
+        {codeErrorMessage && (
+          <div style={styles.errorBox}>
+            <span style={styles.errorIcon}>⚠️</span>
+            <span>{codeErrorMessage}</span>
+          </div>
+        )}
+
+        {codeMessage && (
+          <div style={styles.successBox}>
+            <span style={styles.successIcon}>✅</span>
+            <span>{codeMessage}</span>
+          </div>
+        )}
+
+        <form onSubmit={handleVerifyCode} style={styles.form}>
+          <div style={styles.field}>
+            <label style={styles.label}>🔢 কোড দিন <span style={{color: '#ef4444'}}>*</span></label>
+            <input
+              type="text"
+              name="registrationCode"
+              value={formData.registrationCode}
+              onChange={handleInputChange}
+              placeholder="যেমন: CPCM2026"
+              style={styles.codeInput}
+              autoFocus
+              disabled={codeVerified}
+            />
+            <small style={styles.hintText}>
+              💡 আপনার অ্যাডমিনের কাছ থেকে প্রাপ্ত কোডটি দিন
+            </small>
+          </div>
+
+          <div style={styles.buttonGroup}>
+            <button type="button" onClick={onBack} style={styles.backBtn}>
+              ⬅ পিছনে
+            </button>
+            <button
+              type="submit"
+              disabled={loading || codeVerified}
+              style={{
+                ...styles.verifyBtn,
+                opacity: (loading || codeVerified) ? 0.6 : 1,
+              }}
+            >
+              {loading ? '⏳ যাচাই করছি...' : codeVerified ? '✅ যাচাইকৃত' : '✅ কোড যাচাই করুন'}
+            </button>
+          </div>
+
+          {codeVerified && (
+            <div style={styles.verifiedNotice}>
+              <span style={styles.verifiedIcon}>✅</span>
+              <span>কোড সঠিক! এখন আপনার তথ্য দিন এবং OTP পান।</span>
+            </div>
+          )}
+        </form>
       </div>
     );
   }
 
-  // =============================================
-  // ✅ রেন্ডার
-  // =============================================
-  return (
-    <div style={styles.container}>
-      {/* ✅ মোট ছাত্র কাউন্ট কার্ড */}
-      <div style={styles.totalCard}>
-        <span style={styles.totalIcon}>👦</span>
-        <div>
-          <div style={styles.totalNumber}>{totalStudents}</div>
-          <div style={styles.totalLabel}>জন মেধাবী ছাত্র-ছাত্রী</div>
-        </div>
-      </div>
-
-      {/* ✅ যদি কোনো ছাত্র না থাকে */}
-      {classesWithData.length === 0 ? (
-        <div style={styles.emptyState}>
-          <span style={styles.emptyIcon}>📭</span>
-          <p style={styles.emptyText}>এখনো কোনো মেধাবী ছাত্র-ছাত্রী নেই</p>
-          <p style={styles.emptySubText}>
-            রোল ১, ২ বা ৩ অর্জনকারী ছাত্র-ছাত্রীরা এখানে দেখানো হবে
-          </p>
-        </div>
-      ) : (
-        /* ✅ টেবিল */
-        <div style={styles.tableWrapper}>
-          <table style={styles.table}>
-            <thead>
-              <tr>
-                <th style={{ ...styles.th, ...styles.thClass }}>ক্লাস</th>
-                {rollHeaders.map((header, idx) => (
-                  <th key={idx} style={styles.th}>
-                    {header}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {classesWithData.map((className) => (
-                <tr key={className} style={styles.tr}>
-                  {/* ক্লাসের নাম */}
-                  <td style={{ ...styles.td, ...styles.tdClass }}>
-                    <span style={styles.className}>{className}</span>
-                  </td>
-
-                  {/* রোল ১, ২, ৩ এর কলাম */}
-                  {allowedRolls.map((rollNumber) => {
-                    const matchedStudents = getStudentsByClassAndRoll(
-                      className,
-                      rollNumber
-                    );
-                    const rank = getRankBadge(rollNumber);
-
-                    return (
-                      <td key={rollNumber} style={styles.td}>
-                        {matchedStudents.length === 0 ? (
-                          /* ✅ ফাঁকা ঘর — কেউ অর্জন করেনি */
-                          <div style={styles.emptyBox}>
-                            <span style={styles.emptyBoxIcon}>🏅</span>
-                            <p style={styles.emptyBoxText}>
-                              এই স্থান এখনো কেউ অর্জন করে নি
-                            </p>
-                          </div>
-                        ) : (
-                          /* ✅ ছাত্র/ছাত্রীর ছবি + নাম */
-                          <div style={styles.studentGrid}>
-                            {matchedStudents.map((student) => (
-                              <div
-                                key={student.id}
-                                style={styles.studentCard}
-                                onClick={() => openModal(student)}
-                              >
-                                <div style={styles.imageWrapper}>
-                                  {student.photo_url ? (
-                                    <img
-                                      src={student.photo_url}
-                                      alt={student.name}
-                                      style={styles.studentImage}
-                                    />
-                                  ) : (
-                                    <div style={styles.imagePlaceholder}>
-                                      {student.name?.charAt(0) || '?'}
-                                    </div>
-                                  )}
-                                  <div
-                                    style={{
-                                      ...styles.rankBadgeWrapper,
-                                      background:
-                                        rollNumber === 1
-                                          ? 'linear-gradient(135deg, #fbbf24, #f59e0b)'
-                                          : rollNumber === 2
-                                          ? 'linear-gradient(135deg, #cbd5e1, #94a3b8)'
-                                          : 'linear-gradient(135deg, #f97316, #d97706)',
-                                    }}
-                                  >
-                                    <span style={styles.rankEmoji}>
-                                      {rank.emoji}
-                                    </span>
-                                    <span style={styles.rankLabel}>
-                                      {rank.label}
-                                    </span>
-                                  </div>
-                                </div>
-                                <div style={styles.studentName}>
-                                  {student.name}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* ✅ ছাত্রের বিস্তারিত মোডাল */}
-      {modalOpen && selectedStudent && (
-        <div style={styles.modalOverlay} onClick={closeModal}>
-          <div
-            style={styles.modalContent}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button onClick={closeModal} style={styles.modalCloseBtn}>
-              ✕
-            </button>
-
-            {/* ছবি */}
-            <div style={styles.modalImageWrapper}>
-              {selectedStudent.photo_url ? (
-                <img
-                  src={selectedStudent.photo_url}
-                  alt={selectedStudent.name}
-                  style={styles.modalImage}
-                />
-              ) : (
-                <div style={styles.modalImagePlaceholder}>
-                  {selectedStudent.name?.charAt(0) || '?'}
-                </div>
-              )}
-              <div
-                style={{
-                  ...styles.modalRankBadge,
-                  background:
-                    parseInt(selectedStudent.roll_number) === 1
-                      ? 'linear-gradient(135deg, #fbbf24, #f59e0b)'
-                      : parseInt(selectedStudent.roll_number) === 2
-                      ? 'linear-gradient(135deg, #cbd5e1, #94a3b8)'
-                      : 'linear-gradient(135deg, #f97316, #d97706)',
-                }}
-              >
-                {getRankBadge(parseInt(selectedStudent.roll_number)).emoji}{' '}
-                {getRankBadge(parseInt(selectedStudent.roll_number)).label}
-              </div>
-            </div>
-
-            {/* নাম */}
-            <h2 style={styles.modalName}>{selectedStudent.name}</h2>
-            <p style={styles.modalClass}>
-              📚 {selectedStudent.class_name} শ্রেণী
-            </p>
-
-            {/* বিস্তারিত */}
-            <div style={styles.modalDetails}>
-              <div style={styles.modalRow}>
-                <span style={styles.modalLabel}>👨 বাবার নাম</span>
-                <span style={styles.modalValue}>
-                  {selectedStudent.father_name || '—'}
-                </span>
-              </div>
-              <div style={styles.modalRow}>
-                <span style={styles.modalLabel}>👩 মায়ের নাম</span>
-                <span style={styles.modalValue}>
-                  {selectedStudent.mother_name || '—'}
-                </span>
-              </div>
-              <div style={styles.modalRow}>
-                <span style={styles.modalLabel}>🔢 রোল নম্বর</span>
-                <span style={styles.modalValue}>
-                  #{selectedStudent.roll_number}
-                </span>
-              </div>
-              <div style={styles.modalRow}>
-                <span style={styles.modalLabel}>📍 গ্রাম</span>
-                <span style={styles.modalValue}>
-                  {selectedStudent.village ||
-                    selectedStudent.address ||
-                    '—'}
-                </span>
-              </div>
-              {selectedStudent.phone && (
-                <div style={styles.modalRow}>
-                  <span style={styles.modalLabel}>📱 ফোন</span>
-                  <span style={styles.modalValue}>
-                    {selectedStudent.phone}
-                  </span>
-                </div>
-              )}
-            </div>
+  // ✅ রেন্ডার: স্টেপ ২ - ফর্ম + OTP পাঠান
+  if (step === 2) {
+    return (
+      <form onSubmit={handleSendOTP} style={styles.form}>
+        <div style={styles.header}>
+          <span style={styles.headerIcon}>📝</span>
+          <h2 style={styles.heading}>ছাত্র নিবন্ধন</h2>
+          <p style={styles.subHeading}>আপনার তথ্য দিয়ে ফরম পূরণ করুন</p>
+          <div style={styles.codeVerifiedBadge}>
+            <span>✅ কোড যাচাইকৃত: </span>
+            <strong>{formData.registrationCode}</strong>
           </div>
         </div>
-      )}
-    </div>
-  );
+        
+        {error && <div style={styles.errorBox}>{error}</div>}
+        
+        <div style={styles.field}>
+          <label style={styles.label}>👤 আপনার নাম <span style={{color: '#ef4444'}}>*</span></label>
+          <input type="text" name="name" required placeholder="পূর্ণ নাম লিখুন" value={formData.name} onChange={handleInputChange} style={styles.input} />
+        </div>
+
+        <div style={styles.field}>
+          <label style={styles.label}>👨 বাবার নাম <span style={{color: '#ef4444'}}>*</span></label>
+          <input type="text" name="fatherName" required placeholder="বাবার পূর্ণ নাম" value={formData.fatherName} onChange={handleInputChange} style={styles.input} />
+        </div>
+
+        <div style={styles.field}>
+          <label style={styles.label}>👩 মায়ের নাম <span style={{color: '#ef4444'}}>*</span></label>
+          <input type="text" name="motherName" required placeholder="মায়ের পূর্ণ নাম" value={formData.motherName} onChange={handleInputChange} style={styles.input} />
+        </div>
+
+        <div style={styles.field}>
+          <label style={styles.label}>📍 গ্রাম <span style={{color: '#ef4444'}}>*</span></label>
+          <input type="text" name="village" required placeholder="আপনার গ্রামের নাম" value={formData.village} onChange={handleInputChange} style={styles.input} />
+        </div>
+
+        <div style={styles.field}>
+          <label style={styles.label}>📚 ক্লাস <span style={{color: '#ef4444'}}>*</span></label>
+          <select name="class" required value={formData.class} onChange={handleInputChange} style={styles.select}>
+            <option value="">নির্বাচন করুন</option>
+            <option value="প্লে">প্লে</option>
+            <option value="১ম">১ম</option>
+            <option value="২য়">২য়</option>
+            <option value="৩য়">৩য়</option>
+            <option value="৪র্থ">৪র্থ</option>
+            <option value="৫ম">৫ম</option>
+          </select>
+        </div>
+
+        <div style={styles.field}>
+          <label style={styles.label}>🔢 রোল নম্বর (ঐচ্ছিক)</label>
+          <input 
+            type="number" 
+            name="roll" 
+            min="1" 
+            placeholder="যেকোনো সংখ্যা দিন" 
+            value={formData.roll} 
+            onChange={handleInputChange} 
+            style={styles.input} 
+          />
+          <small style={{ color: '#64748b', fontSize: '12px' }}>যেকোনো সংখ্যা দেওয়া যাবে (১, ২, ৩, ১০, ৫০ ইত্যাদি)</small>
+        </div>
+
+        <div style={styles.field}>
+          <label style={styles.label}>📸 ছবি <span style={{color: '#ef4444'}}>*</span></label>
+          <div style={styles.fileWrapper}>
+            <input type="file" ref={photoInputRef} accept="image/*" capture="environment" required onChange={handleFileChange} style={styles.fileInput} />
+            <span style={styles.filePlaceholder}>{formData.photo ? '✅ নির্বাচিত' : 'ক্যামেরা দিয়ে ছবি তুলুন'}</span>
+          </div>
+        </div>
+
+        <div style={styles.field}>
+          <label style={styles.label}>📧 ইমেইল <span style={{color: '#ef4444'}}>*</span></label>
+          <input type="email" name="email" required placeholder="your@email.com" value={formData.email} onChange={handleInputChange} style={styles.input} />
+        </div>
+
+        <div style={styles.field}>
+          <label style={styles.label}>📱 ফোন <span style={{color: '#ef4444'}}>*</span></label>
+          <input type="tel" name="phone" required placeholder="01XXXXXXXXX" value={formData.phone} onChange={handleInputChange} style={styles.input} />
+        </div>
+
+        <div style={styles.field}>
+          <label style={styles.label}>🔑 পাসওয়ার্ড <span style={{color: '#ef4444'}}>*</span></label>
+          <input type="password" name="password" required placeholder="কমপক্ষে ৬ অক্ষর" value={formData.password} onChange={handleInputChange} style={styles.input} />
+        </div>
+
+        <div style={styles.field}>
+          <label style={styles.label}>🔑 কনফার্ম পাসওয়ার্ড <span style={{color: '#ef4444'}}>*</span></label>
+          <input type="password" name="confirmPassword" required placeholder="আবার পাসওয়ার্ড দিন" value={formData.confirmPassword} onChange={handleInputChange} style={styles.input} />
+        </div>
+
+        <div style={styles.buttonGroup}>
+          <button type="button" onClick={() => setStep(1)} style={styles.backBtn}>
+            ⬅ পিছনে
+          </button>
+          <button type="submit" disabled={loading} style={styles.submitBtn}>
+            {loading ? '⏳ OTP পাঠাচ্ছি...' : '📧 OTP পাঠান'}
+          </button>
+        </div>
+      </form>
+    );
+  }
+
+  // ✅ রেন্ডার: স্টেপ ৩ - OTP ভেরিফিকেশন
+  if (step === 3) {
+    return (
+      <div style={styles.otpContainer}>
+        <div style={styles.otpIcon}>📱</div>
+        <h2 style={styles.otpHeading}>ইমেইল ভেরিফিকেশন</h2>
+        <p style={styles.otpText}>
+          আপনার ইমেইলে ৬ ডিজিটের কোড পাঠানো হয়েছে
+          <br />
+          <small style={styles.otpSmall}>📧 {formData.email}</small>
+        </p>
+        {error && <div style={styles.errorBox}>{error}</div>}
+        <form onSubmit={handleVerifyAndSubmit} style={styles.otpForm}>
+          <input 
+            type="text" 
+            maxLength="6" 
+            placeholder="— — — — — —" 
+            required
+            value={formData.otp} 
+            onChange={(e) => setFormData({...formData, otp: e.target.value})}
+            style={styles.otpInput} 
+          />
+          <div style={styles.otpButtonGroup}>
+            <button type="button" onClick={() => setStep(2)} style={styles.otpBackBtn}>
+              ⬅ পিছনে
+            </button>
+            <button type="submit" disabled={loading} style={styles.otpBtn}>
+              {loading ? '⏳ ভেরিফাই করছি...' : '✅ নিশ্চিত করুন'}
+            </button>
+          </div>
+        </form>
+      </div>
+    );
+  }
+
+  // ✅ রেন্ডার: স্টেপ ৪ - সাফল্য
+  if (step === 4 && success) {
+    return (
+      <div style={styles.successContainer}>
+        <div style={styles.successIconLarge}>🎉</div>
+        <h2 style={styles.successHeading}>আবেদন সফলভাবে জমা হয়েছে!</h2>
+        <div style={styles.successMessageBox}>
+          <p style={styles.successText}>
+            আপনার রেজিস্ট্রেশন রিকোয়েস্ট <strong>প্রধান শিক্ষকের কাছে</strong> গিয়েছে।
+          </p>
+          <p style={styles.successSubText}>
+            ⏳ অনুমোদনের জন্য অপেক্ষা করুন। অনুমোদন পাওয়ার পর আপনি লগইন করতে পারবেন।
+          </p>
+          <div style={styles.successBadge}>
+            <span>📩 অনুরোধ স্ট্যাটাস: </span>
+            <span style={styles.pendingBadge}>⏳ pending</span>
+          </div>
+        </div>
+        <div style={styles.successNote}>
+          <p style={styles.noteText}>
+            💡 অনুমোদন পেতে ২৪-৪৮ ঘন্টা সময় লাগতে পারে।
+            <br />
+            আপনার ইমেইল চেক করুন এবং প্রধান শিক্ষকের সাথে যোগাযোগ রাখুন।
+          </p>
+        </div>
+        <button onClick={onClose} style={styles.successBtn}>
+          ✅ বুঝতে পেরেছি
+        </button>
+      </div>
+    );
+  }
+
+  return null;
 }
 
 // =============================================
-// 🎨 প্রিমিয়াম স্টাইল (আগের সবুজ থিম বজায়)
+// 🎨 প্রিমিয়াম স্টাইল (অপরিবর্তিত)
 // =============================================
 const styles = {
   container: {
-    maxWidth: '1100px',
-    margin: '0 auto',
-    padding: '0 16px',
+    padding: '10px 0',
     fontFamily: "'Hind Siliguri', sans-serif",
   },
-  loadingContainer: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: '60px 20px',
-    gap: '16px',
-  },
-  loadingSpinner: {
-    width: '48px',
-    height: '48px',
-    border: '4px solid #e2e8f0',
-    borderTop: '4px solid #16a34a',
-    borderRadius: '50%',
-    animation: 'spin 1s linear infinite',
-  },
-  loadingText: {
-    color: '#64748b',
-    fontSize: '16px',
-    fontWeight: '500',
-  },
-
-  /* ✅ মোট ছাত্র কার্ড */
-  totalCard: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '20px',
-    background: 'linear-gradient(135deg, #14532d, #16a34a)',
-    borderRadius: '18px',
-    padding: '24px 32px',
-    marginBottom: '32px',
-    color: 'white',
-    boxShadow: '0 8px 24px rgba(22, 163, 74, 0.3)',
-  },
-  totalIcon: { fontSize: '48px' },
-  totalNumber: { fontSize: '32px', fontWeight: '800', lineHeight: 1.2 },
-  totalLabel: { fontSize: '16px', opacity: 0.9, fontWeight: '500' },
-
-  /* ✅ এম্পটি স্টেট */
-  emptyState: {
+  header: {
     textAlign: 'center',
-    padding: '80px 20px',
-    background: 'white',
-    borderRadius: '18px',
-    border: '1px solid #e2e8f0',
+    marginBottom: '20px',
   },
-  emptyIcon: {
-    fontSize: '64px',
+  headerIcon: {
+    fontSize: '42px',
     display: 'block',
-    marginBottom: '16px',
-    opacity: 0.6,
+    marginBottom: '4px',
   },
-  emptyText: {
-    fontSize: '18px',
-    fontWeight: '600',
+  heading: {
+    fontSize: '22px',
+    fontWeight: '800',
     color: '#0f172a',
-    margin: '0 0 8px 0',
+    margin: '0 0 4px 0',
   },
-  emptySubText: {
+  subHeading: {
     fontSize: '14px',
     color: '#64748b',
-    margin: 0,
+    margin: '4px 0 0 0',
+    lineHeight: '1.5',
   },
-
-  /* ✅ টেবিল */
-  tableWrapper: {
-    overflowX: 'auto',
-    background: 'white',
-    borderRadius: '16px',
-    border: '1px solid #e2e8f0',
-    boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
-    WebkitOverflowScrolling: 'touch',
-  },
-  table: {
-    width: '100%',
-    borderCollapse: 'collapse',
-    fontSize: '14px',
-    minWidth: '720px',
-  },
-  th: {
-    padding: '14px 12px',
-    background: '#f0fdf4',
-    fontWeight: '700',
-    color: '#14532d',
-    borderBottom: '2px solid #bbf7d0',
-    textAlign: 'center',
-    fontSize: '13px',
-    whiteSpace: 'nowrap',
-  },
-  thClass: {
-    width: '100px',
-    textAlign: 'center',
-    background: '#dcfce7',
-  },
-  tr: {
-    borderBottom: '1px solid #f1f5f9',
-  },
-  td: {
-    padding: '12px 10px',
-    verticalAlign: 'top',
-    textAlign: 'center',
-    borderRight: '1px solid #f1f5f9',
-  },
-  tdClass: {
-    background: '#f8fafc',
-    verticalAlign: 'middle',
-    borderRight: '2px solid #e2e8f0',
-  },
-  className: {
-    fontSize: '18px',
-    fontWeight: '800',
-    color: '#14532d',
-    display: 'inline-block',
-  },
-
-  /* ✅ ফাঁকা ঘর (কেউ অর্জন করেনি) */
-  emptyBox: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: '140px',
-    background: '#f8fafc',
-    borderRadius: '12px',
-    border: '2px dashed #cbd5e1',
-    padding: '12px',
-  },
-  emptyBoxIcon: {
-    fontSize: '28px',
-    opacity: 0.4,
-    marginBottom: '6px',
-  },
-  emptyBoxText: {
-    fontSize: '11px',
-    color: '#94a3b8',
-    fontWeight: '500',
-    textAlign: 'center',
-    margin: 0,
-    lineHeight: 1.4,
-  },
-
-  /* ✅ ছাত্র কার্ড গ্রিড */
-  studentGrid: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    gap: '8px',
-    justifyContent: 'center',
-  },
-  studentCard: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    width: '100px',
-    cursor: 'pointer',
-    transition: 'transform 0.2s ease',
-  },
-  imageWrapper: {
-    position: 'relative',
-    width: '100px',
-    height: '100px',
-    borderRadius: '12px',
-    overflow: 'hidden',
-    background: '#f1f5f9',
-    boxShadow: '0 2px 6px rgba(0,0,0,0.08)',
-  },
-  studentImage: {
-    width: '100%',
-    height: '100%',
-    objectFit: 'cover',
-  },
-  imagePlaceholder: {
-    width: '100%',
-    height: '100%',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    background: 'linear-gradient(135deg, #16a34a, #15803d)',
-    color: 'white',
-    fontSize: '36px',
-    fontWeight: '700',
-  },
-  rankBadgeWrapper: {
-    position: 'absolute',
-    top: '4px',
-    right: '4px',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '3px',
-    padding: '2px 8px',
-    borderRadius: '20px',
-    fontSize: '10px',
-    fontWeight: '700',
-    color: 'white',
-    boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
-  },
-  rankEmoji: { fontSize: '11px' },
-  rankLabel: { fontSize: '10px', color: 'white', fontWeight: '700' },
-  studentName: {
+  smallText: {
     fontSize: '12px',
-    fontWeight: '600',
-    color: '#0f172a',
-    marginTop: '6px',
-    textAlign: 'center',
-    lineHeight: 1.3,
-    maxWidth: '100px',
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    display: '-webkit-box',
-    WebkitLineClamp: 2,
-    WebkitBoxOrient: 'vertical',
+    color: '#94a3b8',
   },
-
-  /* ✅ মোডাল */
-  modalOverlay: {
-    position: 'fixed',
+  codeInput: {
+    width: '100%',
+    padding: '14px 18px',
+    borderRadius: '12px',
+    border: '2px solid #e2e8f0',
+    fontSize: '22px',
+    fontWeight: '700',
+    letterSpacing: '4px',
+    textAlign: 'center',
+    outline: 'none',
+    backgroundColor: '#ffffff',
+    transition: 'all 0.3s ease',
+    textTransform: 'uppercase',
+  },
+  hintText: {
+    display: 'block',
+    color: '#94a3b8',
+    fontSize: '12px',
+    marginTop: '6px',
+  },
+  form: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '14px',
+  },
+  field: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '4px',
+  },
+  label: {
+    fontSize: '13px',
+    fontWeight: '600',
+    color: '#334155',
+  },
+  input: {
+    padding: '12px 14px',
+    borderRadius: '12px',
+    border: '1.5px solid #e2e8f0',
+    fontSize: '14px',
+    outline: 'none',
+    backgroundColor: '#ffffff',
+    transition: 'all 0.2s ease',
+  },
+  select: {
+    padding: '12px 14px',
+    borderRadius: '12px',
+    border: '1.5px solid #e2e8f0',
+    fontSize: '14px',
+    outline: 'none',
+    backgroundColor: '#ffffff',
+  },
+  fileWrapper: {
+    position: 'relative',
+    borderRadius: '12px',
+    border: '1.5px dashed #cbd5e1',
+    padding: '10px 14px',
+    backgroundColor: '#f8fafc',
+    transition: 'all 0.2s ease',
+    cursor: 'pointer',
+    minHeight: '44px',
+    display: 'flex',
+    alignItems: 'center',
+  },
+  fileInput: {
+    position: 'absolute',
     top: 0,
     left: 0,
-    right: 0,
-    bottom: 0,
-    background: 'rgba(0,0,0,0.7)',
-    backdropFilter: 'blur(6px)',
-    WebkitBackdropFilter: 'blur(6px)',
-    zIndex: 9999,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: '16px',
-    animation: 'fadeIn 0.3s ease',
-  },
-  modalContent: {
-    background: 'white',
-    borderRadius: '24px',
-    padding: '32px 24px 24px 24px',
-    maxWidth: '440px',
     width: '100%',
-    maxHeight: '90vh',
-    overflowY: 'auto',
-    position: 'relative',
-    boxShadow: '0 25px 60px -12px rgba(0,0,0,0.4)',
-    animation: 'slideUp 0.4s ease',
-    textAlign: 'center',
-  },
-  modalCloseBtn: {
-    position: 'absolute',
-    top: '14px',
-    right: '14px',
-    background: '#f1f5f9',
-    border: 'none',
-    width: '38px',
-    height: '38px',
-    borderRadius: '50%',
-    fontSize: '18px',
+    height: '100%',
+    opacity: 0,
     cursor: 'pointer',
+  },
+  filePlaceholder: {
+    fontSize: '13px',
     color: '#64748b',
+    pointerEvents: 'none',
+  },
+  buttonGroup: {
     display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
+    gap: '10px',
+    marginTop: '4px',
+  },
+  backBtn: {
+    background: '#f1f5f9',
+    color: '#64748b',
+    border: 'none',
+    padding: '12px',
+    borderRadius: '12px',
+    flex: 1,
+    cursor: 'pointer',
     fontWeight: '600',
-  },
-  modalImageWrapper: {
-    position: 'relative',
-    display: 'inline-block',
-    marginBottom: '16px',
-  },
-  modalImage: {
-    width: '150px',
-    height: '150px',
-    borderRadius: '50%',
-    objectFit: 'cover',
-    border: '4px solid #16a34a',
-    boxShadow: '0 8px 24px rgba(22, 163, 74, 0.3)',
-  },
-  modalImagePlaceholder: {
-    width: '150px',
-    height: '150px',
-    borderRadius: '50%',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    background: 'linear-gradient(135deg, #16a34a, #15803d)',
-    color: 'white',
-    fontSize: '56px',
-    fontWeight: '700',
-    border: '4px solid #16a34a',
-  },
-  modalRankBadge: {
-    position: 'absolute',
-    bottom: '4px',
-    left: '50%',
-    transform: 'translateX(-50%)',
-    padding: '4px 14px',
-    borderRadius: '20px',
-    fontSize: '12px',
-    fontWeight: '700',
-    color: 'white',
-    boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
-    whiteSpace: 'nowrap',
-  },
-  modalName: {
-    fontSize: '24px',
-    fontWeight: '800',
-    color: '#0f172a',
-    margin: '8px 0 4px 0',
-  },
-  modalClass: {
     fontSize: '14px',
-    color: '#16a34a',
-    fontWeight: '600',
-    margin: '0 0 20px 0',
   },
-  modalDetails: {
+  verifyBtn: {
+    background: 'linear-gradient(135deg, #8b5cf6, #7c3aed)',
+    color: 'white',
+    border: 'none',
+    padding: '12px',
+    borderRadius: '12px',
+    flex: 2,
+    cursor: 'pointer',
+    fontWeight: '700',
+    fontSize: '14px',
+    boxShadow: '0 4px 14px rgba(139, 92, 246, 0.3)',
+    transition: 'all 0.2s ease',
+  },
+  submitBtn: {
+    background: 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)',
+    color: 'white',
+    border: 'none',
+    padding: '12px',
+    borderRadius: '12px',
+    flex: 2,
+    cursor: 'pointer',
+    fontWeight: '700',
+    fontSize: '14px',
+    boxShadow: '0 4px 14px rgba(22, 163, 74, 0.3)',
+    transition: 'all 0.2s ease',
+  },
+  errorBox: {
+    backgroundColor: '#fee2e2',
+    color: '#991b1b',
+    padding: '12px 16px',
+    borderRadius: '10px',
+    fontSize: '14px',
+    borderLeft: '4px solid #dc2626',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    marginBottom: '12px',
+  },
+  errorIcon: { fontSize: '18px' },
+  successBox: {
+    backgroundColor: '#dcfce7',
+    color: '#166534',
+    padding: '12px 16px',
+    borderRadius: '10px',
+    fontSize: '14px',
+    borderLeft: '4px solid #16a34a',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    marginBottom: '12px',
+  },
+  successIcon: { fontSize: '18px' },
+  verifiedNotice: {
+    backgroundColor: '#dcfce7',
+    color: '#166534',
+    padding: '12px 16px',
+    borderRadius: '10px',
+    fontSize: '14px',
+    borderLeft: '4px solid #16a34a',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    marginTop: '12px',
+  },
+  verifiedIcon: { fontSize: '18px' },
+  codeVerifiedBadge: {
+    backgroundColor: '#dcfce7',
+    color: '#166534',
+    padding: '6px 14px',
+    borderRadius: '8px',
+    fontSize: '13px',
+    marginTop: '8px',
+    display: 'inline-block',
+  },
+  otpContainer: {
+    textAlign: 'center',
+    padding: '20px 0',
+  },
+  otpIcon: {
+    fontSize: '48px',
+    marginBottom: '8px',
+  },
+  otpHeading: {
+    fontSize: '20px',
+    fontWeight: '700',
+    color: '#0f172a',
+    margin: '0 0 4px 0',
+  },
+  otpText: {
+    fontSize: '14px',
+    color: '#64748b',
+    marginBottom: '16px',
+    lineHeight: '1.6',
+  },
+  otpSmall: {
+    fontSize: '12px',
+    color: '#94a3b8',
+  },
+  otpForm: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '10px',
-    textAlign: 'left',
-    background: '#f8fafc',
-    borderRadius: '14px',
-    padding: '16px',
-  },
-  modalRow: {
-    display: 'flex',
-    justifyContent: 'space-between',
+    gap: '16px',
     alignItems: 'center',
-    padding: '8px 0',
-    borderBottom: '1px solid #e2e8f0',
   },
-  modalLabel: {
-    fontSize: '13px',
-    fontWeight: '600',
+  otpInput: {
+    width: '200px',
+    textAlign: 'center',
+    padding: '14px',
+    fontSize: '28px',
+    letterSpacing: '10px',
+    border: '2px solid #e2e8f0',
+    borderRadius: '16px',
+    outline: 'none',
+    transition: 'all 0.2s ease',
+    backgroundColor: '#f8fafc',
+  },
+  otpButtonGroup: {
+    display: 'flex',
+    gap: '10px',
+    width: '100%',
+    maxWidth: '300px',
+  },
+  otpBackBtn: {
+    background: '#f1f5f9',
     color: '#64748b',
-  },
-  modalValue: {
-    fontSize: '14px',
+    border: 'none',
+    padding: '12px',
+    borderRadius: '12px',
+    flex: 1,
+    cursor: 'pointer',
     fontWeight: '600',
+  },
+  otpBtn: {
+    background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
+    color: 'white',
+    border: 'none',
+    padding: '12px',
+    borderRadius: '12px',
+    flex: 2,
+    cursor: 'pointer',
+    fontWeight: '700',
+    boxShadow: '0 4px 14px rgba(37, 99, 235, 0.3)',
+  },
+  successContainer: {
+    textAlign: 'center',
+    padding: '20px 10px',
+  },
+  successIconLarge: {
+    fontSize: '56px',
+    marginBottom: '12px',
+  },
+  successHeading: {
+    fontSize: '22px',
+    fontWeight: '700',
     color: '#0f172a',
-    textAlign: 'right',
-    maxWidth: '60%',
+    margin: '0 0 16px 0',
+  },
+  successMessageBox: {
+    backgroundColor: '#f8fafc',
+    borderRadius: '12px',
+    padding: '20px',
+    marginBottom: '16px',
+    border: '1px solid #e2e8f0',
+  },
+  successText: {
+    fontSize: '15px',
+    color: '#0f172a',
+    margin: '0 0 8px 0',
+    lineHeight: '1.6',
+  },
+  successSubText: {
+    fontSize: '14px',
+    color: '#64748b',
+    margin: '0 0 12px 0',
+  },
+  successBadge: {
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: '8px',
+    fontSize: '14px',
+    color: '#0f172a',
+  },
+  pendingBadge: {
+    background: '#fef3c7',
+    color: '#f59e0b',
+    padding: '4px 14px',
+    borderRadius: '20px',
+    fontWeight: '600',
+    fontSize: '13px',
+  },
+  successNote: {
+    backgroundColor: '#fef3c7',
+    borderRadius: '10px',
+    padding: '14px 16px',
+    marginBottom: '20px',
+    borderLeft: '4px solid #f59e0b',
+  },
+  noteText: {
+    fontSize: '13px',
+    color: '#92400e',
+    margin: 0,
+    lineHeight: '1.6',
+  },
+  successBtn: {
+    background: 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)',
+    color: 'white',
+    border: 'none',
+    padding: '12px 40px',
+    borderRadius: '14px',
+    fontWeight: '700',
+    fontSize: '15px',
+    cursor: 'pointer',
+    boxShadow: '0 6px 20px rgba(22, 163, 74, 0.3)',
+    transition: 'all 0.2s ease',
   },
 };
-
-// ✅ অ্যানিমেশন Inject
-const styleSheet = document.createElement('style');
-styleSheet.textContent = `
-  @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-  }
-  @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-  }
-  @keyframes slideUp {
-    from { opacity: 0; transform: translateY(30px) scale(0.95); }
-    to { opacity: 1; transform: translateY(0) scale(1); }
-  }
-`;
-document.head.appendChild(styleSheet);
