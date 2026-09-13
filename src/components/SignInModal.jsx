@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import StudentSignUp from './StudentSignUp';
 import TeacherSignUp from './TeacherSignUp';
 import { usePortal } from '../context/PortalContext';
@@ -12,9 +12,13 @@ export default function SignInModal({ isOpen, onClose }) {
   const [loginError, setLoginError] = useState('');
   const [loginLoading, setLoginLoading] = useState(false);
   
-  // ✅ নতুন স্টেট: পেন্ডিং অনুমোদনের পপআপ
   const [pendingModal, setPendingModal] = useState(null);
-  
+
+  // ============================================
+  // ✅ নতুন: প্রি-ফিল ইমেইল (EmailExistsModal থেকে আসবে)
+  // ============================================
+  const [prefillEmail, setPrefillEmail] = useState('');
+
   const [forgotEmail, setForgotEmail] = useState('');
   const [forgotOtp, setForgotOtp] = useState('');
   const [forgotError, setForgotError] = useState('');
@@ -25,6 +29,31 @@ export default function SignInModal({ isOpen, onClose }) {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
+  // ============================================
+  // ✅ প্রি-ফিল ইমেইল handle করার effect
+  // ============================================
+  useEffect(() => {
+    if (isOpen && prefillEmail) {
+      // লগইন ফর্মে ইমেইল বসাই
+      setLoginData((prev) => ({ ...prev, email: prefillEmail }));
+      setLoginError('');
+    }
+  }, [isOpen, prefillEmail]);
+
+  // ============================================
+  // ✅ পপআপ বন্ধ হলে সব reset
+  // ============================================
+  useEffect(() => {
+    if (!isOpen) {
+      setPrefillEmail('');
+      setStep('role');
+      setRole(null);
+      setLoginData({ email: '', password: '' });
+      setLoginError('');
+      setPendingModal(null);
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   const handleRoleSelect = (selectedRole) => {
@@ -32,9 +61,21 @@ export default function SignInModal({ isOpen, onClose }) {
     setStep('login');
   };
 
-  // =============================================
-  // ✅ লগইন হ্যান্ডেলার (আপডেটেড — pending popup সহ)
-  // =============================================
+  // ============================================
+  // ✅ নতুন: সাইনআপ থেকে লগইন পপআপে যাওয়া
+  // ============================================
+  const handleOpenLoginFromSignUp = (email, sourceRole) => {
+    // ইমেইল প্রি-ফিল করি
+    setPrefillEmail(email);
+    setLoginData({ email: email, password: '' });
+    setLoginError('');
+    setRole(sourceRole); // 'teacher' বা 'student'
+    setStep('login');
+  };
+
+  // ============================================
+  // লগইন হ্যান্ডলার
+  // ============================================
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoginError('');
@@ -44,9 +85,9 @@ export default function SignInModal({ isOpen, onClose }) {
       const result = await login(loginData.email, loginData.password);
       
       if (result.success) {
+        setPrefillEmail('');
         onClose();
       } else {
-        // ✅ Pending approval হলে সুন্দর পপআপ দেখাও
         if (result.errorType === 'pending') {
           setPendingModal({
             userName: result.userName || 'ব্যবহারকারী',
@@ -54,7 +95,6 @@ export default function SignInModal({ isOpen, onClose }) {
             message: result.message || 'আপনার অ্যাকাউন্ট এখনো অনুমোদিত হয়নি',
           });
         } else {
-          // অন্য error হলে সাধারণ ভাবে দেখাও
           setLoginError(result.message || result.error || 'লগইন ব্যর্থ হয়েছে');
         }
       }
@@ -69,7 +109,7 @@ export default function SignInModal({ isOpen, onClose }) {
     setStep('forgot-password');
     setForgotError('');
     setForgotSuccess(false);
-    setForgotEmail('');
+    setForgotEmail(loginData.email || '');
     setForgotOtp('');
     setForgotStep(1);
     setOtpVerified(false);
@@ -100,10 +140,7 @@ export default function SignInModal({ isOpen, onClose }) {
 
       setForgotSuccess(true);
       setForgotStep(2);
-      console.log('✅ OTP ইমেইল পাঠানো হয়েছে:', forgotEmail);
-
     } catch (err) {
-      console.error('❌ Error:', err);
       setForgotError(err.message || '❌ OTP পাঠাতে সমস্যা');
     } finally {
       setForgotLoading(false);
@@ -129,8 +166,6 @@ export default function SignInModal({ isOpen, onClose }) {
       });
 
       if (error) {
-        console.error('❌ OTP Verify Error:', error);
-        
         if (error.message.includes('expired')) {
           setForgotError('❌ OTP-এর মেয়াদ শেষ। নতুন OTP রিকোয়েস্ট করুন।');
         } else {
@@ -140,12 +175,9 @@ export default function SignInModal({ isOpen, onClose }) {
         return;
       }
 
-      console.log('✅ OTP Verified Successfully!');
       setOtpVerified(true);
       setForgotStep(3);
-
     } catch (err) {
-      console.error('❌ Verify Error:', err);
       setForgotError(err.message || '❌ OTP ভেরিফাই করতে সমস্যা');
     } finally {
       setForgotLoading(false);
@@ -174,13 +206,9 @@ export default function SignInModal({ isOpen, onClose }) {
         password: newPassword
       });
 
-      if (error) {
-        console.error('❌ Password Update Error:', error);
-        throw error;
-      }
+      if (error) throw error;
 
       setForgotSuccess(true);
-      console.log('✅ পাসওয়ার্ড সফলভাবে আপডেট হয়েছে');
 
       setTimeout(() => {
         setForgotStep(1);
@@ -194,7 +222,6 @@ export default function SignInModal({ isOpen, onClose }) {
       }, 3000);
 
     } catch (err) {
-      console.error('❌ Reset Error:', err);
       setForgotError(err.message || '❌ পাসওয়ার্ড আপডেট করতে সমস্যা');
     } finally {
       setForgotLoading(false);
@@ -213,8 +240,6 @@ export default function SignInModal({ isOpen, onClose }) {
       if (error) throw error;
 
       setForgotSuccess(true);
-      console.log('✅ নতুন OTP পাঠানো হয়েছে');
-
     } catch (err) {
       setForgotError(err.message || '❌ OTP পাঠাতে সমস্যা');
     } finally {
@@ -239,9 +264,9 @@ export default function SignInModal({ isOpen, onClose }) {
     setRole(null);
   };
 
-  // =============================================
-  // ✅ Pending Approval Modal — সুন্দর পপআপ
-  // =============================================
+  // ============================================
+  // Pending Approval Modal
+  // ============================================
   const PendingApprovalModal = () => {
     if (!pendingModal) return null;
     return (
@@ -294,9 +319,9 @@ export default function SignInModal({ isOpen, onClose }) {
     );
   };
 
-  // =============================================
+  // ============================================
   // স্টেপ ১: রোল সিলেকশন
-  // =============================================
+  // ============================================
   if (step === 'role') {
     return (
       <>
@@ -326,9 +351,9 @@ export default function SignInModal({ isOpen, onClose }) {
     );
   }
 
-  // =============================================
+  // ============================================
   // স্টেপ ২: লগইন ফর্ম
-  // =============================================
+  // ============================================
   if (step === 'login') {
     return (
       <>
@@ -343,6 +368,16 @@ export default function SignInModal({ isOpen, onClose }) {
               <p style={styles.loginSubText}>
                 {role === 'student' ? '🎓 ছাত্র' : '👨‍🏫 শিক্ষক'} অ্যাকাউন্টে লগইন করুন
               </p>
+
+              {/* ✅ প্রি-ফিল ইমেইল ইনফো */}
+              {prefillEmail && (
+                <div style={styles.prefillInfo}>
+                  <span style={styles.prefillIcon}>💡</span>
+                  <span style={styles.prefillText}>
+                    আপনার ইমেইল আগে থেকেই বসানো হয়েছে
+                  </span>
+                </div>
+              )}
 
               {loginError && <div style={styles.errorBox}>{loginError}</div>}
 
@@ -398,9 +433,9 @@ export default function SignInModal({ isOpen, onClose }) {
     );
   }
 
-  // =============================================
-  // স্টেপ ৩: ফরগেট পাসওয়ার্ড (OTP সিস্টেম)
-  // =============================================
+  // ============================================
+  // স্টেপ ৩: ফরগেট পাসওয়ার্ড
+  // ============================================
   if (step === 'forgot-password') {
     if (forgotStep === 1) {
       return (
@@ -579,16 +614,20 @@ export default function SignInModal({ isOpen, onClose }) {
     }
   }
 
-  // =============================================
+  // ============================================
   // স্টেপ ৪: ছাত্র রেজিস্ট্রেশন
-  // =============================================
+  // ============================================
   if (step === 'student-register') {
     return (
       <>
         <div style={styles.overlay}>
           <div style={styles.modal}>
             <button onClick={onClose} style={styles.closeBtn}>✕</button>
-            <StudentSignUp onBack={handleBackToLogin} onClose={onClose} />
+            <StudentSignUp 
+              onBack={handleBackToLogin} 
+              onClose={onClose}
+              onOpenLogin={handleOpenLoginFromSignUp}
+            />
           </div>
         </div>
         <PendingApprovalModal />
@@ -596,16 +635,20 @@ export default function SignInModal({ isOpen, onClose }) {
     );
   }
 
-  // =============================================
+  // ============================================
   // স্টেপ ৫: শিক্ষক রেজিস্ট্রেশন
-  // =============================================
+  // ============================================
   if (step === 'teacher-register') {
     return (
       <>
         <div style={styles.overlay}>
           <div style={styles.modal}>
             <button onClick={onClose} style={styles.closeBtn}>✕</button>
-            <TeacherSignUp onBack={handleBackToLogin} onClose={onClose} />
+            <TeacherSignUp 
+              onBack={handleBackToLogin} 
+              onClose={onClose}
+              onOpenLogin={handleOpenLoginFromSignUp}
+            />
           </div>
         </div>
         <PendingApprovalModal />
@@ -616,9 +659,9 @@ export default function SignInModal({ isOpen, onClose }) {
   return null;
 }
 
-// =============================================
-// প্রিমিয়াম ডিজাইন স্টাইল
-// =============================================
+// ============================================
+// প্রিমিয়াম ডিজাইন স্টাইল (অপরিবর্তিত + নতুন)
+// ============================================
 const styles = {
   overlay: {
     position: 'fixed',
@@ -658,7 +701,8 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    color: '#64748b'
+    color: '#64748b',
+    zIndex: 10,
   },
   backBtn: {
     position: 'absolute',
@@ -692,6 +736,24 @@ const styles = {
   loginIcon: { fontSize: '48px', display: 'block', textAlign: 'center', marginBottom: '8px' },
   loginHeading: { fontSize: '24px', fontWeight: '800', color: '#0f172a', textAlign: 'center', margin: '0 0 4px 0' },
   loginSubText: { fontSize: '14px', color: '#64748b', textAlign: 'center', margin: '0 0 20px 0' },
+  // ✅ নতুন: prefill info
+  prefillInfo: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    background: '#eff6ff',
+    border: '1px solid #bfdbfe',
+    borderLeft: '4px solid #3b82f6',
+    padding: '10px 14px',
+    borderRadius: '10px',
+    marginBottom: '14px',
+  },
+  prefillIcon: { fontSize: '16px' },
+  prefillText: {
+    fontSize: '12px',
+    color: '#1e40af',
+    fontWeight: '600',
+  },
   loginForm: { display: 'flex', flexDirection: 'column', gap: '16px' },
   field: { display: 'flex', flexDirection: 'column', gap: '4px' },
   label: { fontSize: '13px', fontWeight: '600', color: '#334155' },
@@ -760,10 +822,6 @@ const styles = {
     cursor: 'pointer',
     fontWeight: '500'
   },
-
-  // =============================================
-  // ✅ Pending Approval Popup Styles
-  // =============================================
   pendingOverlay: {
     position: 'fixed',
     top: 0,
@@ -888,18 +946,17 @@ const styles = {
   },
 };
 
-// =============================================
-// ✅ Animation Inject
-// =============================================
-const styleSheet = document.createElement('style');
-styleSheet.textContent = `
-  @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-  }
-  @keyframes slideUp {
-    from { opacity: 0; transform: translateY(20px) scale(0.95); }
-    to { opacity: 1; transform: translateY(0) scale(1); }
-  }
-`;
-document.head.appendChild(styleSheet);
+if (typeof document !== 'undefined') {
+  const styleSheet = document.createElement('style');
+  styleSheet.textContent = `
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(20px) scale(0.95); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+  `;
+  document.head.appendChild(styleSheet);
+}
