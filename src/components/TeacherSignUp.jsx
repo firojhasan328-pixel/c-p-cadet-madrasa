@@ -1,8 +1,9 @@
 import React, { useState, useRef } from 'react';
 import { supabase } from '../supabaseClient';
 import { generateOTP, saveOTP, verifyOTP, sendOTPEmail } from '../utils/otpService';
+import EmailExistsModal from './EmailExistsModal';
 
-export default function TeacherSignUp({ onBack, onClose }) {
+export default function TeacherSignUp({ onBack, onClose, onOpenLogin }) {
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
     name: '',
@@ -24,6 +25,12 @@ export default function TeacherSignUp({ onBack, onClose }) {
   const [codeMessage, setCodeMessage] = useState('');
   const [codeErrorMessage, setCodeErrorMessage] = useState('');
   const photoInputRef = useRef(null);
+
+  // ============================================
+  // ✅ নতুন: ইমেইল ডুপ্লিকেট চেক পপআপ
+  // ============================================
+  const [showEmailExistsModal, setShowEmailExistsModal] = useState(false);
+  const [existingEmail, setExistingEmail] = useState('');
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -60,9 +67,9 @@ export default function TeacherSignUp({ onBack, onClose }) {
     reader.readAsDataURL(file);
   };
 
-  // =============================================
-  // ✅ ছবি আপলোড + পাবলিক URL (১০০% ফিক্সড)
-  // =============================================
+  // ============================================
+  // ছবি আপলোড
+  // ============================================
   const uploadPhoto = async () => {
     if (!formData.photo) return null;
 
@@ -71,7 +78,6 @@ export default function TeacherSignUp({ onBack, onClose }) {
     const filePath = `teacher-photos/${fileName}`;
 
     try {
-      // ১. public bucket-এ আপলোড
       const { error } = await supabase.storage
         .from('profile_images')
         .upload(filePath, formData.photo, {
@@ -81,22 +87,71 @@ export default function TeacherSignUp({ onBack, onClose }) {
 
       if (error) throw error;
 
-      // ২. Full Public URL তৈরি
       const { data: urlData } = supabase.storage
         .from('profile_images')
         .getPublicUrl(filePath);
 
-      console.log('✅ শিক্ষক ছবি আপলোড সফল, URL:', urlData.publicUrl);
-
-      // ৩. পুরো URL রিটার্ন
       return urlData.publicUrl;
-
     } catch (err) {
       console.error('❌ ছবি আপলোড সমস্যা:', err);
       return null;
     }
   };
 
+  // ============================================
+  // ✅ নতুন: ইমেইল তিন জায়গায় চেক করার ফাংশন
+  // ক্রম: teachers → students → auth.users
+  // ============================================
+  const checkEmailExists = async (email) => {
+    const normalizedEmail = email.toLowerCase().trim();
+
+    try {
+      // ১. teachers টেবিলে চেক
+      const { data: teacherData } = await supabase
+        .from('teachers')
+        .select('email')
+        .ilike('email', normalizedEmail)
+        .maybeSingle();
+
+      if (teacherData) {
+        return { exists: true, source: 'teachers', email: normalizedEmail };
+      }
+
+      // ২. students টেবিলে চেক
+      const { data: studentData } = await supabase
+        .from('students')
+        .select('email')
+        .ilike('email', normalizedEmail)
+        .maybeSingle();
+
+      if (studentData) {
+        return { exists: true, source: 'students', email: normalizedEmail };
+      }
+
+      // ৩. admin_users টেবিলে চেক
+      const { data: adminData } = await supabase
+        .from('admin_users')
+        .select('email')
+        .ilike('email', normalizedEmail)
+        .maybeSingle();
+
+      if (adminData) {
+        return { exists: true, source: 'admin_users', email: normalizedEmail };
+      }
+
+      // ৪. auth.users চেক করতে না পারি (anon key দিয়ে access নেই)
+      // কিন্তু signUp করলে "already registered" এরর আসবে — সেটা handle করা হবে
+
+      return { exists: false, source: null, email: normalizedEmail };
+    } catch (err) {
+      console.error('❌ ইমেইল চেক সমস্যা:', err);
+      return { exists: false, source: null, email: normalizedEmail };
+    }
+  };
+
+  // ============================================
+  // রেজিস্ট্রেশন কোড যাচাই (অপরিবর্তিত)
+  // ============================================
   const handleVerifyCode = async (e) => {
     e.preventDefault();
     setError('');
@@ -125,8 +180,6 @@ export default function TeacherSignUp({ onBack, onClose }) {
         .eq('code', code)
         .eq('role', 'teacher')
         .maybeSingle();
-
-      console.log('📦 Data:', data);
 
       if (error) {
         console.error('❌ Database error:', error);
@@ -167,11 +220,15 @@ export default function TeacherSignUp({ onBack, onClose }) {
     setLoading(false);
   };
 
+  // ============================================
+  // ✅ OTP পাঠানোর আগে ইমেইল ডুপ্লিকেট চেক
+  // ============================================
   const handleSendOTP = async (e) => {
     e.preventDefault();
     setError('');
     setLoading(true);
 
+    // ভ্যালিডেশন
     if (!formData.name || !formData.gender || !formData.designation || 
         !formData.subject || !formData.phone || !formData.email) {
       setError('❌ সব ঘর পূরণ করুন');
@@ -204,18 +261,24 @@ export default function TeacherSignUp({ onBack, onClose }) {
     }
 
     try {
-      const { data: existingEmail } = await supabase
-        .from('teachers')
-        .select('email')
-        .eq('email', formData.email.toLowerCase().trim())
-        .maybeSingle();
+      const normalizedEmail = formData.email.toLowerCase().trim();
 
-      if (existingEmail) {
-        setError('❌ এই ইমেইলটি ইতিমধ্যে ব্যবহার করা হয়েছে।');
+      // ============================================
+      // ✅ ইমেইল ডুপ্লিকেট চেক (ছাত্র/শিক্ষক/admin_users)
+      // ============================================
+      const emailCheck = await checkEmailExists(normalizedEmail);
+
+      if (emailCheck.exists) {
+        // পপআপ দেখাও
+        setExistingEmail(normalizedEmail);
+        setShowEmailExistsModal(true);
         setLoading(false);
         return;
       }
 
+      // ============================================
+      // ফোন ডুপ্লিকেট চেক
+      // ============================================
       const { data: existingPhone } = await supabase
         .from('teachers')
         .select('phone')
@@ -228,10 +291,13 @@ export default function TeacherSignUp({ onBack, onClose }) {
         return;
       }
 
+      // ============================================
+      // OTP পাঠান
+      // ============================================
       const otp = generateOTP();
-      await saveOTP(formData.email, otp);
+      await saveOTP(normalizedEmail, otp);
       
-      const emailResult = await sendOTPEmail(formData.email, otp);
+      const emailResult = await sendOTPEmail(normalizedEmail, otp);
       
       if (!emailResult.success) {
         setError('OTP পাঠাতে সমস্যা: ' + (emailResult.error || 'অজানা সমস্যা'));
@@ -247,6 +313,28 @@ export default function TeacherSignUp({ onBack, onClose }) {
     setLoading(false);
   };
 
+  // ============================================
+  // ✅ ইমেইল চেক পপআপের "লগইন করুন" ক্লিক
+  // ============================================
+  const handleGoToLogin = () => {
+    setShowEmailExistsModal(false);
+    // প্যারেন্টকে জানাও যে লগইন পপআপ খুলতে হবে (শিক্ষক ট্যাব সহ, ইমেইল প্রি-ফিলড)
+    onOpenLogin?.(existingEmail, 'teacher');
+  };
+
+  // ============================================
+  // ✅ পপআপ বন্ধ (নতুন ইমেইল দেবে)
+  // ============================================
+  const handleCloseEmailExistsModal = () => {
+    setShowEmailExistsModal(false);
+    // ইমেইল ফিল্ড ক্লিয়ার করি
+    setFormData({ ...formData, email: '' });
+    setError('');
+  };
+
+  // ============================================
+  // OTP ভেরিফাই এবং রেজিস্ট্রেশন সম্পূর্ণ
+  // ============================================
   const handleVerifyAndSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -273,6 +361,18 @@ export default function TeacherSignUp({ onBack, onClose }) {
       });
 
       if (authError) {
+        // ✅ "already registered" হলে পপআপ দেখাই
+        const errMsg = (authError.message || '').toLowerCase();
+        if (
+          errMsg.includes('already registered') ||
+          errMsg.includes('already exists') ||
+          errMsg.includes('user already')
+        ) {
+          setExistingEmail(formData.email.toLowerCase().trim());
+          setShowEmailExistsModal(true);
+          setLoading(false);
+          return;
+        }
         setError('অথেন্টিকেশন সমস্যা: ' + authError.message);
         setLoading(false);
         return;
@@ -312,6 +412,7 @@ export default function TeacherSignUp({ onBack, onClose }) {
         return;
       }
 
+      // রেজিস্ট্রেশন request + code + log
       try {
         await supabase
           .from('registration_requests')
@@ -326,7 +427,6 @@ export default function TeacherSignUp({ onBack, onClose }) {
             otp_verified: true,
             otp_sent_at: new Date().toISOString(),
           }]);
-        console.log('✅ Teacher registration request saved!');
       } catch (reqError) {
         console.error('⚠️ Registration request save error:', reqError);
       }
@@ -340,7 +440,6 @@ export default function TeacherSignUp({ onBack, onClose }) {
             used_at: new Date().toISOString(),
           })
           .eq('code', formData.registrationCode.trim().toUpperCase());
-        console.log('✅ Teacher code marked as used!');
       } catch (codeError) {
         console.error('⚠️ Code update error:', codeError);
       }
@@ -353,7 +452,6 @@ export default function TeacherSignUp({ onBack, onClose }) {
             action: 'teacher_verified',
             email: formData.email.toLowerCase().trim(),
           }]);
-        console.log('✅ Log created!');
       } catch (logError) {
         console.error('⚠️ Log error:', logError);
       }
@@ -368,7 +466,9 @@ export default function TeacherSignUp({ onBack, onClose }) {
     setLoading(false);
   };
 
+  // ============================================
   // ✅ রেন্ডার: স্টেপ ১ - কোড যাচাই
+  // ============================================
   if (step === 1) {
     return (
       <div style={styles.container}>
@@ -376,7 +476,7 @@ export default function TeacherSignUp({ onBack, onClose }) {
           <span style={styles.headerIcon}>👨‍🏫</span>
           <h2 style={styles.heading}>শিক্ষক রেজিস্ট্রেশন কোড যাচাই</h2>
           <p style={styles.subHeading}>
-            আপনার প্রাপ্ত ইউনিক কোডটি দিন। 
+            আপনার প্রাপ্ত ইউনিক কোডটি দিন।
             <br />
             <small style={styles.smallText}>কোডটি ৬-৮ অক্ষরের হতে পারে</small>
           </p>
@@ -441,87 +541,102 @@ export default function TeacherSignUp({ onBack, onClose }) {
     );
   }
 
+  // ============================================
   // ✅ রেন্ডার: স্টেপ ২ - ফর্ম + OTP পাঠান
+  // ============================================
   if (step === 2) {
     return (
-      <form onSubmit={handleSendOTP} style={styles.form}>
-        <div style={styles.header}>
-          <span style={styles.headerIcon}>👨‍🏫</span>
-          <h2 style={styles.heading}>শিক্ষক নিবন্ধন</h2>
-          <p style={styles.subHeading}>আপনার তথ্য দিয়ে ফরম পূরণ করুন</p>
-          <div style={styles.codeVerifiedBadge}>
-            <span>✅ কোড যাচাইকৃত: </span>
-            <strong>{formData.registrationCode}</strong>
+      <>
+        <form onSubmit={handleSendOTP} style={styles.form}>
+          <div style={styles.header}>
+            <span style={styles.headerIcon}>👨‍🏫</span>
+            <h2 style={styles.heading}>শিক্ষক নিবন্ধন</h2>
+            <p style={styles.subHeading}>আপনার তথ্য দিয়ে ফরম পূরণ করুন</p>
+            <div style={styles.codeVerifiedBadge}>
+              <span>✅ কোড যাচাইকৃত: </span>
+              <strong>{formData.registrationCode}</strong>
+            </div>
           </div>
-        </div>
-        
-        {error && <div style={styles.errorBox}>{error}</div>}
+          
+          {error && <div style={styles.errorBox}>{error}</div>}
 
-        <div style={styles.field}>
-          <label style={styles.label}>👤 নাম <span style={{color: '#ef4444'}}>*</span></label>
-          <input type="text" name="name" required placeholder="আপনার পূর্ণ নাম" value={formData.name} onChange={handleInputChange} style={styles.input} />
-        </div>
-
-        <div style={styles.field}>
-          <label style={styles.label}>⚥ লিঙ্গ <span style={{color: '#ef4444'}}>*</span></label>
-          <select name="gender" required value={formData.gender} onChange={handleInputChange} style={styles.select}>
-            <option value="">নির্বাচন করুন</option>
-            <option value="male">পুরুষ</option>
-            <option value="female">মহিলা</option>
-          </select>
-        </div>
-
-        <div style={styles.field}>
-          <label style={styles.label}>💼 পদবি <span style={{color: '#ef4444'}}>*</span></label>
-          <input type="text" name="designation" required placeholder="যেমন: হেডমাস্টার" value={formData.designation} onChange={handleInputChange} style={styles.input} />
-        </div>
-
-        <div style={styles.field}>
-          <label style={styles.label}>📚 বিষয় <span style={{color: '#ef4444'}}>*</span></label>
-          <input type="text" name="subject" required placeholder="যেমন: বাংলা, ইংরেজি" value={formData.subject} onChange={handleInputChange} style={styles.input} />
-        </div>
-
-        <div style={styles.field}>
-          <label style={styles.label}>📱 মোবাইল নাম্বার <span style={{color: '#ef4444'}}>*</span></label>
-          <input type="tel" name="phone" required pattern="01[3-9]\d{8}" placeholder="01XXXXXXXXX" value={formData.phone} onChange={handleInputChange} style={styles.input} />
-        </div>
-
-        <div style={styles.field}>
-          <label style={styles.label}>📧 ইমেইল <span style={{color: '#ef4444'}}>*</span></label>
-          <input type="email" name="email" required placeholder="your@email.com" value={formData.email} onChange={handleInputChange} style={styles.input} />
-        </div>
-
-        <div style={styles.field}>
-          <label style={styles.label}>📸 ছবি <span style={{color: '#ef4444'}}>*</span></label>
-          <div style={styles.fileWrapper}>
-            <input type="file" ref={photoInputRef} accept="image/*" capture="environment" required onChange={handleFileChange} style={styles.fileInput} />
-            <span style={styles.filePlaceholder}>{formData.photo ? '✅ নির্বাচিত' : 'ক্যামেরা দিয়ে ছবি তুলুন'}</span>
+          <div style={styles.field}>
+            <label style={styles.label}>👤 নাম <span style={{color: '#ef4444'}}>*</span></label>
+            <input type="text" name="name" required placeholder="আপনার পূর্ণ নাম" value={formData.name} onChange={handleInputChange} style={styles.input} />
           </div>
-        </div>
 
-        <div style={styles.field}>
-          <label style={styles.label}>🔑 পাসওয়ার্ড <span style={{color: '#ef4444'}}>*</span></label>
-          <input type="password" name="password" required placeholder="কমপক্ষে ৬ অক্ষর" value={formData.password} onChange={handleInputChange} style={styles.input} />
-        </div>
+          <div style={styles.field}>
+            <label style={styles.label}>⚥ লিঙ্গ <span style={{color: '#ef4444'}}>*</span></label>
+            <select name="gender" required value={formData.gender} onChange={handleInputChange} style={styles.select}>
+              <option value="">নির্বাচন করুন</option>
+              <option value="male">পুরুষ</option>
+              <option value="female">মহিলা</option>
+            </select>
+          </div>
 
-        <div style={styles.field}>
-          <label style={styles.label}>🔑 কনফার্ম পাসওয়ার্ড <span style={{color: '#ef4444'}}>*</span></label>
-          <input type="password" name="confirmPassword" required placeholder="আবার পাসওয়ার্ড দিন" value={formData.confirmPassword} onChange={handleInputChange} style={styles.input} />
-        </div>
+          <div style={styles.field}>
+            <label style={styles.label}>💼 পদবি <span style={{color: '#ef4444'}}>*</span></label>
+            <input type="text" name="designation" required placeholder="যেমন: হেডমাস্টার" value={formData.designation} onChange={handleInputChange} style={styles.input} />
+          </div>
 
-        <div style={styles.buttonGroup}>
-          <button type="button" onClick={() => setStep(1)} style={styles.backBtn}>
-            ⬅ পিছনে
-          </button>
-          <button type="submit" disabled={loading} style={styles.submitBtn}>
-            {loading ? '⏳ OTP পাঠাচ্ছি...' : '📧 OTP পাঠান'}
-          </button>
-        </div>
-      </form>
+          <div style={styles.field}>
+            <label style={styles.label}>📚 বিষয় <span style={{color: '#ef4444'}}>*</span></label>
+            <input type="text" name="subject" required placeholder="যেমন: বাংলা, ইংরেজি" value={formData.subject} onChange={handleInputChange} style={styles.input} />
+          </div>
+
+          <div style={styles.field}>
+            <label style={styles.label}>📱 মোবাইল নাম্বার <span style={{color: '#ef4444'}}>*</span></label>
+            <input type="tel" name="phone" required pattern="01[3-9]\d{8}" placeholder="01XXXXXXXXX" value={formData.phone} onChange={handleInputChange} style={styles.input} />
+          </div>
+
+          <div style={styles.field}>
+            <label style={styles.label}>📧 ইমেইল <span style={{color: '#ef4444'}}>*</span></label>
+            <input type="email" name="email" required placeholder="your@email.com" value={formData.email} onChange={handleInputChange} style={styles.input} />
+          </div>
+
+          <div style={styles.field}>
+            <label style={styles.label}>📸 ছবি <span style={{color: '#ef4444'}}>*</span></label>
+            <div style={styles.fileWrapper}>
+              <input type="file" ref={photoInputRef} accept="image/*" capture="environment" required onChange={handleFileChange} style={styles.fileInput} />
+              <span style={styles.filePlaceholder}>{formData.photo ? '✅ নির্বাচিত' : 'ক্যামেরা দিয়ে ছবি তুলুন'}</span>
+            </div>
+          </div>
+
+          <div style={styles.field}>
+            <label style={styles.label}>🔑 পাসওয়ার্ড <span style={{color: '#ef4444'}}>*</span></label>
+            <input type="password" name="password" required placeholder="কমপক্ষে ৬ অক্ষর" value={formData.password} onChange={handleInputChange} style={styles.input} />
+          </div>
+
+          <div style={styles.field}>
+            <label style={styles.label}>🔑 কনফার্ম পাসওয়ার্ড <span style={{color: '#ef4444'}}>*</span></label>
+            <input type="password" name="confirmPassword" required placeholder="আবার পাসওয়ার্ড দিন" value={formData.confirmPassword} onChange={handleInputChange} style={styles.input} />
+          </div>
+
+          <div style={styles.buttonGroup}>
+            <button type="button" onClick={() => setStep(1)} style={styles.backBtn}>
+              ⬅ পিছনে
+            </button>
+            <button type="submit" disabled={loading} style={styles.submitBtn}>
+              {loading ? '⏳ OTP পাঠাচ্ছি...' : '📧 OTP পাঠান'}
+            </button>
+          </div>
+        </form>
+
+        {/* ✅ ইমেইল ডুপ্লিকেট পপআপ */}
+        <EmailExistsModal
+          isOpen={showEmailExistsModal}
+          onClose={handleCloseEmailExistsModal}
+          onLogin={handleGoToLogin}
+          email={existingEmail}
+          sourceType="teacher"
+        />
+      </>
     );
   }
 
-  // ✅ রেন্ডার: স্টেপ ৩ - OTP ভেরিফিকেশন
+  // ============================================
+  // স্টেপ ৩ - OTP ভেরিফিকেশন
+  // ============================================
   if (step === 3) {
     return (
       <div style={styles.otpContainer}>
@@ -552,11 +667,21 @@ export default function TeacherSignUp({ onBack, onClose }) {
             </button>
           </div>
         </form>
+
+        <EmailExistsModal
+          isOpen={showEmailExistsModal}
+          onClose={handleCloseEmailExistsModal}
+          onLogin={handleGoToLogin}
+          email={existingEmail}
+          sourceType="teacher"
+        />
       </div>
     );
   }
 
-  // ✅ রেন্ডার: স্টেপ ৪ - সাফল্য
+  // ============================================
+  // স্টেপ ৪ - সফল
+  // ============================================
   if (step === 4 && success) {
     return (
       <div style={styles.successContainer}>
@@ -591,347 +716,145 @@ export default function TeacherSignUp({ onBack, onClose }) {
   return null;
 }
 
-// =============================================
-// 🎨 প্রিমিয়াম স্টাইল (অপরিবর্তিত)
-// =============================================
+// ============================================
+// স্টাইল (আগের মতোই — অপরিবর্তিত)
+// ============================================
 const styles = {
-  container: {
-    padding: '10px 0',
-    fontFamily: "'Hind Siliguri', sans-serif",
-  },
-  header: {
-    textAlign: 'center',
-    marginBottom: '20px',
-  },
-  headerIcon: {
-    fontSize: '42px',
-    display: 'block',
-    marginBottom: '4px',
-  },
-  heading: {
-    fontSize: '22px',
-    fontWeight: '800',
-    color: '#0f172a',
-    margin: '0 0 4px 0',
-  },
-  subHeading: {
-    fontSize: '14px',
-    color: '#64748b',
-    margin: '4px 0 0 0',
-    lineHeight: '1.5',
-  },
-  smallText: {
-    fontSize: '12px',
-    color: '#94a3b8',
-  },
+  container: { padding: '10px 0', fontFamily: "'Hind Siliguri', sans-serif" },
+  header: { textAlign: 'center', marginBottom: '20px' },
+  headerIcon: { fontSize: '42px', display: 'block', marginBottom: '4px' },
+  heading: { fontSize: '22px', fontWeight: '800', color: '#0f172a', margin: '0 0 4px 0' },
+  subHeading: { fontSize: '14px', color: '#64748b', margin: '4px 0 0 0', lineHeight: '1.5' },
+  smallText: { fontSize: '12px', color: '#94a3b8' },
   codeInput: {
-    width: '100%',
-    padding: '14px 18px',
-    borderRadius: '12px',
-    border: '2px solid #e2e8f0',
-    fontSize: '22px',
-    fontWeight: '700',
-    letterSpacing: '4px',
-    textAlign: 'center',
-    outline: 'none',
-    backgroundColor: '#ffffff',
-    transition: 'all 0.3s ease',
-    textTransform: 'uppercase',
+    width: '100%', padding: '14px 18px', borderRadius: '12px',
+    border: '2px solid #e2e8f0', fontSize: '22px', fontWeight: '700',
+    letterSpacing: '4px', textAlign: 'center', outline: 'none',
+    backgroundColor: '#ffffff', textTransform: 'uppercase',
   },
-  hintText: {
-    display: 'block',
-    color: '#94a3b8',
-    fontSize: '12px',
-    marginTop: '6px',
-  },
-  form: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '14px',
-  },
-  field: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '4px',
-  },
-  label: {
-    fontSize: '13px',
-    fontWeight: '600',
-    color: '#334155',
-  },
+  hintText: { display: 'block', color: '#94a3b8', fontSize: '12px', marginTop: '6px' },
+  form: { display: 'flex', flexDirection: 'column', gap: '14px' },
+  field: { display: 'flex', flexDirection: 'column', gap: '4px' },
+  label: { fontSize: '13px', fontWeight: '600', color: '#334155' },
   input: {
-    padding: '12px 14px',
-    borderRadius: '12px',
-    border: '1.5px solid #e2e8f0',
-    fontSize: '14px',
-    outline: 'none',
-    backgroundColor: '#ffffff',
-    transition: 'all 0.2s ease',
+    padding: '12px 14px', borderRadius: '12px',
+    border: '1.5px solid #e2e8f0', fontSize: '14px',
+    outline: 'none', backgroundColor: '#ffffff',
   },
   select: {
-    padding: '12px 14px',
-    borderRadius: '12px',
-    border: '1.5px solid #e2e8f0',
-    fontSize: '14px',
-    outline: 'none',
-    backgroundColor: '#ffffff',
+    padding: '12px 14px', borderRadius: '12px',
+    border: '1.5px solid #e2e8f0', fontSize: '14px',
+    outline: 'none', backgroundColor: '#ffffff',
   },
   fileWrapper: {
-    position: 'relative',
-    borderRadius: '12px',
-    border: '1.5px dashed #cbd5e1',
-    padding: '10px 14px',
-    backgroundColor: '#f8fafc',
-    transition: 'all 0.2s ease',
-    cursor: 'pointer',
-    minHeight: '44px',
-    display: 'flex',
-    alignItems: 'center',
+    position: 'relative', borderRadius: '12px',
+    border: '1.5px dashed #cbd5e1', padding: '10px 14px',
+    backgroundColor: '#f8fafc', cursor: 'pointer',
+    minHeight: '44px', display: 'flex', alignItems: 'center',
   },
-  fileInput: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    width: '100%',
-    height: '100%',
-    opacity: 0,
-    cursor: 'pointer',
-  },
-  filePlaceholder: {
-    fontSize: '13px',
-    color: '#64748b',
-    pointerEvents: 'none',
-  },
-  buttonGroup: {
-    display: 'flex',
-    gap: '10px',
-    marginTop: '4px',
-  },
+  fileInput: { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' },
+  filePlaceholder: { fontSize: '13px', color: '#64748b', pointerEvents: 'none' },
+  buttonGroup: { display: 'flex', gap: '10px', marginTop: '4px' },
   backBtn: {
-    background: '#f1f5f9',
-    color: '#64748b',
-    border: 'none',
-    padding: '12px',
-    borderRadius: '12px',
-    flex: 1,
-    cursor: 'pointer',
-    fontWeight: '600',
-    fontSize: '14px',
+    background: '#f1f5f9', color: '#64748b', border: 'none',
+    padding: '12px', borderRadius: '12px', flex: 1,
+    cursor: 'pointer', fontWeight: '600', fontSize: '14px',
   },
   verifyBtn: {
     background: 'linear-gradient(135deg, #8b5cf6, #7c3aed)',
-    color: 'white',
-    border: 'none',
-    padding: '12px',
-    borderRadius: '12px',
-    flex: 2,
-    cursor: 'pointer',
-    fontWeight: '700',
-    fontSize: '14px',
+    color: 'white', border: 'none', padding: '12px',
+    borderRadius: '12px', flex: 2, cursor: 'pointer',
+    fontWeight: '700', fontSize: '14px',
     boxShadow: '0 4px 14px rgba(139, 92, 246, 0.3)',
-    transition: 'all 0.2s ease',
   },
   submitBtn: {
     background: 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)',
-    color: 'white',
-    border: 'none',
-    padding: '12px',
-    borderRadius: '12px',
-    flex: 2,
-    cursor: 'pointer',
-    fontWeight: '700',
-    fontSize: '14px',
+    color: 'white', border: 'none', padding: '12px',
+    borderRadius: '12px', flex: 2, cursor: 'pointer',
+    fontWeight: '700', fontSize: '14px',
     boxShadow: '0 4px 14px rgba(22, 163, 74, 0.3)',
-    transition: 'all 0.2s ease',
   },
   errorBox: {
-    backgroundColor: '#fee2e2',
-    color: '#991b1b',
-    padding: '12px 16px',
-    borderRadius: '10px',
-    fontSize: '14px',
-    borderLeft: '4px solid #dc2626',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-    marginBottom: '12px',
+    backgroundColor: '#fee2e2', color: '#991b1b',
+    padding: '12px 16px', borderRadius: '10px',
+    fontSize: '14px', borderLeft: '4px solid #dc2626',
+    display: 'flex', alignItems: 'center',
+    gap: '8px', marginBottom: '12px',
   },
   errorIcon: { fontSize: '18px' },
   successBox: {
-    backgroundColor: '#dcfce7',
-    color: '#166534',
-    padding: '12px 16px',
-    borderRadius: '10px',
-    fontSize: '14px',
-    borderLeft: '4px solid #16a34a',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-    marginBottom: '12px',
+    backgroundColor: '#dcfce7', color: '#166534',
+    padding: '12px 16px', borderRadius: '10px',
+    fontSize: '14px', borderLeft: '4px solid #16a34a',
+    display: 'flex', alignItems: 'center',
+    gap: '8px', marginBottom: '12px',
   },
   successIcon: { fontSize: '18px' },
   verifiedNotice: {
-    backgroundColor: '#dcfce7',
-    color: '#166534',
-    padding: '12px 16px',
-    borderRadius: '10px',
-    fontSize: '14px',
-    borderLeft: '4px solid #16a34a',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-    marginTop: '12px',
+    backgroundColor: '#dcfce7', color: '#166534',
+    padding: '12px 16px', borderRadius: '10px',
+    fontSize: '14px', borderLeft: '4px solid #16a34a',
+    display: 'flex', alignItems: 'center',
+    gap: '8px', marginTop: '12px',
   },
   verifiedIcon: { fontSize: '18px' },
   codeVerifiedBadge: {
-    backgroundColor: '#dcfce7',
-    color: '#166534',
-    padding: '6px 14px',
-    borderRadius: '8px',
-    fontSize: '13px',
-    marginTop: '8px',
-    display: 'inline-block',
+    backgroundColor: '#dcfce7', color: '#166534',
+    padding: '6px 14px', borderRadius: '8px',
+    fontSize: '13px', marginTop: '8px', display: 'inline-block',
   },
-  otpContainer: {
-    textAlign: 'center',
-    padding: '20px 0',
-  },
-  otpIcon: {
-    fontSize: '48px',
-    marginBottom: '8px',
-  },
-  otpHeading: {
-    fontSize: '20px',
-    fontWeight: '700',
-    color: '#0f172a',
-    margin: '0 0 4px 0',
-  },
-  otpText: {
-    fontSize: '14px',
-    color: '#64748b',
-    marginBottom: '16px',
-    lineHeight: '1.6',
-  },
-  otpSmall: {
-    fontSize: '12px',
-    color: '#94a3b8',
-  },
-  otpForm: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '16px',
-    alignItems: 'center',
-  },
+  otpContainer: { textAlign: 'center', padding: '20px 0' },
+  otpIcon: { fontSize: '48px', marginBottom: '8px' },
+  otpHeading: { fontSize: '20px', fontWeight: '700', color: '#0f172a', margin: '0 0 4px 0' },
+  otpText: { fontSize: '14px', color: '#64748b', marginBottom: '16px', lineHeight: '1.6' },
+  otpSmall: { fontSize: '12px', color: '#94a3b8' },
+  otpForm: { display: 'flex', flexDirection: 'column', gap: '16px', alignItems: 'center' },
   otpInput: {
-    width: '200px',
-    textAlign: 'center',
-    padding: '14px',
-    fontSize: '28px',
-    letterSpacing: '10px',
-    border: '2px solid #e2e8f0',
-    borderRadius: '16px',
-    outline: 'none',
-    transition: 'all 0.2s ease',
-    backgroundColor: '#f8fafc',
+    width: '200px', textAlign: 'center', padding: '14px',
+    fontSize: '28px', letterSpacing: '10px',
+    border: '2px solid #e2e8f0', borderRadius: '16px',
+    outline: 'none', backgroundColor: '#f8fafc',
   },
-  otpButtonGroup: {
-    display: 'flex',
-    gap: '10px',
-    width: '100%',
-    maxWidth: '300px',
-  },
+  otpButtonGroup: { display: 'flex', gap: '10px', width: '100%', maxWidth: '300px' },
   otpBackBtn: {
-    background: '#f1f5f9',
-    color: '#64748b',
-    border: 'none',
-    padding: '12px',
-    borderRadius: '12px',
-    flex: 1,
-    cursor: 'pointer',
-    fontWeight: '600',
+    background: '#f1f5f9', color: '#64748b', border: 'none',
+    padding: '12px', borderRadius: '12px', flex: 1,
+    cursor: 'pointer', fontWeight: '600',
   },
   otpBtn: {
     background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
-    color: 'white',
-    border: 'none',
-    padding: '12px',
-    borderRadius: '12px',
-    flex: 2,
-    cursor: 'pointer',
-    fontWeight: '700',
-    boxShadow: '0 4px 14px rgba(37, 99, 235, 0.3)',
+    color: 'white', border: 'none', padding: '12px',
+    borderRadius: '12px', flex: 2, cursor: 'pointer',
+    fontWeight: '700', boxShadow: '0 4px 14px rgba(37, 99, 235, 0.3)',
   },
-  successContainer: {
-    textAlign: 'center',
-    padding: '20px 10px',
-  },
-  successIconLarge: {
-    fontSize: '56px',
-    marginBottom: '12px',
-  },
-  successHeading: {
-    fontSize: '22px',
-    fontWeight: '700',
-    color: '#0f172a',
-    margin: '0 0 16px 0',
-  },
+  successContainer: { textAlign: 'center', padding: '20px 10px' },
+  successIconLarge: { fontSize: '56px', marginBottom: '12px' },
+  successHeading: { fontSize: '22px', fontWeight: '700', color: '#0f172a', margin: '0 0 16px 0' },
   successMessageBox: {
-    backgroundColor: '#f8fafc',
-    borderRadius: '12px',
-    padding: '20px',
-    marginBottom: '16px',
-    border: '1px solid #e2e8f0',
+    backgroundColor: '#f8fafc', borderRadius: '12px',
+    padding: '20px', marginBottom: '16px', border: '1px solid #e2e8f0',
   },
-  successText: {
-    fontSize: '15px',
-    color: '#0f172a',
-    margin: '0 0 8px 0',
-    lineHeight: '1.6',
-  },
-  successSubText: {
-    fontSize: '14px',
-    color: '#64748b',
-    margin: '0 0 12px 0',
-  },
+  successText: { fontSize: '15px', color: '#0f172a', margin: '0 0 8px 0', lineHeight: '1.6' },
+  successSubText: { fontSize: '14px', color: '#64748b', margin: '0 0 12px 0' },
   successBadge: {
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: '8px',
-    fontSize: '14px',
-    color: '#0f172a',
+    display: 'flex', justifyContent: 'center',
+    alignItems: 'center', gap: '8px', fontSize: '14px', color: '#0f172a',
   },
   pendingBadge: {
-    background: '#fef3c7',
-    color: '#f59e0b',
-    padding: '4px 14px',
-    borderRadius: '20px',
-    fontWeight: '600',
-    fontSize: '13px',
+    background: '#fef3c7', color: '#f59e0b',
+    padding: '4px 14px', borderRadius: '20px',
+    fontWeight: '600', fontSize: '13px',
   },
   successNote: {
-    backgroundColor: '#fef3c7',
-    borderRadius: '10px',
-    padding: '14px 16px',
-    marginBottom: '20px',
+    backgroundColor: '#fef3c7', borderRadius: '10px',
+    padding: '14px 16px', marginBottom: '20px',
     borderLeft: '4px solid #f59e0b',
   },
-  noteText: {
-    fontSize: '13px',
-    color: '#92400e',
-    margin: 0,
-    lineHeight: '1.6',
-  },
+  noteText: { fontSize: '13px', color: '#92400e', margin: 0, lineHeight: '1.6' },
   successBtn: {
     background: 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)',
-    color: 'white',
-    border: 'none',
-    padding: '12px 40px',
-    borderRadius: '14px',
-    fontWeight: '700',
-    fontSize: '15px',
-    cursor: 'pointer',
-    boxShadow: '0 6px 20px rgba(22, 163, 74, 0.3)',
-    transition: 'all 0.2s ease',
+    color: 'white', border: 'none', padding: '12px 40px',
+    borderRadius: '14px', fontWeight: '700', fontSize: '15px',
+    cursor: 'pointer', boxShadow: '0 6px 20px rgba(22, 163, 74, 0.3)',
   },
 };
