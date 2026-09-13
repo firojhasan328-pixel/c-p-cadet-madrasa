@@ -13,54 +13,123 @@ export function PortalProvider({ children }) {
     checkUserSession();
   }, []);
 
+  // ============================================
+  // ✅ প্রোফাইল লোড — ক্রম: admin_users → students → teachers
+  // ============================================
+  const loadUserProfile = async (userId, email) => {
+    try {
+      const normalizedEmail = (email || '').toLowerCase().trim();
+
+      // ============================================
+      // ১. admin_users চেক (সবচেয়ে প্রথমে)
+      // ============================================
+      const { data: adminData } = await supabase
+        .from('admin_users')
+        .select('*')
+        .ilike('email', normalizedEmail)
+        .maybeSingle();
+
+      if (adminData && adminData.is_active !== false) {
+        // অ্যাডমিন/সাব-অ্যাডমিন/সুপার অ্যাডমিন সবাই teacher portal এ যাবে
+        return {
+          profile: {
+            id: adminData.user_id || userId,
+            name: adminData.name || 'অ্যাডমিন',
+            email: adminData.email || normalizedEmail,
+            role: adminData.role,
+            designation: getRoleDesignation(adminData.role),
+            is_approved: true,
+            is_verified: true,
+          },
+          role: 'teacher',
+          adminRole: adminData.role,
+        };
+      }
+
+      // ============================================
+      // ২. students চেক
+      // ============================================
+      const { data: studentData } = await supabase
+        .from('students')
+        .select('*')
+        .eq('id', userId)
+        .maybeSingle();
+
+      if (studentData) {
+        const isApproved = studentData.is_approved === true;
+        if (!isApproved) {
+          return { pending: true, profile: studentData, role: 'student' };
+        }
+        return {
+          profile: studentData,
+          role: 'student',
+        };
+      }
+
+      // ============================================
+      // ৩. teachers চেক
+      // ============================================
+      const { data: teacherData } = await supabase
+        .from('teachers')
+        .select('*')
+        .eq('id', userId)
+        .maybeSingle();
+
+      if (teacherData) {
+        const isApproved = teacherData.is_approved === true;
+        if (!isApproved) {
+          return { pending: true, profile: teacherData, role: 'teacher' };
+        }
+        return {
+          profile: teacherData,
+          role: 'teacher',
+        };
+      }
+
+      // কিছুই পাওয়া যায়নি
+      return null;
+    } catch (err) {
+      console.error('❌ Load profile error:', err);
+      return null;
+    }
+  };
+
+  // ============================================
+  // রোল থেকে designation
+  // ============================================
+  const getRoleDesignation = (role) => {
+    const map = {
+      super_admin: 'সুপার অ্যাডমিন',
+      admin: 'অ্যাডমিন',
+      sub_admin: 'সাব-অ্যাডমিন',
+      teacher: 'শিক্ষক',
+    };
+    return map[role] || 'শিক্ষক';
+  };
+
+  // ============================================
+  // সেশন চেক
+  // ============================================
   const checkUserSession = async () => {
     setLoading(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       
       if (session) {
-        let profile = null;
-        let role = null;
-
-        const { data: studentData, error: studentError } = await supabase
-          .from('students')
-          .select('*')
-          .eq('id', session.user.id)
-          .maybeSingle();
-
-        if (studentData && !studentError) {
-          profile = studentData;
-          role = 'student';
-        } else {
-          const { data: teacherData, error: teacherError } = await supabase
-            .from('teachers')
-            .select('*')
-            .eq('id', session.user.id)
-            .maybeSingle();
-
-          if (teacherData && !teacherError) {
-            profile = teacherData;
-            role = 'teacher';
-          }
-        }
-
-        if (profile) {
-          // ✅ নতুন চেক: অনুমোদিত না হলে সেশন ক্লিয়ার
-          const isApproved = profile.is_approved === true;
-          
-          if (!isApproved) {
-            console.log('⚠️ User not approved yet, clearing session');
+        const result = await loadUserProfile(session.user.id, session.user.email);
+        
+        if (result) {
+          if (result.pending) {
+            // pending — লগআউট করে দাও
             await supabase.auth.signOut();
             setUser(null);
             setUserProfile(null);
             setUserRole(null);
-            setLoading(false);
-            return;
+          } else {
+            setUser(session.user);
+            setUserProfile(result.profile);
+            setUserRole(result.role);
           }
-
-          setUser(session.user);
-          setUserProfile(profile);
-          setUserRole(role);
         }
       }
     } catch (error) {
@@ -69,71 +138,24 @@ export function PortalProvider({ children }) {
     setLoading(false);
   };
 
-  // =============================================
-  // ✅ Login ফাংশন (আপডেটেড - is_approved চেক সহ)
-  // =============================================
+  // ============================================
+  // ✅ Login ফাংশন — admin_users আগে চেক করবে
+  // ============================================
   const login = async (email, password) => {
     try {
+      const normalizedEmail = email.toLowerCase().trim();
+
       const { data, error } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
+        email: normalizedEmail,
         password: password.trim(),
       });
 
       if (error) throw error;
 
       if (data.user) {
-        let profile = null;
-        let role = null;
+        const result = await loadUserProfile(data.user.id, data.user.email);
 
-        const { data: studentData, error: studentError } = await supabase
-          .from('students')
-          .select('*')
-          .eq('id', data.user.id)
-          .maybeSingle();
-
-        if (studentData && !studentError) {
-          profile = studentData;
-          role = 'student';
-        } else {
-          const { data: teacherData, error: teacherError } = await supabase
-            .from('teachers')
-            .select('*')
-            .eq('id', data.user.id)
-            .maybeSingle();
-
-          if (teacherData && !teacherError) {
-            profile = teacherData;
-            role = 'teacher';
-          }
-        }
-
-        if (profile) {
-          // ✅ নতুন চেক: অনুমোদিত কি না
-          const isApproved = profile.is_approved === true;
-          
-          if (!isApproved) {
-            // লগইন হয়ে গেছে কিন্তু অনুমোদিত না — সেশন বাতিল
-            await supabase.auth.signOut();
-            
-            return { 
-              success: false, 
-              error: 'PENDING_APPROVAL',
-              errorType: 'pending',
-              message: 'আপনার অ্যাকাউন্ট এখনো অনুমোদিত হয়নি',
-              userType: role === 'teacher' ? 'শিক্ষক' : 'ছাত্র',
-              userName: profile.name || ''
-            };
-          }
-
-          // ✅ অনুমোদিত — লগইন সফল
-          setUser(data.user);
-          setUserProfile(profile);
-          setUserRole(role);
-          
-          window.location.href = '/portal';
-          
-          return { success: true, profile };
-        } else {
+        if (!result) {
           await supabase.auth.signOut();
           return { 
             success: false, 
@@ -142,7 +164,29 @@ export function PortalProvider({ children }) {
             message: 'প্রোফাইল পাওয়া যায়নি। দয়া করে রেজিস্ট্রেশন করুন।'
           };
         }
+
+        if (result.pending) {
+          await supabase.auth.signOut();
+          return { 
+            success: false, 
+            error: 'PENDING_APPROVAL',
+            errorType: 'pending',
+            message: 'আপনার অ্যাকাউন্ট এখনো অনুমোদিত হয়নি',
+            userType: result.role === 'teacher' ? 'শিক্ষক' : 'ছাত্র',
+            userName: result.profile?.name || ''
+          };
+        }
+
+        // সফল লগইন
+        setUser(data.user);
+        setUserProfile(result.profile);
+        setUserRole(result.role);
+        
+        window.location.href = '/portal';
+        
+        return { success: true, profile: result.profile };
       }
+      
       return { 
         success: false, 
         error: 'NO_USER',
@@ -160,6 +204,9 @@ export function PortalProvider({ children }) {
     }
   };
 
+  // ============================================
+  // Register ফাংশন
+  // ============================================
   const register = async (userData) => {
     try {
       const { data: authData, error: authError } = await supabase.auth.signUp({
