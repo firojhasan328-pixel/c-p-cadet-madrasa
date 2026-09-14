@@ -13,11 +13,15 @@ import PortalRegister from './components/auth/PortalRegister';
 import StudentDashboard from './components/student-dashboard/StudentDashboard';
 import TeacherDashboard from './components/portal/TeacherDashboard';
 import ResetPassword from './components/ResetPassword';
+import { useDarkMode } from './hooks/useDarkMode';
 
 // =============================================
 // মেইন App
 // =============================================
 function App() {
+  // ✅ ডার্ক মোড অটো-ডিটেকশন (ডিভাইস সেটিং ফলো করে)
+  useDarkMode();
+
   return (
     <PortalProvider>
       <MainApp />
@@ -35,23 +39,34 @@ function MainApp() {
   const [currentView, setCurrentView] = useState('home');
   const [isResetPassword, setIsResetPassword] = useState(false);
 
+  // ✅ ডার্ক মোড স্টেট (আলাদা করে নিচ্ছি root div-এর জন্য)
+  const isDark =
+    typeof window !== 'undefined' &&
+    window.matchMedia('(prefers-color-scheme: dark)').matches;
+
   const [siteData, setSiteData] = useState({
-    headmasterName: "Arif Ashab Khorshed",
-    contactNumber: "+8801521-553003",
-    totalMaleStudents: "০",
-    totalFemaleStudents: "০",
-    homepage_header_title: "সুশিক্ষা ও সুন্নাত ভিত্তিক আদর্শ জীবন গড়ার বিশ্বস্ত প্রতিষ্ঠান",
-    homepage_header_subtitle: "আমরা দিচ্ছি আধুনিক ক্বওমী ও জেনারেল শিক্ষা ব্যবস্থার এক অনন্য সমন্বয়। অভিজ্ঞ শিক্ষক মণ্ডলীর তত্ত্বাবধানে আপনার সন্তানের দ্বীনি শিক্ষার পথ সুগম করুন।",
-    homepage_about_title: "প্রধান শিক্ষকের বাণী",
-    homepage_about_message: '"বিসমিল্লাহির রহমানির রহিম। চিলমারী প্রি ক্যাডেট মাদ্রাসায় আপনাকে জানাই আন্তরিক শুভেচ্ছা। আমাদের সুনির্দিষ্ট লক্ষ্য হলো কোমলমতি শিশুদের ধর্মীয় মূল্যবোধ, উত্তম চরিত্র এবং আধুনিক শিক্ষার মাধ্যমে এক আদর্শ সুনাগরিক হিসেবে গড়ে তোলা।"',
-    homepage_notice_title: "📌 নোটিশ বোর্ড",
-    homepage_notice_empty: "⚠️ বর্তমানে কোনো নোটিশ নেই",
-    homepage_features_title: "🌟 আমাদের বিশেষত্ব",
-    homepage_features_list: "অভিজ্ঞ ও দ্বীনদার শিক্ষক মণ্ডলী\nহিফজ ও বিশুদ্ধ ক্বিরাআত প্রশিক্ষণ\nকম্পিউটার ও তথ্যপ্রযুক্তি শিক্ষা\nনিরাপদ ও সিসিটিভি নিয়ন্ত্রিত ক্যাম্পাস\nসুপরিসর ক্লাসরুম ও মনোরম পরিবেশ",
-    homepage_admission_title: "অনলাইন ভর্তি আবেদন",
-    homepage_admission_subtitle: "আপনার সন্তানের ভর্তি নিশ্চিত করতে নিচের বাটনে ক্লিক করে ফরম পূরণ করুন",
-    homepage_admission_btn_text: "🎓 ভর্তি আবেদন করুন",
-    homepage_footer_text: "© 2026 চিলমারী প্রি ক্যাডেট মাদ্রাসা। সর্বস্বত্ব সংরক্ষিত।"
+    headmasterName: 'Arif Ashab Khorshed',
+    contactNumber: '+8801521-553003',
+    totalMaleStudents: '০',
+    totalFemaleStudents: '০',
+    homepage_header_title:
+      'সুশিক্ষা ও সুন্নাত ভিত্তিক আদর্শ জীবন গড়ার বিশ্বস্ত প্রতিষ্ঠান',
+    homepage_header_subtitle:
+      'আমরা দিচ্ছি আধুনিক ক্বওমী ও জেনারেল শিক্ষা ব্যবস্থার এক অনন্য সমন্বয়। অভিজ্ঞ শিক্ষক মণ্ডলীর তত্ত্বাবধানে আপনার সন্তানের দ্বীনি শিক্ষার পথ সুগম করুন।',
+    homepage_about_title: 'প্রধান শিক্ষকের বাণী',
+    homepage_about_message:
+      '"বিসমিল্লাহির রহমানির রহিম। চিলমারী প্রি ক্যাডেট মাদ্রাসায় আপনাকে জানাই আন্তরিক শুভেচ্ছা। আমাদের সুনির্দিষ্ট লক্ষ্য হলো কোমলমতি শিশুদের ধর্মীয় মূল্যবোধ, উত্তম চরিত্র এবং আধুনিক শিক্ষার মাধ্যমে এক আদর্শ সুনাগরিক হিসেবে গড়ে তোলা।"',
+    homepage_notice_title: '📌 নোটিশ বোর্ড',
+    homepage_notice_empty: '⚠️ বর্তমানে কোনো নোটিশ নেই',
+    homepage_features_title: '🌟 আমাদের বিশেষত্ব',
+    homepage_features_list:
+      'অভিজ্ঞ ও দ্বীনদার শিক্ষক মণ্ডলী\nহিফজ ও বিশুদ্ধ ক্বিরাআত প্রশিক্ষণ\nকম্পিউটার ও তথ্যপ্রযুক্তি শিক্ষা\nনিরাপদ ও সিসিটিভি নিয়ন্ত্রিত ক্যাম্পাস\nসুপরিসর ক্লাসরুম ও মনোরম পরিবেশ',
+    homepage_admission_title: 'অনলাইন ভর্তি আবেদন',
+    homepage_admission_subtitle:
+      'আপনার সন্তানের ভর্তি নিশ্চিত করতে নিচের বাটনে ক্লিক করে ফরম পূরণ করুন',
+    homepage_admission_btn_text: '🎓 ভর্তি আবেদন করুন',
+    homepage_footer_text:
+      '© 2026 চিলমারী প্রি ক্যাডেট মাদ্রাসা। সর্বস্বত্ব সংরক্ষিত।',
   });
 
   const [teachers, setTeachers] = useState([]);
@@ -96,9 +111,7 @@ function MainApp() {
 
   const fetchCMSData = async () => {
     try {
-      const { data, error } = await supabase
-        .from('cms_values')
-        .select(`
+      const { data, error } = await supabase.from('cms_values').select(`
           value,
           cms_fields (
             field_key
@@ -110,13 +123,13 @@ function MainApp() {
       }
       if (data) {
         const formattedData = {};
-        data.forEach(item => {
+        data.forEach((item) => {
           if (item.cms_fields) {
             formattedData[item.cms_fields.field_key] = item.value;
           }
         });
         console.log('✅ CMS ডেটা লোড হয়েছে:', formattedData);
-        setSiteData(prev => ({ ...prev, ...formattedData }));
+        setSiteData((prev) => ({ ...prev, ...formattedData }));
       }
     } catch (err) {
       console.error('CMS ডেটা লোড করতে সমস্যা:', err);
@@ -128,10 +141,10 @@ function MainApp() {
       const { data, error } = await supabase.from('site_contents').select('*');
       if (data) {
         const formattedData = {};
-        data.forEach(item => {
+        data.forEach((item) => {
           formattedData[item.key] = item.value;
         });
-        setSiteData(prev => ({ ...prev, ...formattedData }));
+        setSiteData((prev) => ({ ...prev, ...formattedData }));
       }
     } catch (err) {
       console.error('Error fetching site contents:', err);
@@ -151,38 +164,54 @@ function MainApp() {
 
     const cmsChannel = supabase
       .channel('cms-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'cms_values' }, () => {
-        fetchCMSData();
-      })
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'cms_values' },
+        () => {
+          fetchCMSData();
+        }
+      )
       .subscribe();
 
     const siteChannel = supabase
       .channel('schema-db-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'site_contents' }, () => {
-        fetchSiteContents();
-      })
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'site_contents' },
+        () => {
+          fetchSiteContents();
+        }
+      )
       .subscribe();
 
     const noticeChannel = supabase
       .channel('notice-realtime')
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'portal_notices',
-      }, () => {
-        fetchNotices();
-      })
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'portal_notices',
+        },
+        () => {
+          fetchNotices();
+        }
+      )
       .subscribe();
 
     const homepageChannel = supabase
       .channel('homepage-realtime')
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'cms_values',
-      }, () => {
-        fetchCMSData();
-      })
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'cms_values',
+        },
+        () => {
+          fetchCMSData();
+        }
+      )
       .subscribe();
 
     return () => {
@@ -204,11 +233,11 @@ function MainApp() {
       otp: '',
       studentPhoto: null,
       birthCertPhoto: null,
-      fatherNidPhoto: null
+      fatherNidPhoto: null,
     });
   };
 
-  const whatsappNumber = "8801918568313";
+  const whatsappNumber = '8801918568313';
 
   const handleOpenSignIn = () => {
     setIsSignInModalOpen(true);
@@ -244,39 +273,105 @@ function MainApp() {
     otp: '',
     studentPhoto: null,
     birthCertPhoto: null,
-    fatherNidPhoto: null
+    fatherNidPhoto: null,
   });
 
   const renderDashboard = () => {
     if (!isAuthenticated) return null;
-    
+
     if (userRole === 'student') {
       return <StudentDashboard />;
     }
-    
+
     if (userRole === 'teacher') {
       return (
-        <div style={{ maxWidth: '1200px', margin: '40px auto', padding: '0 16px' }}>
+        <div
+          style={{
+            maxWidth: '1200px',
+            margin: '40px auto',
+            padding: '0 16px',
+          }}
+        >
           <div className="card" style={{ padding: '30px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: '16px',
+              }}
+            >
               <div>
-                <h2 style={{ color: '#14532d', margin: 0 }}>👋 স্বাগতম, {userProfile?.name || 'ইউজার'}!</h2>
-                <p style={{ color: '#64748b', margin: '4px 0 0 0' }}>👨‍🏫 শিক্ষক ড্যাশবোর্ড</p>
+                <h2 style={{ color: '#14532d', margin: 0 }}>
+                  👋 স্বাগতম, {userProfile?.name || 'ইউজার'}!
+                </h2>
+                <p style={{ color: '#64748b', margin: '4px 0 0 0' }}>
+                  👨‍🏫 শিক্ষক ড্যাশবোর্ড
+                </p>
               </div>
-              <button onClick={logout} style={{ background: '#dc2626', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '10px', fontWeight: '600', cursor: 'pointer' }}>
+              <button
+                onClick={logout}
+                style={{
+                  background: '#dc2626',
+                  color: 'white',
+                  border: 'none',
+                  padding: '10px 20px',
+                  borderRadius: '10px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                }}
+              >
                 লগআউট
               </button>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px', marginTop: '24px' }}>
-              <div style={{ background: '#f0fdf4', padding: '20px', borderRadius: '12px', border: '1px solid #bbf7d0' }}>
-                <h4 style={{ margin: '0 0 8px 0', color: '#166534' }}>📊 প্রোফাইল</h4>
-                <p style={{ margin: '4px 0', fontSize: '14px' }}><strong>নাম:</strong> {userProfile?.name}</p>
-                <p style={{ margin: '4px 0', fontSize: '14px' }}><strong>ইমেইল:</strong> {userProfile?.email}</p>
-                <p style={{ margin: '4px 0', fontSize: '14px' }}><strong>পদবি:</strong> {userProfile?.designation || 'নাই'}</p>
-                <p style={{ margin: '4px 0', fontSize: '14px' }}><strong>বিষয়:</strong> {userProfile?.subject || 'নাই'}</p>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns:
+                  'repeat(auto-fit, minmax(250px, 1fr))',
+                gap: '20px',
+                marginTop: '24px',
+              }}
+            >
+              <div
+                style={{
+                  background: '#f0fdf4',
+                  padding: '20px',
+                  borderRadius: '12px',
+                  border: '1px solid #bbf7d0',
+                }}
+              >
+                <h4 style={{ margin: '0 0 8px 0', color: '#166534' }}>
+                  📊 প্রোফাইল
+                </h4>
+                <p style={{ margin: '4px 0', fontSize: '14px' }}>
+                  <strong>নাম:</strong> {userProfile?.name}
+                </p>
+                <p style={{ margin: '4px 0', fontSize: '14px' }}>
+                  <strong>ইমেইল:</strong> {userProfile?.email}
+                </p>
+                <p style={{ margin: '4px 0', fontSize: '14px' }}>
+                  <strong>পদবি:</strong> {userProfile?.designation || 'নাই'}
+                </p>
+                <p style={{ margin: '4px 0', fontSize: '14px' }}>
+                  <strong>বিষয়:</strong> {userProfile?.subject || 'নাই'}
+                </p>
               </div>
             </div>
-            <button onClick={() => setCurrentView('home')} style={{ background: '#64748b', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '10px', fontWeight: '600', cursor: 'pointer', marginTop: '20px' }}>
+            <button
+              onClick={() => setCurrentView('home')}
+              style={{
+                background: '#64748b',
+                color: 'white',
+                border: 'none',
+                padding: '10px 20px',
+                borderRadius: '10px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                marginTop: '20px',
+              }}
+            >
               ⬅ হোম পেজে ফিরে যান
             </button>
           </div>
@@ -288,7 +383,15 @@ function MainApp() {
 
   if (isResetPassword) {
     return (
-      <div style={{ fontFamily: "'Hind Siliguri', 'Segoe UI', sans-serif", backgroundColor: '#f8fafc', minHeight: '100vh', margin: 0, padding: 0 }}>
+      <div
+        style={{
+          fontFamily: "'Hind Siliguri', 'Segoe UI', sans-serif",
+          backgroundColor: '#f8fafc',
+          minHeight: '100vh',
+          margin: 0,
+          padding: 0,
+        }}
+      >
         <ResetPassword />
       </div>
     );
@@ -297,10 +400,21 @@ function MainApp() {
   const featuredNotice = notices.length > 0 ? notices[0] : null;
   const featuresList = (siteData.homepage_features_list || '')
     .split('\n')
-    .filter(item => item.trim() !== '');
+    .filter((item) => item.trim() !== '');
 
   return (
-    <div style={{ fontFamily: "'Hind Siliguri', 'Segoe UI', sans-serif", backgroundColor: '#f8fafc', color: '#0f172a', minHeight: '100vh', margin: 0, padding: 0, position: 'relative' }}>
+    <div
+      style={{
+        fontFamily: "'Hind Siliguri', 'Segoe UI', sans-serif",
+        backgroundColor: isDark ? '#0f172a' : '#f8fafc',
+        color: isDark ? '#f1f5f9' : '#0f172a',
+        minHeight: '100vh',
+        margin: 0,
+        padding: 0,
+        position: 'relative',
+        transition: 'background-color 0.3s ease, color 0.3s ease',
+      }}
+    >
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&display=swap');
         * { box-sizing: border-box; scroll-behavior: smooth; }
@@ -308,7 +422,7 @@ function MainApp() {
         .nav-link:hover { color: #15803d; }
         .btn-primary { background: linear-gradient(135deg, #16a34a 0%, #15803d 100%); color: white; border: none; padding: 12px 24px; border-radius: 10px; font-weight: 600; cursor: pointer; transition: all 0.3s ease; display: inline-flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none; }
         .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(22, 163, 74, 0.35); }
-        .card { background: #ffffff; border-radius: 18px; padding: 24px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01); border: 1px solid #e2e8f0; }
+        .card { background: #ffffff; border-radius: 18px; padding: 24px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01); border: 1px solid #e2e8f0; transition: background-color 0.3s ease, border-color 0.3s ease; }
         .badge { background: #dcfce7; color: #15803d; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; display: inline-block; }
         .live-chat-btn { position: fixed; bottom: 25px; right: 25px; background-color: #25D366; color: white; border-radius: 50px; padding: 12px 20px; display: flex; align-items: center; gap: 10px; box-shadow: 0 10px 20px rgba(37, 211, 102, 0.4); text-decoration: none; font-weight: bold; font-size: 14px; z-index: 1000; transition: all 0.3s ease; }
         .live-chat-btn:hover { transform: scale(1.05); box-shadow: 0 12px 25px rgba(37, 211, 102, 0.6); }
@@ -322,50 +436,331 @@ function MainApp() {
         .portal-btn { background: linear-gradient(135deg, #8b5cf6, #7c3aed); color: white; border: none; padding: 8px 18px; border-radius: 10px; font-weight: 600; font-size: 13px; cursor: pointer; transition: all 0.2s ease; }
         .portal-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4); }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* ============================================
+           🌙 ডার্ক মোড স্টাইল (অটো — ডিভাইস সেটিং ফলো)
+           ============================================ */
+        @media (prefers-color-scheme: dark) {
+          .card {
+            background-color: #1e293b !important;
+            border-color: #334155 !important;
+          }
+          .badge {
+            background-color: rgba(22, 163, 74, 0.2) !important;
+            color: #4ade80 !important;
+          }
+          .nav-link {
+            color: #cbd5e1 !important;
+          }
+          .nav-link:hover {
+            color: #4ade80 !important;
+          }
+          .teacher-card {
+            background-color: #1e293b !important;
+            border-color: #334155 !important;
+          }
+          .teacher-name {
+            color: #f1f5f9 !important;
+          }
+          .teacher-details {
+            color: #cbd5e1 !important;
+            border-top-color: #334155 !important;
+          }
+          nav {
+            background-color: #1e293b !important;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5) !important;
+          }
+          input,
+          select,
+          textarea {
+            background-color: #1e293b !important;
+            color: #f1f5f9 !important;
+            border-color: #334155 !important;
+          }
+          input::placeholder,
+          textarea::placeholder {
+            color: #64748b !important;
+          }
+          table {
+            background-color: #1e293b !important;
+          }
+          th {
+            background-color: #0f172a !important;
+            color: #cbd5e1 !important;
+          }
+          td {
+            border-color: #334155 !important;
+            color: #e2e8f0 !important;
+          }
+          footer {
+            background-color: #020617 !important;
+          }
+        }
       `}</style>
 
-      <div style={{ backgroundColor: '#14532d', color: '#f0fdf4', padding: '8px 20px', fontSize: '13px' }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
-          <div>📍 চিলমারী, কুড়িগ্রাম, বাংলাদেশ</div>
+      <div
+        style={{
+          backgroundColor: '#14532d',
+          color: '#f0fdf4',
+          padding: '8px 20px',
+          fontSize: '13px',
+        }}
+      >
+        <div
+          style={{
+            maxWidth: '1200px',
+            margin: '0 auto',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '8px',
+          }}
+        >
+          <div>📍 চিলমারী, কুড়িগ্রাম, বাংলাদেশ</div>
           <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-            <span>📞 যোগাযোগ: <a href={`tel:${siteData.contactNumber}`} style={{ color: '#ffffff', fontWeight: 'bold', textDecoration: 'none' }}>{siteData.contactNumber}</a></span>
+            <span>
+              📞 যোগাযোগ:{' '}
+              <a
+                href={`tel:${siteData.contactNumber}`}
+                style={{
+                  color: '#ffffff',
+                  fontWeight: 'bold',
+                  textDecoration: 'none',
+                }}
+              >
+                {siteData.contactNumber}
+              </a>
+            </span>
           </div>
         </div>
       </div>
 
-      <nav style={{ backgroundColor: '#ffffff', position: 'sticky', top: 0, zIndex: 50, boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }} onClick={() => { setCurrentView('home'); }}>
-            <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: 'linear-gradient(135deg, #16a34a, #15803d)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '22px', boxShadow: '0 4px 10px rgba(22, 163, 74, 0.3)' }}>
+      <nav
+        style={{
+          backgroundColor: isDark ? '#1e293b' : '#ffffff',
+          position: 'sticky',
+          top: 0,
+          zIndex: 50,
+          boxShadow: '0 2px 10px rgba(0,0,0,0.05)',
+          transition: 'background-color 0.3s ease',
+        }}
+      >
+        <div
+          style={{
+            maxWidth: '1200px',
+            margin: '0 auto',
+            padding: '14px 20px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              cursor: 'pointer',
+            }}
+            onClick={() => {
+              setCurrentView('home');
+            }}
+          >
+            <div
+              style={{
+                width: '44px',
+                height: '44px',
+                borderRadius: '12px',
+                background: 'linear-gradient(135deg, #16a34a, #15803d)',
+                color: 'white',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontWeight: 'bold',
+                fontSize: '22px',
+                boxShadow: '0 4px 10px rgba(22, 163, 74, 0.3)',
+              }}
+            >
               চ
             </div>
             <div>
-              <h1 style={{ fontSize: '18px', fontWeight: '800', color: '#14532d', margin: 0, lineHeight: 1.2 }}>চিলমারী প্রি ক্যাডেট মাদ্রাসা</h1>
-              <p style={{ fontSize: '11px', color: '#64748b', margin: 0, fontStyle: 'italic' }}>দ্বীন ও আধুনিক শিক্ষার অপূর্ব মেলবন্ধন</p>
+              <h1
+                style={{
+                  fontSize: '18px',
+                  fontWeight: '800',
+                  color: isDark ? '#f1f5f9' : '#14532d',
+                  margin: 0,
+                  lineHeight: 1.2,
+                }}
+              >
+                চিলমারী প্রি ক্যাডেট মাদ্রাসা
+              </h1>
+              <p
+                style={{
+                  fontSize: '11px',
+                  color: isDark ? '#94a3b8' : '#64748b',
+                  margin: 0,
+                  fontStyle: 'italic',
+                }}
+              >
+                দ্বীন ও আধুনিক শিক্ষার অপূর্ব মেলবন্ধন
+              </p>
             </div>
           </div>
-          <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} style={{ background: '#f1f5f9', border: 'none', padding: '10px 14px', borderRadius: '10px', fontSize: '22px', cursor: 'pointer', color: '#1e293b' }}>
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            style={{
+              background: isDark ? '#334155' : '#f1f5f9',
+              border: 'none',
+              padding: '10px 14px',
+              borderRadius: '10px',
+              fontSize: '22px',
+              cursor: 'pointer',
+              color: isDark ? '#f1f5f9' : '#1e293b',
+            }}
+          >
             {mobileMenuOpen ? '✕' : '☰'}
           </button>
         </div>
         {mobileMenuOpen && (
-          <div style={{ backgroundColor: '#ffffff', borderTop: '1px solid #f1f5f9', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '12px', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}>
-            <span className="nav-link" onClick={() => { setCurrentView('home'); setMobileMenuOpen(false); }}>হোম</span>
-            <span className="nav-link" onClick={() => { setCurrentView('about'); setMobileMenuOpen(false); }}>প্রধান শিক্ষকের বাণী</span>
-            <span className="nav-link" onClick={() => { setCurrentView('teachers'); setMobileMenuOpen(false); }}>শিক্ষকবৃন্দ</span>
-            <span className="nav-link" onClick={() => { setCurrentView('students'); setMobileMenuOpen(false); }}>ছাত্র-ছাত্রী</span>
-            <span className="nav-link" onClick={() => { setCurrentView('notice'); setMobileMenuOpen(false); }}>নোটিশ বোর্ড</span>
-            <span className="nav-link" onClick={() => { setCurrentView('gallery'); setMobileMenuOpen(false); }}>গ্যালারি</span>
-            <span className="nav-link" onClick={() => { setCurrentView('contact'); setMobileMenuOpen(false); }}>যোগাযোগ</span>
+          <div
+            style={{
+              backgroundColor: isDark ? '#1e293b' : '#ffffff',
+              borderTop: isDark ? '1px solid #334155' : '1px solid #f1f5f9',
+              padding: '16px 20px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '12px',
+              boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
+            }}
+          >
+            <span
+              className="nav-link"
+              onClick={() => {
+                setCurrentView('home');
+                setMobileMenuOpen(false);
+              }}
+            >
+              হোম
+            </span>
+            <span
+              className="nav-link"
+              onClick={() => {
+                setCurrentView('about');
+                setMobileMenuOpen(false);
+              }}
+            >
+              প্রধান শিক্ষকের বাণী
+            </span>
+            <span
+              className="nav-link"
+              onClick={() => {
+                setCurrentView('teachers');
+                setMobileMenuOpen(false);
+              }}
+            >
+              শিক্ষকবৃন্দ
+            </span>
+            <span
+              className="nav-link"
+              onClick={() => {
+                setCurrentView('students');
+                setMobileMenuOpen(false);
+              }}
+            >
+              ছাত্র-ছাত্রী
+            </span>
+            <span
+              className="nav-link"
+              onClick={() => {
+                setCurrentView('notice');
+                setMobileMenuOpen(false);
+              }}
+            >
+              নোটিশ বোর্ড
+            </span>
+            <span
+              className="nav-link"
+              onClick={() => {
+                setCurrentView('gallery');
+                setMobileMenuOpen(false);
+              }}
+            >
+              গ্যালারি
+            </span>
+            <span
+              className="nav-link"
+              onClick={() => {
+                setCurrentView('contact');
+                setMobileMenuOpen(false);
+              }}
+            >
+              যোগাযোগ
+            </span>
             {isAuthenticated ? (
               <>
-                <span className="nav-link" style={{ color: '#16a34a', fontWeight: 'bold' }} onClick={() => { setCurrentView('portal'); setMobileMenuOpen(false); }}>🎓 পোর্টালে যান</span>
-                <button onClick={() => { logout(); setMobileMenuOpen(false); }} style={{ background: '#dc2626', color: 'white', border: 'none', padding: '10px', borderRadius: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: 'bold' }}>লগআউট করুন</button>
+                <span
+                  className="nav-link"
+                  style={{ color: '#16a34a', fontWeight: 'bold' }}
+                  onClick={() => {
+                    setCurrentView('portal');
+                    setMobileMenuOpen(false);
+                  }}
+                >
+                  🎓 পোর্টালে যান
+                </span>
+                <button
+                  onClick={() => {
+                    logout();
+                    setMobileMenuOpen(false);
+                  }}
+                  style={{
+                    background: '#dc2626',
+                    color: 'white',
+                    border: 'none',
+                    padding: '10px',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    fontWeight: 'bold',
+                  }}
+                >
+                  লগআউট করুন
+                </button>
               </>
             ) : (
-              <button onClick={() => { setMobileMenuOpen(false); handleOpenSignIn(); }} style={{ background: 'linear-gradient(135deg, #8b5cf6, #7c3aed)', color: 'white', border: 'none', padding: '12px', borderRadius: '10px', fontSize: '15px', fontWeight: '700', cursor: 'pointer', boxShadow: '0 4px 12px rgba(139, 92, 246, 0.4)', width: '100%' }}>🎓 Student & Teacher Portal</button>
+              <button
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  handleOpenSignIn();
+                }}
+                style={{
+                  background: 'linear-gradient(135deg, #8b5cf6, #7c3aed)',
+                  color: 'white',
+                  border: 'none',
+                  padding: '12px',
+                  borderRadius: '10px',
+                  fontSize: '15px',
+                  fontWeight: '700',
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 12px rgba(139, 92, 246, 0.4)',
+                  width: '100%',
+                }}
+              >
+                🎓 Student & Teacher Portal
+              </button>
             )}
-            <button onClick={() => { setMobileMenuOpen(false); setIsAdmissionModalOpen(true); }} className="btn-primary" style={{ width: '100%', textAlign: 'center', marginTop: '4px' }}>অনলাইন ভর্তি</button>
+            <button
+              onClick={() => {
+                setMobileMenuOpen(false);
+                setIsAdmissionModalOpen(true);
+              }}
+              className="btn-primary"
+              style={{ width: '100%', textAlign: 'center', marginTop: '4px' }}
+            >
+              অনলাইন ভর্তি
+            </button>
           </div>
         )}
       </nav>
@@ -374,58 +769,285 @@ function MainApp() {
 
       {currentView === 'home' && !(currentView === 'portal' && isAuthenticated) && (
         <>
-          <header id="home" style={{ background: 'linear-gradient(135deg, #064e3b 0%, #14532d 50%, #166534 100%)', color: 'white', padding: '50px 20px 70px 20px', textAlign: 'center', position: 'relative' }}>
+          <header
+            id="home"
+            style={{
+              background:
+                'linear-gradient(135deg, #064e3b 0%, #14532d 50%, #166534 100%)',
+              color: 'white',
+              padding: '50px 20px 70px 20px',
+              textAlign: 'center',
+              position: 'relative',
+            }}
+          >
             <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-              <span className="badge" style={{ backgroundColor: 'rgba(255,255,255,0.2)', color: '#ffffff', marginBottom: '16px' }}>🎓 নতুন সেশনে ভর্তি চলছে</span>
-              <h2 style={{ fontSize: '2.1rem', fontWeight: '800', margin: '16px 0', lineHeight: '1.3' }}>{siteData.homepage_header_title}</h2>
-              <p style={{ fontSize: '15px', color: '#ecfdf5', lineHeight: '1.7', marginBottom: '28px' }}>{siteData.homepage_header_subtitle}</p>
-              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
-                <button onClick={() => { resetForm(); setIsAdmissionModalOpen(true); }} className="btn-primary" style={{ backgroundColor: '#ffffff', color: '#14532d', fontWeight: 'bold' }}>ভর্তি আবেদন করুন</button>
-                <a href={`tel:${siteData.contactNumber}`} className="btn-primary" style={{ backgroundColor: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)' }}>📞 সরাসরি কল দিন</a>
+              <span
+                className="badge"
+                style={{
+                  backgroundColor: 'rgba(255,255,255,0.2)',
+                  color: '#ffffff',
+                  marginBottom: '16px',
+                }}
+              >
+                🎓 নতুন সেশনে ভর্তি চলছে
+              </span>
+              <h2
+                style={{
+                  fontSize: '2.1rem',
+                  fontWeight: '800',
+                  margin: '16px 0',
+                  lineHeight: '1.3',
+                }}
+              >
+                {siteData.homepage_header_title}
+              </h2>
+              <p
+                style={{
+                  fontSize: '15px',
+                  color: '#ecfdf5',
+                  lineHeight: '1.7',
+                  marginBottom: '28px',
+                }}
+              >
+                {siteData.homepage_header_subtitle}
+              </p>
+              <div
+                style={{
+                  display: 'flex',
+                  gap: '12px',
+                  justifyContent: 'center',
+                  flexWrap: 'wrap',
+                }}
+              >
+                <button
+                  onClick={() => {
+                    resetForm();
+                    setIsAdmissionModalOpen(true);
+                  }}
+                  className="btn-primary"
+                  style={{
+                    backgroundColor: '#ffffff',
+                    color: '#14532d',
+                    fontWeight: 'bold',
+                  }}
+                >
+                  ভর্তি আবেদন করুন
+                </button>
+                <a
+                  href={`tel:${siteData.contactNumber}`}
+                  className="btn-primary"
+                  style={{
+                    backgroundColor: 'rgba(255,255,255,0.15)',
+                    border: '1px solid rgba(255,255,255,0.3)',
+                  }}
+                >
+                  📞 সরাসরি কল দিন
+                </a>
               </div>
             </div>
           </header>
 
-          <main style={{ maxWidth: '1200px', margin: '-30px auto 40px auto', padding: '0 16px', position: 'relative', zIndex: 10 }}>
+          <main
+            style={{
+              maxWidth: '1200px',
+              margin: '-30px auto 40px auto',
+              padding: '0 16px',
+              position: 'relative',
+              zIndex: 10,
+            }}
+          >
             <SuccessStats />
 
             <section id="about" style={{ marginBottom: '32px' }}>
-              <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '20px', alignItems: 'center' }}>
+              <div
+                className="card"
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '20px',
+                  alignItems: 'center',
+                }}
+              >
                 <div style={{ textAlign: 'center', flexShrink: 0 }}>
-                  <img src="https://i.postimg.cc/xd8py0DW/1786523361131.jpg" alt={siteData.headmasterName} style={{ width: '130px', height: '130px', borderRadius: '50%', objectFit: 'cover', border: '4px solid #16a34a', boxShadow: '0 6px 16px rgba(0,0,0,0.15)' }} />
-                  <h3 style={{ margin: '12px 0 2px 0', fontSize: '20px', color: '#0f172a', fontWeight: '700' }}>{siteData.headmasterName}</h3>
+                  <img
+                    src="https://i.postimg.cc/xd8py0DW/1786523361131.jpg"
+                    alt={siteData.headmasterName}
+                    style={{
+                      width: '130px',
+                      height: '130px',
+                      borderRadius: '50%',
+                      objectFit: 'cover',
+                      border: '4px solid #16a34a',
+                      boxShadow: '0 6px 16px rgba(0,0,0,0.15)',
+                    }}
+                  />
+                  <h3
+                    style={{
+                      margin: '12px 0 2px 0',
+                      fontSize: '20px',
+                      color: isDark ? '#f1f5f9' : '#0f172a',
+                      fontWeight: '700',
+                    }}
+                  >
+                    {siteData.headmasterName}
+                  </h3>
                   <span className="badge">প্রধান শিক্ষক ও পরিচালক</span>
                 </div>
                 <div style={{ textAlign: 'left', width: '100%' }}>
-                  <h3 style={{ fontSize: '20px', color: '#166534', marginTop: 0, marginBottom: '12px', borderBottom: '2px solid #f1f5f9', paddingBottom: '8px' }}>{siteData.homepage_about_title}</h3>
-                  <p style={{ lineHeight: '1.8', color: '#334155', margin: 0, fontSize: '15px' }}>{siteData.homepage_about_message}</p>
+                  <h3
+                    style={{
+                      fontSize: '20px',
+                      color: isDark ? '#4ade80' : '#166534',
+                      marginTop: 0,
+                      marginBottom: '12px',
+                      borderBottom: isDark
+                        ? '2px solid #334155'
+                        : '2px solid #f1f5f9',
+                      paddingBottom: '8px',
+                    }}
+                  >
+                    {siteData.homepage_about_title}
+                  </h3>
+                  <p
+                    style={{
+                      lineHeight: '1.8',
+                      color: isDark ? '#cbd5e1' : '#334155',
+                      margin: 0,
+                      fontSize: '15px',
+                    }}
+                  >
+                    {siteData.homepage_about_message}
+                  </p>
                 </div>
               </div>
             </section>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px', marginBottom: '32px' }}>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+                gap: '24px',
+                marginBottom: '32px',
+              }}
+            >
               <div id="notice" className="card">
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', borderBottom: '2px solid #f1f5f9', paddingBottom: '10px' }}>
-                  <h3 style={{ margin: 0, fontSize: '18px', color: '#166534', display: 'flex', alignItems: 'center', gap: '8px' }}>{siteData.homepage_notice_title}</h3>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    marginBottom: '16px',
+                    borderBottom: isDark
+                      ? '2px solid #334155'
+                      : '2px solid #f1f5f9',
+                    paddingBottom: '10px',
+                  }}
+                >
+                  <h3
+                    style={{
+                      margin: 0,
+                      fontSize: '18px',
+                      color: isDark ? '#4ade80' : '#166534',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                    }}
+                  >
+                    {siteData.homepage_notice_title}
+                  </h3>
                 </div>
                 {noticesLoading ? (
-                  <p style={{ textAlign: 'center', color: '#94a3b8', padding: '12px 0' }}>⏳ লোড হচ্ছে...</p>
+                  <p
+                    style={{
+                      textAlign: 'center',
+                      color: '#94a3b8',
+                      padding: '12px 0',
+                    }}
+                  >
+                    ⏳ লোড হচ্ছে...
+                  </p>
                 ) : featuredNotice ? (
-                  <div style={{ padding: '12px', borderRadius: '10px', background: '#f8fafc', borderLeft: '4px solid #16a34a' }}>
-                    <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 'bold' }}>📢 গুরুত্বপূর্ণ</span>
-                    <p style={{ margin: '4px 0 0 0', fontSize: '14px', fontWeight: '600' }}>{featuredNotice.message}</p>
+                  <div
+                    style={{
+                      padding: '12px',
+                      borderRadius: '10px',
+                      background: isDark ? '#0f172a' : '#f8fafc',
+                      borderLeft: '4px solid #16a34a',
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontSize: '11px',
+                        color: '#64748b',
+                        fontWeight: 'bold',
+                      }}
+                    >
+                      📢 গুরুত্বপূর্ণ
+                    </span>
+                    <p
+                      style={{
+                        margin: '4px 0 0 0',
+                        fontSize: '14px',
+                        fontWeight: '600',
+                      }}
+                    >
+                      {featuredNotice.message}
+                    </p>
                   </div>
                 ) : (
-                  <div style={{ padding: '20px', textAlign: 'center', color: '#94a3b8', fontSize: '14px', background: '#f8fafc', borderRadius: '10px', border: '1px dashed #cbd5e1' }}>{siteData.homepage_notice_empty}</div>
+                  <div
+                    style={{
+                      padding: '20px',
+                      textAlign: 'center',
+                      color: '#94a3b8',
+                      fontSize: '14px',
+                      background: isDark ? '#0f172a' : '#f8fafc',
+                      borderRadius: '10px',
+                      border: isDark
+                        ? '1px dashed #475569'
+                        : '1px dashed #cbd5e1',
+                    }}
+                  >
+                    {siteData.homepage_notice_empty}
+                  </div>
                 )}
               </div>
 
               <div className="card">
-                <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', color: '#166534', borderBottom: '2px solid #f1f5f9', paddingBottom: '10px' }}>{siteData.homepage_features_title}</h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <h3
+                  style={{
+                    margin: '0 0 16px 0',
+                    fontSize: '18px',
+                    color: isDark ? '#4ade80' : '#166534',
+                    borderBottom: isDark
+                      ? '2px solid #334155'
+                      : '2px solid #f1f5f9',
+                    paddingBottom: '10px',
+                  }}
+                >
+                  {siteData.homepage_features_title}
+                </h3>
+                <div
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '10px',
+                  }}
+                >
                   {featuresList.map((item, idx) => (
-                    <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '14px', color: '#334155' }}>
-                      <span style={{ color: '#16a34a', fontWeight: 'bold' }}>✓</span>
+                    <div
+                      key={idx}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        fontSize: '14px',
+                        color: isDark ? '#cbd5e1' : '#334155',
+                      }}
+                    >
+                      <span style={{ color: '#16a34a', fontWeight: 'bold' }}>
+                        ✓
+                      </span>
                       <span dangerouslySetInnerHTML={{ __html: item }} />
                     </div>
                   ))}
@@ -433,48 +1055,152 @@ function MainApp() {
               </div>
             </div>
 
-            <section id="admission" className="card" style={{ maxWidth: '600px', margin: '0 auto', textAlign: 'center', padding: '35px 24px' }}>
-              <span className="badge">সহজ নিয়ম</span>
-              <h3 style={{ fontSize: '22px', color: '#166534', margin: '10px 0 6px 0' }}>{siteData.homepage_admission_title}</h3>
-              <p style={{ color: '#64748b', fontSize: '14px', margin: '0 0 20px 0' }}>{siteData.homepage_admission_subtitle}</p>
-              <button onClick={() => { resetForm(); setIsAdmissionModalOpen(true); }} className="btn-primary" style={{ fontSize: '16px', padding: '14px 28px', width: '100%', maxWidth: '300px', justifyContent: 'center' }}>{siteData.homepage_admission_btn_text}</button>
+            <section
+              id="admission"
+              className="card"
+              style={{
+                maxWidth: '600px',
+                margin: '0 auto',
+                textAlign: 'center',
+                padding: '35px 24px',
+              }}
+            >
+              <span className="badge">সহজ নিয়ম</span>
+              <h3
+                style={{
+                  fontSize: '22px',
+                  color: isDark ? '#4ade80' : '#166534',
+                  margin: '10px 0 6px 0',
+                }}
+              >
+                {siteData.homepage_admission_title}
+              </h3>
+              <p
+                style={{
+                  color: isDark ? '#94a3b8' : '#64748b',
+                  fontSize: '14px',
+                  margin: '0 0 20px 0',
+                }}
+              >
+                {siteData.homepage_admission_subtitle}
+              </p>
+              <button
+                onClick={() => {
+                  resetForm();
+                  setIsAdmissionModalOpen(true);
+                }}
+                className="btn-primary"
+                style={{
+                  fontSize: '16px',
+                  padding: '14px 28px',
+                  width: '100%',
+                  maxWidth: '300px',
+                  justifyContent: 'center',
+                }}
+              >
+                {siteData.homepage_admission_btn_text}
+              </button>
             </section>
           </main>
         </>
       )}
 
       {currentView === 'about' && (
-        <div style={{ maxWidth: '800px', margin: '40px auto', padding: '0 16px' }}>
+        <div
+          style={{ maxWidth: '800px', margin: '40px auto', padding: '0 16px' }}
+        >
           <div className="card">
-            <h2 style={{ color: '#14532d', borderBottom: '2px solid #f1f5f9', paddingBottom: '10px', marginTop: 0 }}>প্রধান শিক্ষকের বাণী</h2>
+            <h2
+              style={{
+                color: isDark ? '#4ade80' : '#14532d',
+                borderBottom: isDark
+                  ? '2px solid #334155'
+                  : '2px solid #f1f5f9',
+                paddingBottom: '10px',
+                marginTop: 0,
+              }}
+            >
+              প্রধান শিক্ষকের বাণী
+            </h2>
             <div style={{ textAlign: 'center', margin: '20px 0' }}>
-              <img src="https://i.postimg.cc/xd8py0DW/1786523361131.jpg" alt={siteData.headmasterName} style={{ width: '140px', height: '140px', borderRadius: '50%', objectFit: 'cover', border: '4px solid #16a34a' }} />
-              <h3 style={{ margin: '10px 0 4px 0' }}>{siteData.headmasterName}</h3>
+              <img
+                src="https://i.postimg.cc/xd8py0DW/1786523361131.jpg"
+                alt={siteData.headmasterName}
+                style={{
+                  width: '140px',
+                  height: '140px',
+                  borderRadius: '50%',
+                  objectFit: 'cover',
+                  border: '4px solid #16a34a',
+                }}
+              />
+              <h3 style={{ margin: '10px 0 4px 0' }}>
+                {siteData.headmasterName}
+              </h3>
               <span className="badge">প্রধান শিক্ষক ও পরিচালক</span>
             </div>
-            <p style={{ lineHeight: '1.8', color: '#334155', fontSize: '15px' }}>{siteData.homepage_about_message}</p>
+            <p
+              style={{
+                lineHeight: '1.8',
+                color: isDark ? '#cbd5e1' : '#334155',
+                fontSize: '15px',
+              }}
+            >
+              {siteData.homepage_about_message}
+            </p>
             <div style={{ marginTop: '20px', textAlign: 'center' }}>
-              <button onClick={() => setCurrentView('home')} className="btn-primary" style={{ backgroundColor: '#64748b' }}>হোম পেজে ফিরে যান</button>
+              <button
+                onClick={() => setCurrentView('home')}
+                className="btn-primary"
+                style={{ backgroundColor: '#64748b' }}
+              >
+                হোম পেজে ফিরে যান
+              </button>
             </div>
           </div>
         </div>
       )}
 
       {currentView === 'teachers' && (
-        <div style={{ maxWidth: '1200px', margin: '40px auto', padding: '0 16px' }}>
+        <div
+          style={{ maxWidth: '1200px', margin: '40px auto', padding: '0 16px' }}
+        >
           <div style={{ textAlign: 'center', marginBottom: '30px' }}>
             <span className="badge">সম্মানিত শিক্ষক মণ্ডলী</span>
-            <h2 style={{ color: '#14532d', margin: '10px 0 6px 0' }}>মাদ্রাসার শিক্ষক-শিক্ষিকাবৃন্দ</h2>
+            <h2
+              style={{
+                color: isDark ? '#f1f5f9' : '#14532d',
+                margin: '10px 0 6px 0',
+              }}
+            >
+              মাদ্রাসার শিক্ষক-শিক্ষিকাবৃন্দ
+            </h2>
           </div>
           {teachersLoading ? (
             <p style={{ textAlign: 'center' }}>⏳ লোড হচ্ছে...</p>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '24px', justifyItems: 'center' }}>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
+                gap: '24px',
+                justifyItems: 'center',
+              }}
+            >
               {teachers.map((teacher, index) => (
                 <div key={index} className="teacher-card">
-                  <img src={teacher.photo_url || 'https://i.postimg.cc/gjktXPpH/1786523361131.jpg'} alt={teacher.name} className="teacher-photo" />
+                  <img
+                    src={
+                      teacher.photo_url ||
+                      'https://i.postimg.cc/gjktXPpH/1786523361131.jpg'
+                    }
+                    alt={teacher.name}
+                    className="teacher-photo"
+                  />
                   <h3 className="teacher-name">{teacher.name}</h3>
-                  <div className="teacher-designation">{teacher.designation || 'শিক্ষক'}</div>
+                  <div className="teacher-designation">
+                    {teacher.designation || 'শিক্ষক'}
+                  </div>
                   <div className="teacher-details">
                     <div>📞 {teacher.phone}</div>
                     <div>🎓 {teacher.edu || '—'}</div>
@@ -485,42 +1211,114 @@ function MainApp() {
             </div>
           )}
           <div style={{ marginTop: '30px', textAlign: 'center' }}>
-            <button onClick={() => setCurrentView('home')} className="btn-primary" style={{ backgroundColor: '#64748b' }}>হোম পেজে ফিরে যান</button>
+            <button
+              onClick={() => setCurrentView('home')}
+              className="btn-primary"
+              style={{ backgroundColor: '#64748b' }}
+            >
+              হোম পেজে ফিরে যান
+            </button>
           </div>
         </div>
       )}
 
       {currentView === 'students' && (
-        <div style={{ maxWidth: '1100px', margin: '40px auto', padding: '0 16px' }}>
+        <div
+          style={{ maxWidth: '1100px', margin: '40px auto', padding: '0 16px' }}
+        >
           <div style={{ textAlign: 'center', marginBottom: '30px' }}>
             <span className="badge">মেধাবী মুখসমূহ</span>
-            <h2 style={{ color: '#14532d', margin: '10px 0 10px 0' }}>ছাত্র-ছাত্রী ও ক্লাসের শীর্ষ স্থানাধিকারীগণ</h2>
+            <h2
+              style={{
+                color: isDark ? '#f1f5f9' : '#14532d',
+                margin: '10px 0 10px 0',
+              }}
+            >
+              ছাত্র-ছাত্রী ও ক্লাসের শীর্ষ স্থানাধিকারীগণ
+            </h2>
           </div>
           <StudentList />
           <div style={{ marginTop: '30px', textAlign: 'center' }}>
-            <button onClick={() => setCurrentView('home')} className="btn-primary" style={{ backgroundColor: '#64748b' }}>হোম পেজে ফিরে যান</button>
+            <button
+              onClick={() => setCurrentView('home')}
+              className="btn-primary"
+              style={{ backgroundColor: '#64748b' }}
+            >
+              হোম পেজে ফিরে যান
+            </button>
           </div>
         </div>
       )}
 
       {currentView === 'notice' && (
-        <div style={{ maxWidth: '800px', margin: '40px auto', padding: '0 16px' }}>
+        <div
+          style={{ maxWidth: '800px', margin: '40px auto', padding: '0 16px' }}
+        >
           <div className="card">
-            <h2 style={{ color: '#14532d', borderBottom: '2px solid #f1f5f9', paddingBottom: '10px', marginTop: 0 }}>📌 নোটিশ বোর্ড</h2>
+            <h2
+              style={{
+                color: isDark ? '#4ade80' : '#14532d',
+                borderBottom: isDark
+                  ? '2px solid #334155'
+                  : '2px solid #f1f5f9',
+                paddingBottom: '10px',
+                marginTop: 0,
+              }}
+            >
+              📌 নোটিশ বোর্ড
+            </h2>
             <div style={{ marginTop: '16px' }}>
               {noticesLoading ? (
                 <p>⏳ লোড হচ্ছে...</p>
               ) : featuredNotice ? (
-                <div style={{ padding: '16px', borderRadius: '12px', background: '#f8fafc', borderLeft: '4px solid #16a34a' }}>
-                  <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 'bold' }}>📢 গুরুত্বপূর্ণ</span>
-                  <p style={{ margin: '6px 0 0 0', fontSize: '15px', fontWeight: '600' }}>{featuredNotice.message}</p>
+                <div
+                  style={{
+                    padding: '16px',
+                    borderRadius: '12px',
+                    background: isDark ? '#0f172a' : '#f8fafc',
+                    borderLeft: '4px solid #16a34a',
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: '12px',
+                      color: '#64748b',
+                      fontWeight: 'bold',
+                    }}
+                  >
+                    📢 গুরুত্বপূর্ণ
+                  </span>
+                  <p
+                    style={{
+                      margin: '6px 0 0 0',
+                      fontSize: '15px',
+                      fontWeight: '600',
+                    }}
+                  >
+                    {featuredNotice.message}
+                  </p>
                 </div>
               ) : (
-                <div style={{ padding: '20px', textAlign: 'center', color: '#94a3b8', fontSize: '14px' }}>{siteData.homepage_notice_empty}</div>
+                <div
+                  style={{
+                    padding: '20px',
+                    textAlign: 'center',
+                    color: '#94a3b8',
+                    fontSize: '14px',
+                  }}
+                >
+                  {siteData.homepage_notice_empty}
+                </div>
               )}
             </div>
             <div style={{ marginTop: '20px', textAlign: 'center' }}>
-              <button onClick={() => setCurrentView('home')} className="btn-primary" style={{ backgroundColor: '#64748b' }}>হোম পেজে ফিরে যান</button>
+              <button
+                onClick={() => setCurrentView('home')}
+                className="btn-primary"
+                style={{ backgroundColor: '#64748b' }}
+              >
+                হোম পেজে ফিরে যান
+              </button>
             </div>
           </div>
         </div>
@@ -530,12 +1328,35 @@ function MainApp() {
       {currentView === 'contact' && <ContactPage />}
 
       <SignInModal isOpen={isSignInModalOpen} onClose={handleCloseSignIn} />
-      {isLoginModalOpen && <PortalLogin onSwitchToRegister={handleOpenRegister} onClose={handleCloseAuth} />}
-      {isRegisterModalOpen && <PortalRegister onSwitchToLogin={handleOpenLogin} onClose={handleCloseAuth} />}
-      {isAdmissionModalOpen && <AdmissionForm isOpen={isAdmissionModalOpen} onClose={() => setIsAdmissionModalOpen(false)} />}
+      {isLoginModalOpen && (
+        <PortalLogin
+          onSwitchToRegister={handleOpenRegister}
+          onClose={handleCloseAuth}
+        />
+      )}
+      {isRegisterModalOpen && (
+        <PortalRegister
+          onSwitchToLogin={handleOpenLogin}
+          onClose={handleCloseAuth}
+        />
+      )}
+      {isAdmissionModalOpen && (
+        <AdmissionForm
+          isOpen={isAdmissionModalOpen}
+          onClose={() => setIsAdmissionModalOpen(false)}
+        />
+      )}
 
-      <a href={`https://wa.me/${whatsappNumber}?text=${encodeURIComponent('হ্যালো ফিরোজ ভাই, সাহায্য প্রয়োজন।')}`} target="_blank" rel="noopener noreferrer" className="live-chat-btn">
-        <span>💬</span><span>লাইভ চ্যাট</span>
+      <a
+        href={`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
+          'হ্যালো ফিরোজ ভাই, সাহায্য প্রয়োজন।'
+        )}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="live-chat-btn"
+      >
+        <span>💬</span>
+        <span>লাইভ চ্যাট</span>
       </a>
 
       <Footer />
