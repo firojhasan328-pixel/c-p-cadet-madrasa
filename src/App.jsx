@@ -14,6 +14,7 @@ import StudentDashboard from './components/student-dashboard/StudentDashboard';
 import TeacherDashboard from './components/portal/TeacherDashboard';
 import ResetPassword from './components/ResetPassword';
 import { useDarkMode } from './hooks/useDarkMode';
+import AIChatBot from './components/AIChatBot';
 
 // =============================================
 // মেইন App
@@ -568,9 +569,7 @@ function MainApp() {
               setCurrentView('home');
             }}
           >
-            {/* ============================================
-                ✅ হেডার লোগো — ডাইনামিক (থিম ম্যানেজার থেকে)
-                ============================================ */}
+            {/* ✅ হেডার লোগো — ডাইনামিক (থিম ম্যানেজার থেকে) */}
             <div
               style={{
                 width: '44px',
@@ -600,7 +599,6 @@ function MainApp() {
                     objectFit: 'cover',
                   }}
                   onError={(e) => {
-                    // ছবি লোড না হলে "চ" দেখাবে
                     e.target.style.display = 'none';
                     e.target.parentNode.innerHTML = 'চ';
                     e.target.parentNode.style.background =
@@ -1385,6 +1383,9 @@ function MainApp() {
         <span>💬</span>
         <span>লাইভ চ্যাট</span>
       </a>
+
+      {/* ✅ AI Chatbot */}
+      <AIChatBot />
 
       <Footer />
     </div>
