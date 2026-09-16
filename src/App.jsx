@@ -426,8 +426,6 @@ function MainApp() {
         .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(22, 163, 74, 0.35); }
         .card { background: #ffffff; border-radius: 18px; padding: 24px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01); border: 1px solid #e2e8f0; transition: background-color 0.3s ease, border-color 0.3s ease; }
         .badge { background: #dcfce7; color: #15803d; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; display: inline-block; }
-        .live-chat-btn { position: fixed; bottom: 25px; right: 25px; background-color: #25D366; color: white; border-radius: 50px; padding: 12px 20px; display: flex; align-items: center; gap: 10px; box-shadow: 0 10px 20px rgba(37, 211, 102, 0.4); text-decoration: none; font-weight: bold; font-size: 14px; z-index: 1000; transition: all 0.3s ease; }
-        .live-chat-btn:hover { transform: scale(1.05); box-shadow: 0 12px 25px rgba(37, 211, 102, 0.6); }
         .teacher-card { background: white; border-radius: 16px; padding: 20px; text-align: center; box-shadow: 0 4px 12px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; transition: all 0.3s ease; }
         .teacher-card:hover { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(0,0,0,0.1); }
         .teacher-photo { width: 120px; height: 120px; border-radius: 12px; object-fit: cover; border: 3px solid #16a34a; margin: 0 auto 12px auto; display: block; }
@@ -1372,19 +1370,7 @@ function MainApp() {
         />
       )}
 
-      <a
-        href={`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
-          'হ্যালো ফিরোজ ভাই, সাহায্য প্রয়োজন।'
-        )}`}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="live-chat-btn"
-      >
-        <span>💬</span>
-        <span>লাইভ চ্যাট</span>
-      </a>
-
-      {/* ✅ AI Chatbot */}
+      {/* ✅ AI Chatbot (এখানেই লাইভ চ্যাট বাটন আছে — আগের পুরোনো বাটন সরানো হয়েছে) */}
       <AIChatBot />
 
       <Footer />
