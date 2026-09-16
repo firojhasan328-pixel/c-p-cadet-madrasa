@@ -39,7 +39,7 @@ function MainApp() {
   const [currentView, setCurrentView] = useState('home');
   const [isResetPassword, setIsResetPassword] = useState(false);
 
-  // ✅ ডার্ক মোড স্টেট (আলাদা করে নিচ্ছি root div-এর জন্য)
+  // ✅ ডার্ক মোড স্টেট
   const isDark =
     typeof window !== 'undefined' &&
     window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -49,6 +49,7 @@ function MainApp() {
     contactNumber: '+8801521-553003',
     totalMaleStudents: '০',
     totalFemaleStudents: '০',
+    theme_logo_url: '',
     homepage_header_title:
       'সুশিক্ষা ও সুন্নাত ভিত্তিক আদর্শ জীবন গড়ার বিশ্বস্ত প্রতিষ্ঠান',
     homepage_header_subtitle:
@@ -567,12 +568,17 @@ function MainApp() {
               setCurrentView('home');
             }}
           >
+            {/* ============================================
+                ✅ হেডার লোগো — ডাইনামিক (থিম ম্যানেজার থেকে)
+                ============================================ */}
             <div
               style={{
                 width: '44px',
                 height: '44px',
                 borderRadius: '12px',
-                background: 'linear-gradient(135deg, #16a34a, #15803d)',
+                background: siteData.theme_logo_url
+                  ? 'transparent'
+                  : 'linear-gradient(135deg, #16a34a, #15803d)',
                 color: 'white',
                 display: 'flex',
                 alignItems: 'center',
@@ -580,9 +586,30 @@ function MainApp() {
                 fontWeight: 'bold',
                 fontSize: '22px',
                 boxShadow: '0 4px 10px rgba(22, 163, 74, 0.3)',
+                overflow: 'hidden',
+                flexShrink: 0,
               }}
             >
-              চ
+              {siteData.theme_logo_url ? (
+                <img
+                  src={siteData.theme_logo_url}
+                  alt="Logo"
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                  }}
+                  onError={(e) => {
+                    // ছবি লোড না হলে "চ" দেখাবে
+                    e.target.style.display = 'none';
+                    e.target.parentNode.innerHTML = 'চ';
+                    e.target.parentNode.style.background =
+                      'linear-gradient(135deg, #16a34a, #15803d)';
+                  }}
+                />
+              ) : (
+                'চ'
+              )}
             </div>
             <div>
               <h1
