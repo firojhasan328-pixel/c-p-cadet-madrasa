@@ -16,9 +16,6 @@ export default function AIChatBot() {
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
 
-  // ============================================
-  // ডার্ক মোড ডিটেকশন
-  // ============================================
   const [isDark, setIsDark] = useState(false);
 
   useEffect(() => {
@@ -33,9 +30,6 @@ export default function AIChatBot() {
     return () => mediaQuery.removeEventListener('change', handleChange);
   }, []);
 
-  // ============================================
-  // গ্রিটিং মেসেজ
-  // ============================================
   useEffect(() => {
     if (isOpen && messages.length === 0) {
       setMessages([
@@ -50,21 +44,14 @@ export default function AIChatBot() {
     }
   }, [isOpen, messages.length]);
 
-  // ============================================
-  // অটো scroll to bottom
-  // ============================================
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping]);
 
-  // ============================================
-  // মেসেজ পাঠানো
-  // ============================================
   const handleSend = async (messageText) => {
     const text = (messageText || inputValue).trim();
     if (!text || isTyping) return;
 
-    // ইউজারের মেসেজ যোগ
     const userMessage = {
       role: 'user',
       content: text,
@@ -76,18 +63,15 @@ export default function AIChatBot() {
     setIsTyping(true);
     setShowQuickQuestions(false);
 
-    // Conversation history তৈরি
     const history = messages.map((m) => ({
       role: m.role,
       content: m.content,
     }));
 
-    // AI-তে পাঠানো
     const result = await sendChatMessage(text, history);
 
     setIsTyping(false);
 
-    // AI-এর রেসপন্স
     const assistantMessage = {
       role: 'assistant',
       content: result.reply,
@@ -100,9 +84,6 @@ export default function AIChatBot() {
     setMessages((prev) => [...prev, assistantMessage]);
   };
 
-  // ============================================
-  // Enter চাপলে পাঠানো
-  // ============================================
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -110,9 +91,6 @@ export default function AIChatBot() {
     }
   };
 
-  // ============================================
-  // WhatsApp-এ পাঠানো
-  // ============================================
   const handleWhatsAppTransfer = (msg) => {
     const url = buildWhatsAppUrl(
       msg.whatsappNumber,
@@ -122,9 +100,6 @@ export default function AIChatBot() {
     window.open(url, '_blank');
   };
 
-  // ============================================
-  // দ্রুত প্রশ্নসমূহ
-  // ============================================
   const quickQuestions = [
     { emoji: '🎓', text: 'ভর্তি সম্পর্কে জানতে চাই' },
     { emoji: '💰', text: 'মাসিক ফি কত?' },
@@ -134,9 +109,6 @@ export default function AIChatBot() {
     { emoji: '🏫', text: 'মাদ্রাসা কোথায়?' },
   ];
 
-  // ============================================
-  // ডার্ক মোড অনুযায়ী রঙ
-  // ============================================
   const colors = {
     bg: isDark ? '#0f172a' : '#ffffff',
     headerBg: isDark ? '#1e293b' : '#16a34a',
@@ -156,7 +128,7 @@ export default function AIChatBot() {
   return (
     <>
       {/* ============================================
-          ফ্লোটিং চ্যাট বাটন
+          ফ্লোটিং লাইভ চ্যাট বাটন (আগের ডিজাইনের মতো)
           ============================================ */}
       <button
         onClick={() => setIsOpen(!isOpen)}
@@ -164,11 +136,14 @@ export default function AIChatBot() {
           ...styles.floatingBtn,
           background: isOpen
             ? 'linear-gradient(135deg, #dc2626, #b91c1c)'
-            : 'linear-gradient(135deg, #16a34a, #15803d)',
+            : 'linear-gradient(135deg, #25D366, #128C7E)',
         }}
-        aria-label="AI Chat"
+        aria-label="Live Chat"
       >
-        {isOpen ? '✕' : '💬'}
+        <span style={styles.floatingBtnIcon}>{isOpen ? '✕' : '💬'}</span>
+        <span style={styles.floatingBtnText}>
+          {isOpen ? 'বন্ধ করুন' : 'লাইভ চ্যাট'}
+        </span>
         {!isOpen && hasUnread && <span style={styles.unreadDot}></span>}
       </button>
 
@@ -240,7 +215,6 @@ export default function AIChatBot() {
                 >
                   <div style={styles.bubbleText}>{msg.content}</div>
 
-                  {/* WhatsApp ট্রান্সফার বাটন */}
                   {msg.shouldTransfer && (
                     <button
                       onClick={() => handleWhatsAppTransfer(msg)}
@@ -253,7 +227,6 @@ export default function AIChatBot() {
               </div>
             ))}
 
-            {/* টাইপিং ইন্ডিকেটর */}
             {isTyping && (
               <div style={styles.messageRow}>
                 <div
@@ -274,7 +247,6 @@ export default function AIChatBot() {
               </div>
             )}
 
-            {/* দ্রুত প্রশ্ন */}
             {showQuickQuestions && messages.length <= 1 && !isTyping && (
               <div style={styles.quickQuestions}>
                 <div
@@ -343,7 +315,6 @@ export default function AIChatBot() {
         </div>
       )}
 
-      {/* অ্যানিমেশন */}
       <style>{`
         @keyframes aiChatFadeIn {
           from { opacity: 0; transform: translateY(20px) scale(0.95); }
@@ -362,34 +333,39 @@ export default function AIChatBot() {
   );
 }
 
-// ============================================
-// স্টাইল
-// ============================================
 const styles = {
   floatingBtn: {
     position: 'fixed',
-    bottom: '90px',
+    bottom: '25px',
     right: '25px',
-    width: '60px',
-    height: '60px',
-    borderRadius: '50%',
-    border: 'none',
-    color: 'white',
-    fontSize: '26px',
-    cursor: 'pointer',
-    boxShadow: '0 10px 30px rgba(22, 163, 74, 0.5)',
-    zIndex: 999,
     display: 'flex',
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: '10px',
+    padding: '12px 20px',
+    borderRadius: '50px',
+    border: 'none',
+    color: 'white',
+    fontSize: '14px',
+    fontWeight: 'bold',
+    cursor: 'pointer',
+    boxShadow: '0 10px 20px rgba(37, 211, 102, 0.4)',
+    zIndex: 1000,
     transition: 'all 0.3s ease',
+    fontFamily: "'Hind Siliguri', sans-serif",
+  },
+  floatingBtnIcon: {
+    fontSize: '20px',
+  },
+  floatingBtnText: {
+    fontSize: '14px',
+    fontWeight: 'bold',
   },
   unreadDot: {
     position: 'absolute',
-    top: '8px',
-    right: '8px',
-    width: '12px',
-    height: '12px',
+    top: '-2px',
+    right: '-2px',
+    width: '14px',
+    height: '14px',
     borderRadius: '50%',
     background: '#dc2626',
     animation: 'aiChatPulse 1.5s infinite',
@@ -397,16 +373,16 @@ const styles = {
   },
   chatWindow: {
     position: 'fixed',
-    bottom: '160px',
+    bottom: '90px',
     right: '25px',
     width: '360px',
     maxWidth: 'calc(100vw - 30px)',
     height: '540px',
-    maxHeight: 'calc(100vh - 200px)',
+    maxHeight: 'calc(100vh - 120px)',
     borderRadius: '20px',
     display: 'flex',
     flexDirection: 'column',
-    zIndex: 1000,
+    zIndex: 1001,
     overflow: 'hidden',
     animation: 'aiChatFadeIn 0.3s ease',
   },
