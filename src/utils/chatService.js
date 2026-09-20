@@ -1,14 +1,14 @@
 // ============================================
 // 🤖 AI Chat Service — Direct Groq API
+// API key Vercel environment variable থেকে লোড হয়
 // ============================================
 
 import { supabase } from '../supabaseClient';
 
 // ============================================
-// ⚠️ Groq API Key
+// ✅ API Key — Vercel Environment Variable থেকে
 // ============================================
-const GROQ_API_KEY =
-  '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';
+const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY || '';
 
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
 
@@ -140,19 +140,23 @@ export async function sendChatMessage(
   conversationHistory = []
 ) {
   try {
-    if (
-      !GROQ_API_KEY ||
-      GROQ_API_KEY.includes('YOUR_GROQ_API_KEY_HERE')
-    ) {
+    // ✅ API key চেক
+    if (!GROQ_API_KEY) {
+      console.error('❌ VITE_GROQ_API_KEY সেট করা নেই');
       return {
         success: false,
         reply:
-          'সিস্টেমে সমস্যা আছে (API key সেট করা হয়নি)। অ্যাডমিনের সাথে যোগাযোগ করুন।',
+          'সিস্টেমে সাময়িক সমস্যা আছে। অনুগ্রহ করে আমাদের সাথে সরাসরি যোগাযোগ করুন।',
+        shouldTransferToWhatsApp: true,
+        whatsappNumber: '8801918568313',
+        whatsappMessage:
+          'আসসালামু আলাইকুম, আমি ওয়েবসাইট থেকে চ্যাট করছি।',
       };
     }
 
     const sessionToken = getOrCreateSessionToken();
 
+    // ✅ ডাটাবেস থেকে parallel লোড
     const [faqs, teachers, settings] = await Promise.all([
       loadFAQs(),
       loadTeachers(),
@@ -167,14 +171,17 @@ export async function sendChatMessage(
     const aiModel =
       settings.ai_model || 'llama-3.3-70b-versatile';
 
+    // ✅ System prompt তৈরি
     const systemPrompt = buildSystemPrompt(faqs, teachers, settings);
 
+    // ✅ Messages array
     const messages = [
       { role: 'system', content: systemPrompt },
       ...conversationHistory.slice(-6),
       { role: 'user', content: message },
     ];
 
+    // ✅ Groq API কল
     const response = await fetch(GROQ_API_URL, {
       method: 'POST',
       headers: {
@@ -192,7 +199,7 @@ export async function sendChatMessage(
 
     if (!response.ok) {
       const errText = await response.text();
-      console.error('Groq API error:', errText);
+      console.error('❌ Groq API error:', errText);
       throw new Error('Groq API error: ' + errText);
     }
 
@@ -201,6 +208,7 @@ export async function sendChatMessage(
       data.choices?.[0]?.message?.content ||
       'দুঃখিত, আমি উত্তর দিতে পারছি না।';
 
+    // ✅ WhatsApp ট্রান্সফার ডিটেকশন
     const answerLower = aiAnswer.toLowerCase();
     const shouldTransfer =
       answerLower.includes('whatsapp') ||
@@ -209,6 +217,7 @@ export async function sendChatMessage(
       answerLower.includes('সরাসরি কথা') ||
       answerLower.includes('যোগাযোগ করুন');
 
+    // ✅ ডাটাবেসে সেভ (silent)
     try {
       let sessionId = null;
 
@@ -265,6 +274,7 @@ export async function sendChatMessage(
       console.warn('DB save warning:', dbError);
     }
 
+    // ✅ Response
     return {
       success: true,
       reply: aiAnswer,
@@ -273,7 +283,7 @@ export async function sendChatMessage(
       whatsappMessage: whatsappMessage,
     };
   } catch (error) {
-    console.error('Chat error:', error);
+    console.error('❌ Chat error:', error);
     return {
       success: false,
       reply:
