@@ -1,14 +1,16 @@
 // ============================================
 // 🤖 AI Chat Service — Direct Groq API
-// API key Vercel environment variable থেকে লোড হয়
+// API key: প্রথমে Vercel env variable, না পেলে fallback key
 // ============================================
 
 import { supabase } from '../supabaseClient';
 
 // ============================================
-// ✅ API Key — Vercel Environment Variable থেকে
+// ✅ API Key — Vercel env variable অথবা fallback key
 // ============================================
-const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY || '';
+const GROQ_API_KEY =
+  import.meta.env.VITE_GROQ_API_KEY ||
+  'gsk_RsPGqsKUtk5ExH1E3xMWGdyb3FYw8kt4AC8sZTEEgnRFd78o0ga';
 
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
 
@@ -142,7 +144,7 @@ export async function sendChatMessage(
   try {
     // ✅ API key চেক
     if (!GROQ_API_KEY) {
-      console.error('❌ VITE_GROQ_API_KEY সেট করা নেই');
+      console.error('❌ কোনো API key নেই');
       return {
         success: false,
         reply:
