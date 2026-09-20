@@ -1,16 +1,13 @@
 // ============================================
-// 🤖 AI Chat Service — Direct Groq API
-// API key: প্রথমে Vercel env variable, না পেলে fallback key
+// 🤖 AI Chat Service — Supabase Edge Function
 // ============================================
 
 import { supabase } from '../supabaseClient';
 
 // ============================================
-// ✅ API Key — Vercel env variable অথবা fallback key
+// Edge Function URL
 // ============================================
-const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY || '';
-
-const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
+const EDGE_URL = 'https://wgkcedpinnhvpotuivdqg.supabase.co/functions/v1/chat-ai';
 
 // ============================================
 // সেশন টোকেন
@@ -30,7 +27,7 @@ export function getOrCreateSessionToken() {
 }
 
 // ============================================
-// ডাটাবেস থেকে FAQ লোড
+// FAQ লোড
 // ============================================
 async function loadFAQs() {
   try {
@@ -81,143 +78,49 @@ async function loadTeachers() {
 }
 
 // ============================================
-// System Prompt তৈরি
+// মূল ফাংশন
 // ============================================
-function buildSystemPrompt(faqs, teachers, settingsMap) {
-  const faqText = faqs
-    .map(
-      (f, i) =>
-        `${i + 1}. প্রশ্ন: ${f.question}\n   উত্তর: ${f.answer}`
-    )
-    .join('\n\n');
-
-  const teacherText = teachers
-    .map(
-      (t) =>
-        `- ${t.name} (${t.designation || 'শিক্ষক'}, বিষয়: ${
-          t.subject || '—'
-        })`
-    )
-    .join('\n');
-
-  const contactPhone =
-    settingsMap.contact_phone || '+8801521-553003';
-
-  return `তুমি "চিলমারী প্রি ক্যাডেট মাদ্রাসা" ওয়েবসাইটের একজন আন্তরিক, বিনয়ী ও সহায়ক AI সহকারী।
-
-তোমার কাজ:
-- অভিভাবক ও ছাত্রদের প্রশ্নের উত্তর দেওয়া
-- ভদ্র, বিনয়ী ও শালীন ভাষায় কথা বলা
-- বাংলায় উত্তর দেওয়া (ইউজার ইংরেজিতে লিখলে ইংরেজিতেও)
-- সর্বোচ্চ ৩-৪ লাইনে সংক্ষিপ্ত উত্তর দেওয়া
-- প্রয়োজনে ইমোজি ব্যবহার করা (😊, ✅, 📞)
-
-📞 প্রতিষ্ঠানের তথ্য:
-- নাম: চিলমারী প্রি ক্যাডেট মাদ্রাসা
-- ফোন: ${contactPhone}
-- ঠিকানা: চিলমারী, কুড়িগ্রাম, বাংলাদেশ
-
-🎓 শিক্ষক মণ্ডলী (${teachers.length} জন):
-${teacherText || '(কোনো তালিকা নেই)'}
-
-📚 গুরুত্বপূর্ণ প্রশ্ন-উত্তর (FAQ):
-${faqText || '(কোনো FAQ নেই)'}
-
-⚠️ নিয়মাবলী:
-১. তুমি AI — কখনো বলবে না "আমি মানুষ"
-২. ব্যক্তিগত তথ্য, পাসওয়ার্ড, বা গোপন তথ্য দেবে না
-৩. জটিল প্রশ্ন হলে বলো: "এই বিষয়ে সঠিক তথ্য দিতে আমাদের প্রধান শিক্ষকের সাথে কথা বলা ভালো হবে। আমি আপনাকে WhatsApp-এ পাঠিয়ে দিচ্ছি।"
-৪. মিথ্যা তথ্য বানিয়ে বলবে না
-
-এখন ইউজারের প্রশ্নের উত্তর দাও।`;
-}
-
-// ============================================
-// মূল ফাংশন — AI-তে মেসেজ পাঠানো
-// ============================================
-export async function sendChatMessage(
-  message,
-  conversationHistory = []
-) {
+export async function sendChatMessage(message, conversationHistory = []) {
   try {
-    // ✅ API key চেক
-    if (!GROQ_API_KEY) {
-      console.error('❌ কোনো API key নেই');
-      return {
-        success: false,
-        reply:
-          'সিস্টেমে সাময়িক সমস্যা আছে। অনুগ্রহ করে আমাদের সাথে সরাসরি যোগাযোগ করুন।',
-        shouldTransferToWhatsApp: true,
-        whatsappNumber: '8801918568313',
-        whatsappMessage:
-          'আসসালামু আলাইকুম, আমি ওয়েবসাইট থেকে চ্যাট করছি।',
-      };
-    }
-
     const sessionToken = getOrCreateSessionToken();
 
-    // ✅ ডাটাবেস থেকে parallel লোড
+    // ডাটাবেস থেকে তথ্য
     const [faqs, teachers, settings] = await Promise.all([
       loadFAQs(),
       loadTeachers(),
       loadSettings(),
     ]);
 
-    const whatsappNumber =
-      settings.whatsapp_number || '8801918568313';
-    const whatsappMessage =
-      settings.whatsapp_default_message ||
-      'আসসালামু আলাইকুম, আমি ওয়েবসাইট থেকে চ্যাট করছি।';
-    const aiModel =
-      settings.ai_model || 'llama-3.3-70b-versatile';
-
-    // ✅ System prompt তৈরি
-    const systemPrompt = buildSystemPrompt(faqs, teachers, settings);
-
-    // ✅ Messages array
-    const messages = [
-      { role: 'system', content: systemPrompt },
-      ...conversationHistory.slice(-6),
-      { role: 'user', content: message },
-    ];
-
-    // ✅ Groq API কল
-    const response = await fetch(GROQ_API_URL, {
+    // Edge Function কল
+    const response = await fetch(EDGE_URL, {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${GROQ_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: aiModel,
-        messages: messages,
-        temperature: 0.7,
-        max_tokens: 500,
-        top_p: 0.9,
+        message: message,
+        faqs: faqs,
+        teachers: teachers,
+        settings: settings,
       }),
     });
 
     if (!response.ok) {
       const errText = await response.text();
-      console.error('❌ Groq API error:', errText);
-      throw new Error('Groq API error: ' + errText);
+      console.error('Edge error:', errText);
+      throw new Error('Edge function error');
     }
 
     const data = await response.json();
-    const aiAnswer =
-      data.choices?.[0]?.message?.content ||
-      'দুঃখিত, আমি উত্তর দিতে পারছি না।';
 
-    // ✅ WhatsApp ট্রান্সফার ডিটেকশন
-    const answerLower = aiAnswer.toLowerCase();
-    const shouldTransfer =
-      answerLower.includes('whatsapp') ||
-      answerLower.includes('হোয়াটসঅ্যাপ') ||
-      answerLower.includes('প্রধান শিক্ষকের সাথে') ||
-      answerLower.includes('সরাসরি কথা') ||
-      answerLower.includes('যোগাযোগ করুন');
+    if (!data.success) {
+      throw new Error(data.error || 'Unknown error');
+    }
 
-    // ✅ ডাটাবেসে সেভ (silent)
+    const aiAnswer = data.reply;
+    const shouldTransfer = data.shouldTransferToWhatsApp || false;
+    const whatsappNumber = data.whatsappNumber || '8801918568313';
+    const whatsappMessage = data.whatsappMessage || 'আসসালামু আলাইকুম, আমি ওয়েবসাইট থেকে চ্যাট করছি।';
+
+    // ডাটাবেসে সেভ (silent)
     try {
       let sessionId = null;
 
@@ -232,12 +135,10 @@ export async function sendChatMessage(
         await supabase
           .from('ai_chat_sessions')
           .update({
-            message_count:
-              (existingSession.message_count || 0) + 2,
+            message_count: (existingSession.message_count || 0) + 2,
             updated_at: new Date().toISOString(),
             is_transferred_to_whatsapp:
-              shouldTransfer ||
-              existingSession.is_transferred_to_whatsapp,
+              shouldTransfer || existingSession.is_transferred_to_whatsapp,
           })
           .eq('id', sessionId);
       } else {
@@ -257,11 +158,7 @@ export async function sendChatMessage(
 
       if (sessionId) {
         await supabase.from('ai_chat_messages').insert([
-          {
-            session_id: sessionId,
-            role: 'user',
-            content: message,
-          },
+          { session_id: sessionId, role: 'user', content: message },
           {
             session_id: sessionId,
             role: 'assistant',
@@ -274,7 +171,6 @@ export async function sendChatMessage(
       console.warn('DB save warning:', dbError);
     }
 
-    // ✅ Response
     return {
       success: true,
       reply: aiAnswer,
@@ -283,41 +179,31 @@ export async function sendChatMessage(
       whatsappMessage: whatsappMessage,
     };
   } catch (error) {
-    console.error('❌ Chat error:', error);
+    console.error('Chat error:', error);
     return {
       success: false,
       reply:
         'দুঃখিত, এই মুহূর্তে উত্তর দিতে পারছি না। অনুগ্রহ করে আমাদের সাথে সরাসরি যোগাযোগ করুন।',
       shouldTransferToWhatsApp: true,
       whatsappNumber: '8801918568313',
-      whatsappMessage:
-        'আসসালামু আলাইকুম, আমি ওয়েবসাইট থেকে চ্যাট করছি।',
+      whatsappMessage: 'আসসালামু আলাইকুম, আমি ওয়েবসাইট থেকে চ্যাট করছি।',
     };
   }
 }
 
 // ============================================
-// WhatsApp URL তৈরি
+// WhatsApp URL
 // ============================================
-export function buildWhatsAppUrl(
-  phoneNumber,
-  message,
-  conversationContext = ''
-) {
-  const cleanNumber = (phoneNumber || '8801918568313').replace(
-    /\D/g,
-    ''
-  );
+export function buildWhatsAppUrl(phoneNumber, message, conversationContext = '') {
+  const cleanNumber = (phoneNumber || '8801918568313').replace(/\D/g, '');
   const fullMessage = conversationContext
     ? `${message}\n\n--- আগের কথা ---\n${conversationContext}`
     : message;
-  return `https://wa.me/${cleanNumber}?text=${encodeURIComponent(
-    fullMessage
-  )}`;
+  return `https://wa.me/${cleanNumber}?text=${encodeURIComponent(fullMessage)}`;
 }
 
 // ============================================
-// সেশন রিসেট
+// Session reset
 // ============================================
 export function resetChatSession() {
   localStorage.removeItem('ai_chat_session_token');
