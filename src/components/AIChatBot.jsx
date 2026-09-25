@@ -2,25 +2,24 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   sendChatMessage,
   buildWhatsAppUrl,
-  getOrCreateSessionToken,
-  resetChatSession,
   loadChatHistory,
   clearChatHistory,
 } from '../utils/chatService';
+import { supabase } from '../supabaseClient';
 
 // ============================================
-// 🎨 প্রিমিয়াম নীল/বেগুনি থিম
+// 🎨 থিম
 // ============================================
 const THEME = {
-  primary: '#6366f1',      // Indigo
-  primaryDark: '#4f46e5',
-  primaryLight: '#818cf8',
-  accent: '#8b5cf6',       // Violet
-  accentDark: '#7c3aed',
   gradient: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
-  gradientHover: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
-  whatsapp: 'linear-gradient(135deg, #25D366 0%, #128C7E 100%)',
   danger: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+};
+
+// ডিফল্ট হেডার ডেটা
+const DEFAULT_HEADER = {
+  logo: 'https://i.postimg.cc/667hGYDg/Screenshot-20260727-124259.jpg',
+  title: 'চিলমারী প্রি ক্যাডেট মাদ্রাসা',
+  subtitle: 'অনলাইন • সাথে সাথে উত্তর',
 };
 
 export default function AIChatBot() {
@@ -33,28 +32,71 @@ export default function AIChatBot() {
   const [isDark, setIsDark] = useState(false);
   const [historyLoaded, setHistoryLoaded] = useState(false);
 
+  // হেডার ডাইনামিক
+  const [headerData, setHeaderData] = useState(DEFAULT_HEADER);
+
   const messagesEndRef = useRef(null);
-  const inputRef = useRef(null);
 
   // ============================================
-  // 🌙 ডার্ক মোড ডিটেকশন
+  // 🌙 ডার্ক মোড
   // ============================================
   useEffect(() => {
     if (typeof window === 'undefined') return;
-
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    setIsDark(mediaQuery.matches);
-
-    const handleChange = (e) => setIsDark(e.matches);
-    mediaQuery.addEventListener('change', handleChange);
-    return () => mediaQuery.removeEventListener('change', handleChange);
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    setIsDark(mq.matches);
+    const handler = (e) => setIsDark(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
   }, []);
 
   // ============================================
-  // 💾 আগের চ্যাট হিস্টোরি লোড
+  // 🎨 হেডার ডেটা লোড (CMS থেকে)
   // ============================================
   useEffect(() => {
-    const loadHistory = async () => {
+    const loadHeader = async () => {
+      try {
+        const { data } = await supabase
+          .from('ai_chat_settings')
+          .select('setting_key, setting_value')
+          .in('setting_key', ['chat_bot_logo_url', 'chat_bot_title', 'chat_bot_subtitle']);
+
+        if (data) {
+          const map = {};
+          data.forEach((s) => {
+            if (s.setting_value) map[s.setting_key] = s.setting_value;
+          });
+
+          setHeaderData({
+            logo: map.chat_bot_logo_url || DEFAULT_HEADER.logo,
+            title: map.chat_bot_title || DEFAULT_HEADER.title,
+            subtitle: map.chat_bot_subtitle || DEFAULT_HEADER.subtitle,
+          });
+        }
+      } catch (err) {
+        console.warn('Header load failed:', err);
+      }
+    };
+
+    loadHeader();
+
+    // রিয়েল-টাইম আপডেট
+    const channel = supabase
+      .channel('ai-header-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'ai_chat_settings' },
+        () => loadHeader()
+      )
+      .subscribe();
+
+    return () => supabase.removeChannel(channel);
+  }, []);
+
+  // ============================================
+  // 💾 হিস্টোরি লোড
+  // ============================================
+  useEffect(() => {
+    const load = async () => {
       try {
         const history = await loadChatHistory();
         if (history && history.length > 0) {
@@ -63,22 +105,20 @@ export default function AIChatBot() {
               role: m.role,
               content: m.content,
               timestamp: new Date(m.created_at),
-              fromHistory: true,
             }))
           );
           setShowQuickQuestions(false);
         }
-      } catch (err) {
-        console.warn('History load failed:', err);
+      } catch (e) {
+        console.warn('History load failed', e);
       }
       setHistoryLoaded(true);
     };
-
-    loadHistory();
+    load();
   }, []);
 
   // ============================================
-  // 🎯 চ্যাট প্রথমবার খুললে greeting দেখাও
+  // 👋 প্রথম greeting
   // ============================================
   useEffect(() => {
     if (isOpen && historyLoaded && messages.length === 0) {
@@ -95,7 +135,7 @@ export default function AIChatBot() {
   }, [isOpen, historyLoaded, messages.length]);
 
   // ============================================
-  // 📜 Auto scroll
+  // Auto scroll
   // ============================================
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -104,45 +144,38 @@ export default function AIChatBot() {
   // ============================================
   // 📤 মেসেজ পাঠাও
   // ============================================
-  const handleSend = async (messageText) => {
-    const text = (messageText || inputValue).trim();
+  const handleSend = async (customText) => {
+    const text = (customText || inputValue).trim();
     if (!text || isTyping) return;
 
-    const userMessage = {
-      role: 'user',
-      content: text,
-      timestamp: new Date(),
-    };
-
-    setMessages((prev) => [...prev, userMessage]);
+    const userMsg = { role: 'user', content: text, timestamp: new Date() };
+    setMessages((prev) => [...prev, userMsg]);
     setInputValue('');
     setIsTyping(true);
     setShowQuickQuestions(false);
 
     const history = messages
-      .filter((m) => !m.fromHistory)
+      .filter((m) => m.role === 'user' || m.role === 'assistant')
+      .slice(-8)
       .map((m) => ({ role: m.role, content: m.content }));
 
     const result = await sendChatMessage(text, history);
 
     setIsTyping(false);
 
-    const assistantMessage = {
-      role: 'assistant',
-      content: result.reply,
-      timestamp: new Date(),
-      shouldTransfer: result.shouldTransferToWhatsApp,
-      whatsappNumber: result.whatsappNumber,
-      whatsappMessage: result.whatsappMessage,
-      success: result.success,
-    };
-
-    setMessages((prev) => [...prev, assistantMessage]);
+    setMessages((prev) => [
+      ...prev,
+      {
+        role: 'assistant',
+        content: result.reply,
+        timestamp: new Date(),
+        shouldTransfer: result.shouldTransferToWhatsApp,
+        whatsappNumber: result.whatsappNumber,
+        whatsappMessage: result.whatsappMessage,
+      },
+    ]);
   };
 
-  // ============================================
-  // ⌨️ Enter কী হ্যান্ডেল
-  // ============================================
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -150,48 +183,27 @@ export default function AIChatBot() {
     }
   };
 
-  // ============================================
-  // 📱 WhatsApp ট্রান্সফার
-  // ============================================
-  const handleWhatsAppTransfer = (msg) => {
-    const conversationContext = messages
-      .slice(-6)
-      .map((m) => `${m.role === 'user' ? '👤' : '🤖'} ${m.content}`)
-      .join('\n');
-
-    const url = buildWhatsAppUrl(
-      msg.whatsappNumber,
-      msg.whatsappMessage,
-      conversationContext
-    );
+  const handleWhatsApp = (msg) => {
+    const url = buildWhatsAppUrl(msg.whatsappNumber, msg.whatsappMessage);
     window.open(url, '_blank');
   };
 
-  // ============================================
-  // 🗑️ চ্যাট ক্লিয়ার
-  // ============================================
-  const handleClearChat = async () => {
+  const handleClear = async () => {
     if (!confirm('সম্পূর্ণ চ্যাট ডিলিট করতে চান?')) return;
-
     await clearChatHistory();
-    resetChatSession();
     setMessages([]);
     setShowQuickQuestions(true);
-
     setTimeout(() => {
       setMessages([
         {
           role: 'assistant',
-          content: 'নতুন চ্যাট শুরু হয়েছে! 😊 কীভাবে সাহায্য করতে পারি?',
+          content: 'নতুন চ্যাট শুরু! 😊 কীভাবে সাহায্য করতে পারি?',
           timestamp: new Date(),
         },
       ]);
     }, 300);
   };
 
-  // ============================================
-  // 🎯 কুইক প্রশ্ন
-  // ============================================
   const quickQuestions = [
     { emoji: '🎓', text: 'ভর্তি সম্পর্কে জানতে চাই' },
     { emoji: '💰', text: 'মাসিক ফি কত?' },
@@ -201,15 +213,9 @@ export default function AIChatBot() {
     { emoji: '📍', text: 'মাদ্রাসা কোথায়?' },
   ];
 
-  // ============================================
-  // 🎨 কালার স্কিম (Dark/Light)
-  // ============================================
-  const colors = {
+  const c = {
     bg: isDark ? '#0f172a' : '#ffffff',
-    headerBg: THEME.gradient,
     bodyBg: isDark ? '#0f172a' : '#f8fafc',
-    userBubble: THEME.gradient,
-    userBubbleText: '#ffffff',
     aiBubble: isDark ? '#1e293b' : '#ffffff',
     aiBubbleText: isDark ? '#f1f5f9' : '#0f172a',
     inputBg: isDark ? '#1e293b' : '#ffffff',
@@ -220,12 +226,9 @@ export default function AIChatBot() {
     quickBtnBorder: isDark ? '#334155' : '#e2e8f0',
   };
 
-  // ============================================
-  // 🎨 রেন্ডার
-  // ============================================
   return (
     <>
-      {/* ফ্লোটিং চ্যাট বাটন */}
+      {/* Floating Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
         style={{
@@ -235,7 +238,6 @@ export default function AIChatBot() {
             ? '0 10px 30px rgba(239, 68, 68, 0.4)'
             : '0 10px 30px rgba(99, 102, 241, 0.4)',
         }}
-        aria-label="Live Chat"
       >
         <span style={styles.floatingBtnIcon}>{isOpen ? '✕' : '💬'}</span>
         <span style={styles.floatingBtnText}>
@@ -244,70 +246,72 @@ export default function AIChatBot() {
         {!isOpen && hasUnread && <span style={styles.unreadDot}></span>}
       </button>
 
-      {/* চ্যাট উইন্ডো */}
+      {/* Chat Window */}
       {isOpen && (
         <div
           style={{
             ...styles.chatWindow,
-            backgroundColor: colors.bg,
+            backgroundColor: c.bg,
             boxShadow: isDark
               ? '0 25px 60px rgba(0, 0, 0, 0.7)'
               : '0 25px 60px rgba(99, 102, 241, 0.25)',
           }}
         >
-          {/* হেডার */}
-          <div style={{ ...styles.header, background: colors.headerBg }}>
+          {/* ============================================
+              হেডার — ডাইনামিক (CMS থেকে লোগো, টাইটেল, সাবটাইটেল)
+              ============================================ */}
+          <div style={{ ...styles.header, background: THEME.gradient }}>
             <div style={styles.headerLeft}>
               <div style={styles.avatar}>
-                <span style={styles.avatarIcon}>🤖</span>
+                {headerData.logo ? (
+                  <img
+                    src={headerData.logo}
+                    alt="Logo"
+                    style={styles.avatarLogo}
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                      e.target.parentNode.innerHTML = '🏫';
+                    }}
+                  />
+                ) : (
+                  '🏫'
+                )}
                 <span style={styles.avatarOnline}></span>
               </div>
-              <div>
-                <div style={styles.headerTitle}>AI সহকারী</div>
+              <div style={styles.headerTexts}>
+                <div style={styles.headerTitle}>{headerData.title}</div>
                 <div style={styles.headerStatus}>
                   <span style={styles.onlineDot}></span>
-                  অনলাইন • সাথে সাথে উত্তর
+                  {headerData.subtitle}
                 </div>
               </div>
             </div>
             <div style={styles.headerActions}>
-              <button
-                onClick={handleClearChat}
-                style={styles.headerBtn}
-                title="চ্যাট ক্লিয়ার"
-              >
+              <button onClick={handleClear} style={styles.headerBtn} title="চ্যাট ক্লিয়ার">
                 🗑️
               </button>
-              <button
-                onClick={() => setIsOpen(false)}
-                style={styles.headerBtn}
-                title="বন্ধ করুন"
-              >
+              <button onClick={() => setIsOpen(false)} style={styles.headerBtn} title="বন্ধ">
                 ✕
               </button>
             </div>
           </div>
 
-          {/* মেসেজ এরিয়া */}
+          {/* Messages */}
           <div
-            style={{ ...styles.body, backgroundColor: colors.bodyBg }}
-            className="chat-scroll"
+            style={{ ...styles.body, backgroundColor: c.bodyBg }}
+            className="ai-chat-scroll"
           >
-            {messages.map((msg, idx) => (
-              <div key={idx} style={styles.messageRow}>
+            {messages.map((msg, i) => (
+              <div key={i} style={styles.messageRow}>
                 <div
                   style={{
                     ...styles.bubble,
                     ...(msg.role === 'user'
-                      ? {
-                          ...styles.userBubble,
-                          background: colors.userBubble,
-                          color: colors.userBubbleText,
-                        }
+                      ? { ...styles.userBubble, background: THEME.gradient }
                       : {
                           ...styles.aiBubble,
-                          background: colors.aiBubble,
-                          color: colors.aiBubbleText,
+                          background: c.aiBubble,
+                          color: c.aiBubbleText,
                           border: isDark
                             ? '1px solid #334155'
                             : '1px solid #e2e8f0',
@@ -318,7 +322,7 @@ export default function AIChatBot() {
 
                   {msg.shouldTransfer && (
                     <button
-                      onClick={() => handleWhatsAppTransfer(msg)}
+                      onClick={() => handleWhatsApp(msg)}
                       style={styles.whatsappBtn}
                     >
                       💬 WhatsApp-এ যোগাযোগ করুন
@@ -328,13 +332,12 @@ export default function AIChatBot() {
               </div>
             ))}
 
-            {/* টাইপিং ইন্ডিকেটর */}
             {isTyping && (
               <div style={styles.messageRow}>
                 <div
                   style={{
                     ...styles.aiBubble,
-                    background: colors.aiBubble,
+                    background: c.aiBubble,
                     border: isDark ? '1px solid #334155' : '1px solid #e2e8f0',
                   }}
                 >
@@ -347,7 +350,6 @@ export default function AIChatBot() {
               </div>
             )}
 
-            {/* কুইক প্রশ্ন */}
             {showQuickQuestions && messages.length <= 1 && !isTyping && (
               <div style={styles.quickQuestions}>
                 <div
@@ -365,9 +367,9 @@ export default function AIChatBot() {
                       onClick={() => handleSend(q.text)}
                       style={{
                         ...styles.quickBtn,
-                        background: colors.quickBtnBg,
-                        color: colors.quickBtnText,
-                        borderColor: colors.quickBtnBorder,
+                        background: c.quickBtnBg,
+                        color: c.quickBtnText,
+                        borderColor: c.quickBtnBorder,
                       }}
                     >
                       <span>{q.emoji}</span>
@@ -381,16 +383,15 @@ export default function AIChatBot() {
             <div ref={messagesEndRef} />
           </div>
 
-          {/* ইনপুট এরিয়া */}
+          {/* Input */}
           <div
             style={{
               ...styles.inputArea,
-              backgroundColor: colors.bg,
-              borderTop: `1px solid ${colors.inputBorder}`,
+              backgroundColor: c.bg,
+              borderTop: `1px solid ${c.inputBorder}`,
             }}
           >
             <input
-              ref={inputRef}
               type="text"
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
@@ -399,9 +400,9 @@ export default function AIChatBot() {
               disabled={isTyping}
               style={{
                 ...styles.input,
-                backgroundColor: colors.inputBg,
-                color: colors.inputText,
-                border: `1.5px solid ${colors.inputBorder}`,
+                backgroundColor: c.inputBg,
+                color: c.inputText,
+                border: `1.5px solid ${c.inputBorder}`,
               }}
             />
             <button
@@ -413,18 +414,16 @@ export default function AIChatBot() {
                 opacity: !inputValue.trim() || isTyping ? 0.4 : 1,
                 cursor: !inputValue.trim() || isTyping ? 'not-allowed' : 'pointer',
               }}
-              aria-label="Send"
             >
               ➤
             </button>
           </div>
 
-          {/* প্রাইভেসি নোট */}
           <div
             style={{
               ...styles.privacyNote,
               background: isDark ? '#0f172a' : '#f8fafc',
-              borderTop: `1px solid ${colors.inputBorder}`,
+              borderTop: `1px solid ${c.inputBorder}`,
             }}
           >
             🔒 আপনার কথোপকথন গোপন রাখা হয়
@@ -432,7 +431,6 @@ export default function AIChatBot() {
         </div>
       )}
 
-      {/* Animations */}
       <style>{`
         @keyframes aiChatFadeIn {
           from { opacity: 0; transform: translateY(20px) scale(0.95); }
@@ -450,17 +448,13 @@ export default function AIChatBot() {
           0%, 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
           50% { box-shadow: 0 0 0 6px rgba(34, 197, 94, 0); }
         }
-        .chat-scroll::-webkit-scrollbar {
-          width: 6px;
-        }
-        .chat-scroll::-webkit-scrollbar-track {
-          background: transparent;
-        }
-        .chat-scroll::-webkit-scrollbar-thumb {
+        .ai-chat-scroll::-webkit-scrollbar { width: 6px; }
+        .ai-chat-scroll::-webkit-scrollbar-track { background: transparent; }
+        .ai-chat-scroll::-webkit-scrollbar-thumb {
           background: rgba(99, 102, 241, 0.3);
           border-radius: 3px;
         }
-        .chat-scroll::-webkit-scrollbar-thumb:hover {
+        .ai-chat-scroll::-webkit-scrollbar-thumb:hover {
           background: rgba(99, 102, 241, 0.5);
         }
       `}</style>
@@ -469,7 +463,7 @@ export default function AIChatBot() {
 }
 
 // ============================================
-// 🎨 স্টাইল
+// স্টাইল
 // ============================================
 const styles = {
   floatingBtn: {
@@ -490,13 +484,8 @@ const styles = {
     transition: 'all 0.3s ease',
     fontFamily: "'Hind Siliguri', sans-serif",
   },
-  floatingBtnIcon: {
-    fontSize: '20px',
-  },
-  floatingBtnText: {
-    fontSize: '15px',
-    fontWeight: '700',
-  },
+  floatingBtnIcon: { fontSize: '20px' },
+  floatingBtnText: { fontSize: '15px', fontWeight: '700' },
   unreadDot: {
     position: 'absolute',
     top: '-2px',
@@ -525,17 +514,20 @@ const styles = {
     fontFamily: "'Hind Siliguri', sans-serif",
   },
   header: {
-    padding: '16px 18px',
+    padding: '14px 16px',
     color: 'white',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
     flexShrink: 0,
+    gap: '10px',
   },
   headerLeft: {
     display: 'flex',
     alignItems: 'center',
     gap: '12px',
+    flex: 1,
+    minWidth: 0,
   },
   avatar: {
     position: 'relative',
@@ -548,9 +540,13 @@ const styles = {
     justifyContent: 'center',
     fontSize: '22px',
     border: '2px solid rgba(255, 255, 255, 0.3)',
+    overflow: 'hidden',
+    flexShrink: 0,
   },
-  avatarIcon: {
-    fontSize: '22px',
+  avatarLogo: {
+    width: '100%',
+    height: '100%',
+    objectFit: 'cover',
   },
   avatarOnline: {
     position: 'absolute',
@@ -563,10 +559,17 @@ const styles = {
     border: '2px solid white',
     animation: 'aiChatOnlinePulse 2s infinite',
   },
+  headerTexts: {
+    flex: 1,
+    minWidth: 0,
+  },
   headerTitle: {
-    fontSize: '16px',
+    fontSize: '15px',
     fontWeight: '700',
     letterSpacing: '0.3px',
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
   },
   headerStatus: {
     fontSize: '11px',
@@ -575,6 +578,9 @@ const styles = {
     gap: '5px',
     marginTop: '3px',
     opacity: 0.95,
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
   },
   onlineDot: {
     width: '7px',
@@ -582,11 +588,9 @@ const styles = {
     borderRadius: '50%',
     background: '#4ade80',
     display: 'inline-block',
+    flexShrink: 0,
   },
-  headerActions: {
-    display: 'flex',
-    gap: '6px',
-  },
+  headerActions: { display: 'flex', gap: '6px', flexShrink: 0 },
   headerBtn: {
     background: 'rgba(255, 255, 255, 0.15)',
     border: 'none',
@@ -599,7 +603,6 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    transition: 'all 0.2s ease',
   },
   body: {
     flex: 1,
@@ -609,10 +612,7 @@ const styles = {
     flexDirection: 'column',
     gap: '12px',
   },
-  messageRow: {
-    display: 'flex',
-    justifyContent: 'flex-start',
-  },
+  messageRow: { display: 'flex', justifyContent: 'flex-start' },
   bubble: {
     maxWidth: '85%',
     padding: '11px 15px',
@@ -624,6 +624,7 @@ const styles = {
   userBubble: {
     marginLeft: 'auto',
     borderBottomRightRadius: '4px',
+    color: 'white',
     boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)',
   },
   aiBubble: {
@@ -631,9 +632,7 @@ const styles = {
     borderBottomLeftRadius: '4px',
     boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)',
   },
-  bubbleText: {
-    whiteSpace: 'pre-wrap',
-  },
+  bubbleText: { whiteSpace: 'pre-wrap' },
   typingIndicator: {
     display: 'flex',
     gap: '5px',
@@ -664,14 +663,8 @@ const styles = {
     justifyContent: 'center',
     gap: '6px',
     boxShadow: '0 4px 14px rgba(37, 211, 102, 0.4)',
-    transition: 'all 0.2s ease',
   },
-  quickQuestions: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '10px',
-    marginTop: '10px',
-  },
+  quickQuestions: { display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px' },
   quickTitle: {
     fontSize: '12px',
     fontWeight: '700',
@@ -679,11 +672,7 @@ const styles = {
     textTransform: 'uppercase',
     letterSpacing: '0.5px',
   },
-  quickGrid: {
-    display: 'grid',
-    gridTemplateColumns: '1fr 1fr',
-    gap: '8px',
-  },
+  quickGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' },
   quickBtn: {
     padding: '10px 12px',
     borderRadius: '10px',
@@ -695,7 +684,6 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     gap: '6px',
-    transition: 'all 0.2s ease',
     fontFamily: "'Hind Siliguri', sans-serif",
   },
   inputArea: {
@@ -712,7 +700,6 @@ const styles = {
     fontSize: '14px',
     outline: 'none',
     fontFamily: 'inherit',
-    transition: 'border 0.2s ease',
   },
   sendBtn: {
     width: '44px',
@@ -725,7 +712,6 @@ const styles = {
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
-    transition: 'all 0.2s ease',
   },
   privacyNote: {
     padding: '8px 16px',
@@ -733,7 +719,6 @@ const styles = {
     fontSize: '10px',
     color: '#94a3b8',
     fontWeight: '500',
-    letterSpacing: '0.3px',
     flexShrink: 0,
   },
 };
