@@ -1,16 +1,11 @@
 // ============================================
-// 🤖 AI Chat Service (Groq + Edge Function)
+// 🤖 AI Chat Service (Supabase SDK version)
 // ============================================
 
 import { supabase } from '../supabaseClient';
 
 // ============================================
-// Edge Function URL
-// ============================================
-const EDGE_URL = 'https://wgkcedpinnhvpotuivdqg.supabase.co/functions/v1/chat-ai';
-
-// ============================================
-// সেশন টোকেন (প্রতি ভিজিটরের জন্য ইউনিক)
+// সেশন টোকেন
 // ============================================
 const STORAGE_KEY = 'ai_chat_session_token';
 
@@ -28,117 +23,91 @@ export function resetChatSession() {
 }
 
 // ============================================
-// 📚 FAQ লোড
+// ডাটা লোড
 // ============================================
 async function loadFAQs() {
   try {
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from('ai_chat_faqs')
       .select('question, answer, keywords, category')
       .eq('is_active', true)
       .order('sort_order', { ascending: true });
-
-    if (error) {
-      console.warn('⚠️ FAQ load error:', error.message);
-      return [];
-    }
     return data || [];
-  } catch (err) {
-    console.warn('⚠️ FAQ load failed:', err);
+  } catch {
     return [];
   }
 }
 
-// ============================================
-// ⚙️ Settings লোড
-// ============================================
 async function loadSettings() {
   try {
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from('ai_chat_settings')
       .select('setting_key, setting_value');
-
-    if (error) {
-      console.warn('⚠️ Settings load error:', error.message);
-      return {};
-    }
-
     const map = {};
     (data || []).forEach((s) => {
       map[s.setting_key] = s.setting_value;
     });
     return map;
-  } catch (err) {
-    console.warn('⚠️ Settings load failed:', err);
+  } catch {
     return {};
   }
 }
 
-// ============================================
-// 👨‍🏫 Teachers লোড
-// ============================================
 async function loadTeachers() {
   try {
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from('teachers')
       .select('name, designation, subject')
       .eq('is_approved', true)
       .order('name');
-
-    if (error) {
-      console.warn('⚠️ Teachers load error:', error.message);
-      return [];
-    }
     return data || [];
-  } catch (err) {
-    console.warn('⚠️ Teachers load failed:', err);
+  } catch {
     return [];
   }
 }
 
 // ============================================
-// 🎯 মূল ফাংশন — মেসেজ পাঠাও
+// 🎯 মূল ফাংশন — supabase.functions.invoke() দিয়ে
 // ============================================
 export async function sendChatMessage(message, conversationHistory = []) {
   try {
     const sessionToken = getOrCreateSessionToken();
 
-    // ============================================
-    // ডাটাবেস থেকে তথ্য লোড (parallel)
-    // ============================================
+    // ডাটা লোড
     const [faqs, teachers, settings] = await Promise.all([
       loadFAQs(),
       loadTeachers(),
       loadSettings(),
     ]);
 
-    // ============================================
-    // Edge Function কল
-    // ============================================
-    const startTime = Date.now();
+    console.log('📤 Calling Edge Function with:', {
+      messageLength: message.length,
+      faqsCount: faqs.length,
+      teachersCount: teachers.length,
+    });
 
-    const response = await fetch(EDGE_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
+    // ============================================
+    // ✅ Supabase SDK দিয়ে Edge Function কল
+    // ============================================
+    const { data, error } = await supabase.functions.invoke('chat-ai', {
+      body: {
         message: message,
         faqs: faqs,
         teachers: teachers,
         settings: settings,
         conversationHistory: conversationHistory,
-      }),
+      },
     });
 
-    if (!response.ok) {
-      const errText = await response.text();
-      console.error('❌ Edge error:', errText);
-      throw new Error('Edge function error: ' + response.status);
+    if (error) {
+      console.error('❌ Edge Function error:', error);
+      throw new Error(error.message || 'Edge function error');
     }
 
-    const data = await response.json();
+    console.log('✅ Edge Function response:', data);
 
-    if (!data.success) {
-      throw new Error(data.error || 'Unknown error');
+    if (!data || !data.success) {
+      throw new Error(data?.error || 'Unknown error from function');
     }
 
     const aiAnswer = data.reply || 'দুঃখিত, উত্তর তৈরি করতে পারিনি।';
@@ -146,57 +115,46 @@ export async function sendChatMessage(message, conversationHistory = []) {
     const whatsappNumber = data.whatsappNumber || '8801918568313';
     const whatsappMessage =
       data.whatsappMessage || 'আসসালামু আলাইকুম, আমি ওয়েবসাইট থেকে চ্যাট করছি।';
-    const usedModel = data.model || 'unknown';
-    const responseTimeMs = data.responseTimeMs || Date.now() - startTime;
-    const tokensUsed = data.tokensUsed || 0;
 
-    // ============================================
-    // 📁 ডাটাবেসে সেভ (silent — error হলেও চলবে)
-    // ============================================
+    // ডাটাবেসে সেভ (silent)
     try {
       await saveChatToDatabase({
         sessionToken,
         userMessage: message,
         aiAnswer,
         shouldTransfer,
-        usedModel,
-        responseTimeMs,
-        tokensUsed,
+        usedModel: data.model || 'unknown',
+        responseTimeMs: data.responseTimeMs || 0,
+        tokensUsed: data.tokensUsed || 0,
       });
     } catch (dbError) {
       console.warn('⚠️ DB save warning:', dbError);
-      // silent fail — chat তবুও কাজ করবে
     }
 
-    // ============================================
-    // সফল Response
-    // ============================================
     return {
       success: true,
       reply: aiAnswer,
       shouldTransferToWhatsApp: shouldTransfer,
       whatsappNumber: whatsappNumber,
       whatsappMessage: whatsappMessage,
-      model: usedModel,
-      responseTimeMs: responseTimeMs,
-      tokensUsed: tokensUsed,
     };
 
   } catch (error) {
-    console.error('❌ Chat error:', error);
+    console.error('❌ sendChatMessage error:', error);
     return {
       success: false,
       reply:
-        'দুঃখিত, এই মুহূর্তে উত্তর দিতে পারছি না। অনুগ্রহ করে আমাদের সাথে সরাসরি যোগাযোগ করুন।',
+        'দুঃখিত, এই মুহূর্তে উত্তর দিতে পারছি না। অনুগ্রহ করে সরাসরি যোগাযোগ করুন।',
       shouldTransferToWhatsApp: true,
       whatsappNumber: '8801918568313',
       whatsappMessage: 'আসসালামু আলাইকুম, আমি ওয়েবসাইট থেকে চ্যাট করছি।',
+      error: error.message,
     };
   }
 }
 
 // ============================================
-// 💾 ডাটাবেসে সেভ (session + messages)
+// ডাটাবেসে সেভ
 // ============================================
 async function saveChatToDatabase({
   sessionToken,
@@ -209,7 +167,6 @@ async function saveChatToDatabase({
 }) {
   let sessionId = null;
 
-  // ১. আগের সেশন আছে কি না চেক
   const { data: existingSession } = await supabase
     .from('ai_chat_sessions')
     .select('id, message_count')
@@ -217,7 +174,6 @@ async function saveChatToDatabase({
     .maybeSingle();
 
   if (existingSession) {
-    // ২. আপডেট করো
     sessionId = existingSession.id;
     await supabase
       .from('ai_chat_sessions')
@@ -225,12 +181,10 @@ async function saveChatToDatabase({
         message_count: (existingSession.message_count || 0) + 2,
         updated_at: new Date().toISOString(),
         last_message: userMessage.substring(0, 200),
-        is_transferred_to_whatsapp:
-          shouldTransfer || false,
+        is_transferred_to_whatsapp: shouldTransfer || false,
       })
       .eq('id', sessionId);
   } else {
-    // ৩. নতুন সেশন তৈরি করো
     const { data: newSession } = await supabase
       .from('ai_chat_sessions')
       .insert([
@@ -239,16 +193,13 @@ async function saveChatToDatabase({
           message_count: 2,
           last_message: userMessage.substring(0, 200),
           is_transferred_to_whatsapp: shouldTransfer,
-          user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
         },
       ])
       .select()
       .single();
-
     sessionId = newSession?.id || null;
   }
 
-  // ৪. মেসেজ সেভ করো (user + assistant)
   if (sessionId) {
     await supabase.from('ai_chat_messages').insert([
       {
@@ -270,26 +221,19 @@ async function saveChatToDatabase({
 }
 
 // ============================================
-// 🔗 WhatsApp URL তৈরি
+// WhatsApp URL
 // ============================================
-export function buildWhatsAppUrl(phoneNumber, message, conversationContext = '') {
+export function buildWhatsAppUrl(phoneNumber, message) {
   const cleanNumber = (phoneNumber || '8801918568313').replace(/\D/g, '');
-
-  const fullMessage = conversationContext
-    ? `${message}\n\n--- আগের কথা ---\n${conversationContext}`
-    : message;
-
-  return `https://wa.me/${cleanNumber}?text=${encodeURIComponent(fullMessage)}`;
+  return `https://wa.me/${cleanNumber}?text=${encodeURIComponent(message)}`;
 }
 
 // ============================================
-// 📜 ভিজিটরের নিজের চ্যাট হিস্টোরি লোড
+// চ্যাট হিস্টোরি লোড
 // ============================================
 export async function loadChatHistory() {
   try {
     const sessionToken = getOrCreateSessionToken();
-
-    // ১. সেশন আইডি বের করো
     const { data: session } = await supabase
       .from('ai_chat_sessions')
       .select('id')
@@ -298,7 +242,6 @@ export async function loadChatHistory() {
 
     if (!session) return [];
 
-    // ২. মেসেজ লোড করো
     const { data: messages } = await supabase
       .from('ai_chat_messages')
       .select('role, content, created_at')
@@ -307,19 +250,17 @@ export async function loadChatHistory() {
       .limit(50);
 
     return messages || [];
-  } catch (err) {
-    console.warn('⚠️ History load failed:', err);
+  } catch {
     return [];
   }
 }
 
 // ============================================
-// 🗑️ ভিজিটরের সেশন ক্লিয়ার
+// চ্যাট ক্লিয়ার
 // ============================================
 export async function clearChatHistory() {
   try {
     const sessionToken = getOrCreateSessionToken();
-
     const { data: session } = await supabase
       .from('ai_chat_sessions')
       .select('id')
@@ -327,14 +268,11 @@ export async function clearChatHistory() {
       .maybeSingle();
 
     if (session) {
-      await supabase
-        .from('ai_chat_messages')
-        .delete()
-        .eq('session_id', session.id);
+      await supabase.from('ai_chat_messages').delete().eq('session_id', session.id);
+      await supabase.from('ai_chat_sessions').delete().eq('id', session.id);
     }
-
     resetChatSession();
   } catch (err) {
-    console.warn('⚠️ Clear history failed:', err);
+    console.warn('Clear failed:', err);
   }
 }
